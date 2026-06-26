@@ -13,7 +13,7 @@ export function ThreadView({ thread }: ThreadViewProps) {
     <section aria-label="Thread">
       <article className="px-4 py-3">
         <PostAuthor author={thread.author} timestamp={thread.timestamp} />
-        <p className="mt-3 pl-[52px] text-[17px] leading-snug whitespace-pre-wrap">
+        <p className="mt-3 pl-[52px] text-base leading-relaxed whitespace-pre-wrap">
           {thread.content}
         </p>
         <div className="pl-[52px]">
@@ -21,12 +21,12 @@ export function ThreadView({ thread }: ThreadViewProps) {
         </div>
       </article>
 
-      <Separator className="bg-border/60" />
+      <Separator className="h-[2px] bg-foreground" />
 
       <div className="px-4 py-3">
-        <p className="text-sm font-semibold text-muted-foreground">
+        <p className="pixel-heading text-[10px] text-[#29adff]">
           {thread.replies.length}{" "}
-          {thread.replies.length === 1 ? "Reply" : "Replies"}
+          {thread.replies.length === 1 ? "REPLY" : "REPLIES"}
         </p>
       </div>
 

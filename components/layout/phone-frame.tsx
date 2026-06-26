@@ -2,46 +2,100 @@ type PhoneFrameProps = {
   children: React.ReactNode;
 };
 
+function PhoneHardwareTop() {
+  return (
+    <div
+      aria-hidden
+      className="hidden shrink-0 items-center justify-between px-5 py-3 md:flex"
+    >
+      <div className="flex items-center gap-2">
+        <div className="pixel-border-thin size-3 bg-[#29adff]" />
+        <div className="size-2 bg-[#00e436]" />
+      </div>
+
+      <div className="flex flex-col items-center gap-1">
+        <div className="pixel-speaker h-2 w-16 border-2 border-[#1d2b53]" />
+        <div className="flex gap-1">
+          <div className="size-1 bg-[#fff1e8]/50" />
+          <div className="size-1 bg-[#fff1e8]/50" />
+          <div className="size-1 bg-[#fff1e8]/50" />
+        </div>
+      </div>
+
+      <div className="pixel-border-thin flex size-5 items-center justify-center bg-[#1d2b53]">
+        <div className="size-2 rounded-full bg-[#83769a]" />
+      </div>
+    </div>
+  );
+}
+
+function PhoneHardwareBottom() {
+  return (
+    <div
+      aria-hidden
+      className="hidden shrink-0 flex-col items-center gap-2 px-5 py-3 md:flex"
+    >
+      <div className="h-1 w-12 bg-[#fff1e8]/70" />
+      <span className="pixel-heading text-[8px] tracking-widest text-[#1d2b53]">
+        FAKEX
+      </span>
+    </div>
+  );
+}
+
+function PhoneSideButtons() {
+  return (
+    <>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -left-[5px] top-[8.5rem] hidden flex-col gap-2 md:flex"
+      >
+        <div className="h-10 w-[4px] border-y-2 border-l-2 border-[#fff1e8] bg-[#5a5a78]" />
+        <div className="h-6 w-[4px] border-y-2 border-l-2 border-[#fff1e8] bg-[#5a5a78]" />
+        <div className="h-6 w-[4px] border-y-2 border-l-2 border-[#fff1e8] bg-[#5a5a78]" />
+      </div>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-[5px] top-[10.5rem] hidden md:block"
+      >
+        <div className="h-14 w-[4px] border-y-2 border-r-2 border-[#fff1e8] bg-[#ff004d]" />
+      </div>
+    </>
+  );
+}
+
 export function PhoneFrame({ children }: PhoneFrameProps) {
   return (
-    <div className="min-h-dvh md:flex md:items-center md:justify-center md:bg-zinc-950 md:p-8">
+    <div className="min-h-dvh md:flex md:items-center md:justify-center md:bg-[#0f0f1a] md:p-8 md:[background-image:radial-gradient(#29366f_1px,transparent_1px),linear-gradient(#0f0f1a,#1d2b53)] md:[background-size:16px_16px,100%_100%]">
+      {/* Mobile: full bleed */}
+      <div className="min-h-dvh md:hidden">
+        <div className="pixel-scanlines min-h-dvh overflow-y-auto overscroll-contain">
+          {children}
+        </div>
+      </div>
+
+      {/* Desktop: pixel phone */}
       <div
         aria-label="Phone preview"
-        className="relative mx-auto flex min-h-dvh w-full max-w-[430px] flex-col bg-background md:h-[min(90dvh,880px)] md:min-h-0 md:rounded-[3rem] md:border md:border-zinc-700/80 md:bg-zinc-900 md:p-3 md:shadow-[0_25px_80px_-12px_rgba(0,0,0,0.75)]"
+        className="relative mx-auto hidden w-[454px] flex-col md:flex md:h-[min(90dvh,900px)]"
       >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-[2px] top-[7.5rem] hidden h-16 w-[3px] rounded-l-sm bg-zinc-600 md:block"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-[2px] top-[11.5rem] hidden h-10 w-[3px] rounded-l-sm bg-zinc-600 md:block"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-[2px] top-[14.5rem] hidden h-10 w-[3px] rounded-l-sm bg-zinc-600 md:block"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-[2px] top-[10rem] hidden h-20 w-[3px] rounded-r-sm bg-zinc-600 md:block"
-        />
+        <PhoneSideButtons />
 
-        <div className="relative flex min-h-dvh flex-1 flex-col overflow-hidden md:min-h-0 md:rounded-[2.25rem] md:bg-background">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute top-3 left-1/2 z-50 hidden h-7 w-[7.5rem] -translate-x-1/2 rounded-full bg-black md:block"
-          />
+        <div className="phone-shell-shadow relative flex h-full flex-col border-[3px] border-[#fff1e8] bg-[#83769a] p-3">
+          <div className="pointer-events-none absolute inset-x-3 top-0 h-[2px] bg-[#c2c3c7]/60" />
+          <div className="pointer-events-none absolute inset-y-3 left-0 w-[2px] bg-[#c2c3c7]/40" />
 
-          <div className="flex-1 overflow-y-auto overscroll-contain">
-            {children}
+          <PhoneHardwareTop />
+
+          <div className="relative flex min-h-0 flex-1 flex-col phone-screen-inset bg-[#0a0a2a] p-1">
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
+              <div className="pixel-scanlines min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                {children}
+              </div>
+            </div>
           </div>
 
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-2 hidden justify-center md:flex"
-          >
-            <div className="h-1 w-32 rounded-full bg-foreground/25" />
-          </div>
+          <PhoneHardwareBottom />
         </div>
       </div>
     </div>

@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  --font-heading: var(--font-inter);
+  --font-sans: var(--font-pixel-body);
+  --font-mono: var(--font-pixel-body);
+  --font-heading: var(--font-pixel-heading);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -72,7 +72,7 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0px;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -84,37 +84,39 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #1d2b53;
+  --foreground: #fff1e8;
+  --card: #29366f;
+  --card-foreground: #fff1e8;
+  --popover: #29366f;
+  --popover-foreground: #fff1e8;
+  --primary: #ff004d;
+  --primary-foreground: #fff1e8;
+  --secondary: #7e2553;
+  --secondary-foreground: #fff1e8;
+  --muted: #29366f;
+  --muted-foreground: #c2c3c7;
+  --accent: #29adff;
+  --accent-foreground: #1d2b53;
+  --destructive: #ff004d;
+  --border: #fff1e8;
+  --input: #29366f;
+  --ring: #29adff;
+  --chart-1: #ff004d;
+  --chart-2: #ffa300;
+  --chart-3: #00e436;
+  --chart-4: #29adff;
+  --chart-5: #83769a;
+  --pixel-shadow: #0a0a2a;
+  --pixel-highlight: #ff77a8;
+  --sidebar: #29366f;
+  --sidebar-foreground: #fff1e8;
+  --sidebar-primary: #ff004d;
+  --sidebar-primary-foreground: #fff1e8;
+  --sidebar-accent: #7e2553;
+  --sidebar-accent-foreground: #fff1e8;
+  --sidebar-border: #fff1e8;
+  --sidebar-ring: #29adff;
 }
 
 @layer base {
@@ -123,8 +125,72 @@
   }
   body {
     @apply bg-background text-foreground;
+    image-rendering: pixelated;
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer utilities {
+  .pixel-app {
+    font-family: var(--font-pixel-body), monospace;
+  }
+
+  .pixel-heading {
+    font-family: var(--font-pixel-heading), monospace;
+    letter-spacing: 0.04em;
+  }
+
+  .pixel-border {
+    border: 3px solid var(--foreground);
+  }
+
+  .pixel-border-thin {
+    border: 2px solid var(--foreground);
+  }
+
+  .pixel-shadow {
+    box-shadow: 4px 4px 0 0 var(--pixel-shadow);
+  }
+
+  .pixel-shadow-sm {
+    box-shadow: 2px 2px 0 0 var(--pixel-shadow);
+  }
+
+  .pixel-inset {
+    box-shadow: inset 0 0 0 2px var(--pixel-shadow);
+  }
+
+  .pixel-scanlines {
+    background-image: linear-gradient(
+      to bottom,
+      rgb(255 255 255 / 3%) 50%,
+      rgb(0 0 0 / 3%) 50%
+    );
+    background-size: 100% 4px;
+  }
+
+  .pixel-speaker {
+    background-image: repeating-linear-gradient(
+      to right,
+      #1d2b53 0,
+      #1d2b53 2px,
+      transparent 2px,
+      transparent 4px
+    );
+  }
+
+  .phone-shell-shadow {
+    box-shadow:
+      4px 4px 0 0 #0a0a2a,
+      8px 8px 0 0 rgb(10 10 42 / 55%);
+  }
+
+  .phone-screen-inset {
+    box-shadow:
+      inset 0 0 0 3px #0a0a2a,
+      inset 0 0 0 5px #fff1e8,
+      inset 0 0 24px rgb(10 10 42 / 35%);
   }
 }

@@ -1,7 +1,3 @@
-import { BarChart3, Heart, MessageCircle } from "lucide-react";
-
-import { cn } from "@/lib/utils";
-
 type PostActionsProps = {
   stats: {
     replies: number;
@@ -17,39 +13,22 @@ function formatCount(n: number): string {
 }
 
 const ACTIONS = [
-  {
-    icon: MessageCircle,
-    key: "replies" as const,
-    hover: "hover:text-sky-500 hover:[&>span:first-child]:bg-sky-500/10",
-  },
-  {
-    icon: Heart,
-    key: "likes" as const,
-    hover: "hover:text-pink-500 hover:[&>span:first-child]:bg-pink-500/10",
-  },
-  {
-    icon: BarChart3,
-    key: "views" as const,
-    hover: "hover:text-sky-500 hover:[&>span:first-child]:bg-sky-500/10",
-  },
+  { icon: "💬", key: "replies" as const, color: "hover:bg-[#29adff]" },
+  { icon: "♥", key: "likes" as const, color: "hover:bg-[#ff004d]" },
+  { icon: "👁", key: "views" as const, color: "hover:bg-[#00e436]" },
 ] as const;
 
 export function PostActions({ stats }: PostActionsProps) {
   return (
-    <div className="mt-3 flex max-w-xs items-center gap-8 text-muted-foreground">
-      {ACTIONS.map(({ icon: Icon, key, hover }) => (
+    <div className="mt-3 flex max-w-xs items-center gap-4 text-[#c2c3c7]">
+      {ACTIONS.map(({ icon, key, color }) => (
         <button
           key={key}
           type="button"
-          className={cn(
-            "group flex items-center gap-1.5 transition-colors",
-            hover,
-          )}
+          className={`flex items-center gap-1.5 pixel-border-thin bg-[#29366f] px-2 py-1 text-xs transition-colors hover:text-[#1d2b53] ${color}`}
         >
-          <span className="rounded-full p-1.5 transition-colors">
-            <Icon className="size-[18px]" />
-          </span>
-          <span className="text-xs tabular-nums">{formatCount(stats[key])}</span>
+          <span>{icon}</span>
+          <span className="tabular-nums">{formatCount(stats[key])}</span>
         </button>
       ))}
     </div>

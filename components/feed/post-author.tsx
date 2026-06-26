@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { getPixelAvatarColor } from "@/lib/pixel-theme";
 import type { MockAuthor } from "@/lib/mock/posts";
 import { cn } from "@/lib/utils";
 
@@ -22,23 +23,31 @@ export function PostAuthor({
   timestamp,
   size = "default",
 }: PostAuthorProps) {
+  const avatarSize = size === "sm" ? "size-8" : "size-10";
+
   return (
     <div className="flex items-start gap-3">
-      <Avatar size={size === "sm" ? "default" : "lg"} className="size-10 shrink-0">
+      <Avatar
+        size={size === "sm" ? "default" : "lg"}
+        className={cn(
+          avatarSize,
+          "shrink-0 rounded-none after:rounded-none after:border-2 after:border-[#fff1e8]",
+        )}
+      >
         <AvatarFallback
           className={cn(
-            "text-xs font-semibold text-white",
-            author.avatarColor,
+            "rounded-none text-[10px] font-bold text-[#1d2b53] pixel-heading",
+            getPixelAvatarColor(author.avatarColor),
           )}
         >
           {getInitials(author.name)}
         </AvatarFallback>
       </Avatar>
 
-      <div className="min-w-0 truncate text-[15px] leading-5">
-        <span className="font-bold">{author.name}</span>{" "}
-        <span className="text-muted-foreground">@{author.handle}</span>{" "}
-        <span className="text-muted-foreground">· {timestamp}</span>
+      <div className="min-w-0 truncate text-base leading-6">
+        <span className="font-bold text-[#ffa300]">{author.name}</span>{" "}
+        <span className="text-[#c2c3c7]">@{author.handle}</span>{" "}
+        <span className="text-[#83769a]">· {timestamp}</span>
       </div>
     </div>
   );

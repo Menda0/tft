@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Pixelify_Sans, Press_Start_2P } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const pixelBody = Pixelify_Sans({
+  variable: "--font-pixel-body",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const pixelHeading = Press_Start_2P({
+  variable: "--font-pixel-heading",
+  subsets: ["latin"],
+  weight: "400",
   display: "swap",
 });
 
@@ -21,9 +28,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} dark h-full antialiased`}
+      className={`${pixelBody.variable} ${pixelHeading.variable} dark h-full`}
     >
-      <body className="min-h-dvh flex flex-col overscroll-none md:bg-zinc-950">{children}</body>
+      <body className="pixel-app min-h-dvh flex flex-col overscroll-none md:bg-[#0f0f1a]">
+        {children}
+      </body>
     </html>
   );
 }
