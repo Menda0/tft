@@ -1,9 +1,23 @@
 import { Collection } from "mongodb";
 
 import { getDb } from "./mongodb";
-import type { Personality } from "./types/personality";
+import type { AvatarStatus, Personality } from "./types/personality";
 
 const COLLECTION = "personalities";
+
+export function normalizePersonality(
+  personality: Personality,
+): Personality {
+  const avatarStatus: AvatarStatus =
+    personality.avatarStatus ??
+    (personality.avatarUrl ? "ready" : "pending");
+
+  return {
+    ...personality,
+    avatarUrl: personality.avatarUrl ?? null,
+    avatarStatus,
+  };
+}
 
 export async function getPersonalitiesCollection(): Promise<
   Collection<Personality>
@@ -37,6 +51,28 @@ export async function insertPersonality(
   const collection = await getPersonalitiesCollection();
   await collection.insertOne(personality);
   return personality;
+}
+
+export async function claimAvatarGeneration(
+  id: string,
+): Promise<Personality | null> {
+  const collection = await getPersonalitiesCollection();
+  const result = await collection.findOneAndUpdate(
+    {
+      id,
+      $or: [
+        { avatarStatus: { $in: ["pending", "failed"] } },
+        {
+          avatarStatus: { $exists: false },
+          $or: [{ avatarUrl: null }, { avatarUrl: { $exists: false } }],
+        },
+      ],
+    },
+    { $set: { avatarStatus: "generating" } },
+    { returnDocument: "after" },
+  );
+
+  return result ? normalizePersonality(result) : null;
 }
 
 export async function updatePersonality(

@@ -13,7 +13,6 @@ import { createPersonalityRequest } from "@/lib/personalities/client";
 import {
   ARCHETYPES,
   ARCHETYPE_LABELS,
-  formatArchetypeLabel,
   type Archetype,
 } from "@/lib/personalities/archetypes";
 import { slugifyHandle } from "@/lib/personalities/validation";
@@ -21,10 +20,9 @@ import { generateRandomPersonality } from "@/lib/personalities/random";
 import {
   GENDERS,
   GENDER_LABELS,
-  formatGenderLabel,
   type Gender,
 } from "@/lib/personalities/gender";
-import type { Personality, Traits } from "@/lib/types/personality";
+import type { Traits } from "@/lib/types/personality";
 
 const GENDER_OPTIONS = GENDERS.map((value) => ({
   value,
@@ -66,7 +64,6 @@ export function CreatePersonalityForm() {
   const [traits, setTraits] = useState<Traits>(DEFAULT_TRAITS);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [created, setCreated] = useState<Personality | null>(null);
 
   function updateName(value: string) {
     setName(value);
@@ -119,7 +116,7 @@ export function CreatePersonalityForm() {
       return;
     }
 
-    setCreated(result.personality);
+    router.push("/personalities");
   }
 
   if (!isReady) {
@@ -150,73 +147,13 @@ export function CreatePersonalityForm() {
     );
   }
 
-  if (created) {
-    return (
-      <>
-        <AppBar title="Created" onBack={() => router.push("/")} />
-        <div className="space-y-4 px-4 py-6">
-          <div className="pixel-border bg-[#29366f] p-4 pixel-shadow-sm">
-            <div className="mx-auto size-32 overflow-hidden pixel-border-thin bg-[#1d2b53]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={created.avatarUrl}
-                alt={`${created.name} avatar`}
-                className="size-full object-cover [image-rendering:pixelated]"
-              />
-            </div>
-            <div className="mt-4 space-y-1 text-center">
-              <p className="pixel-heading text-[10px] text-[#29adff]">
-                {formatArchetypeLabel(created.archetype).toUpperCase()}
-              </p>
-              <p className="text-lg font-bold text-[#ffa300]">{created.name}</p>
-              <p className="text-sm text-[#c2c3c7]">@{created.handle}</p>
-              <p className="text-xs text-[#83769a]">
-                {formatGenderLabel(created.gender)}
-              </p>
-            </div>
-          </div>
-
-          <p className="text-sm text-[#c2c3c7]">
-            Pixel avatar generated and saved to MongoDB.
-          </p>
-
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              onClick={() => router.push("/")}
-              className="flex-1 rounded-none border-2 border-[#fff1e8] bg-[#00e436] text-[#1d2b53] hover:bg-[#29adff]"
-            >
-              View feed
-            </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                setCreated(null);
-                setName("");
-                setHandle("");
-                setHandleTouched(false);
-                setGender("nonbinary");
-                setInterests("");
-                setTraits(DEFAULT_TRAITS);
-                setArchetype("comedian");
-              }}
-              className="flex-1 rounded-none border-2 border-[#fff1e8] bg-[#29366f] text-[#fff1e8] hover:bg-[#83769a]"
-            >
-              Create another
-            </Button>
-          </div>
-        </div>
-      </>
-    );
-  }
-
   return (
     <>
-      <AppBar title="New Bot" onBack={() => router.push("/")} />
+      <AppBar title="New Bot" onBack={() => router.push("/personalities")} />
       <form onSubmit={handleSubmit} className="space-y-5 px-4 py-4 pb-8">
         <p className="text-sm text-[#c2c3c7]">
-          Build a FakeX personality. OpenAI will generate a pixel art avatar
-          from the profile you define.
+          Build a FakeX personality. A pixel art avatar will generate in the
+          background after you create it.
         </p>
 
         <Button
@@ -337,12 +274,18 @@ export function CreatePersonalityForm() {
           </p>
         ) : null}
 
+        {isSubmitting ? (
+          <p className="text-center text-sm text-[#29adff]">
+            Creating personality...
+          </p>
+        ) : null}
+
         <Button
           type="submit"
           disabled={isSubmitting}
           className="w-full rounded-none border-2 border-[#fff1e8] bg-[#00e436] py-3 text-[#1d2b53] hover:bg-[#29adff] disabled:opacity-60"
         >
-          {isSubmitting ? "Generating pixel avatar..." : "Create personality"}
+          {isSubmitting ? "Creating..." : "Create personality"}
         </Button>
       </form>
     </>

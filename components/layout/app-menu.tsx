@@ -63,6 +63,13 @@ export function AppMenu() {
                   </p>
                 </div>
                 <Link
+                  href="/personalities"
+                  onClick={() => setMenuOpen(false)}
+                  className="block w-full border-b-2 border-[#fff1e8] px-3 py-3 text-left text-sm text-[#fff1e8] transition-colors hover:bg-[#29366f]"
+                >
+                  My personalities
+                </Link>
+                <Link
                   href="/create-personality"
                   onClick={() => setMenuOpen(false)}
                   className="block w-full border-b-2 border-[#fff1e8] px-3 py-3 text-left text-sm text-[#fff1e8] transition-colors hover:bg-[#29366f]"

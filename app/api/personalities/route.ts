@@ -3,9 +3,9 @@ import {
   findPersonalityByHandle,
   getPersonalitiesCollection,
   insertPersonality,
+  normalizePersonality,
 } from "@/lib/personalities";
 import { getAuthUser } from "@/lib/auth/server";
-import { generatePixelAvatar } from "@/lib/openai/avatar";
 import { authError } from "@/lib/auth/responses";
 import {
   createPersonalityId,
@@ -38,20 +38,13 @@ export async function POST(request: Request) {
       return authError("Handle is already taken.", 409);
     }
 
-    const avatarUrl = await generatePixelAvatar({
-      name,
-      gender,
-      archetype,
-      traits,
-      interests,
-    });
-
     const personality = {
       id: createPersonalityId(),
       name,
       handle,
       gender,
-      avatarUrl,
+      avatarUrl: null,
+      avatarStatus: "pending" as const,
       ownerId: authUser.id,
       createdAt: new Date(),
       archetype,
@@ -68,6 +61,7 @@ export async function POST(request: Request) {
     return Response.json({ personality }, { status: 201 });
   } catch (error) {
     console.error("Create personality failed:", error);
+
     return authError("Could not create personality.", 500);
   }
 }
@@ -83,7 +77,9 @@ export async function GET(request: Request) {
       .limit(50)
       .toArray();
 
-    return Response.json({ personalities });
+    return Response.json({
+      personalities: personalities.map(normalizePersonality),
+    });
   } catch (error) {
     console.error("List personalities failed:", error);
     return authError("Could not load personalities.", 500);

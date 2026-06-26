@@ -40,12 +40,15 @@ export type MemoryItem = {
   importance: number;
 };
 
+export type AvatarStatus = "pending" | "generating" | "ready" | "failed";
+
 export type Personality = {
   id: string;
   name: string;
   handle: string;
   gender: Gender;
-  avatarUrl: string;
+  avatarUrl: string | null;
+  avatarStatus: AvatarStatus;
   ownerId: string;
   createdAt: Date;
   archetype: Archetype;
