@@ -1,8 +1,10 @@
 import type { Archetype } from "@/lib/personalities/archetypes";
 import type { Gender } from "@/lib/personalities/gender";
+import type { Pronouns } from "@/lib/personalities/pronouns";
 
 export type { Archetype };
 export type { Gender };
+export type { Pronouns };
 
 export type MemoryType =
   | "friendship"
@@ -47,6 +49,7 @@ export type Personality = {
   name: string;
   handle: string;
   gender: Gender;
+  pronouns: Pronouns;
   avatarUrl: string | null;
   avatarStatus: AvatarStatus;
   ownerId: string;

@@ -1,5 +1,12 @@
 import { ARCHETYPES, type Archetype } from "@/lib/personalities/archetypes";
-import { GENDERS, type Gender } from "@/lib/personalities/gender";
+import {
+  GENDERS,
+  defaultPronounsForGender,
+  isFeminineGender,
+  isMasculineGender,
+  type Gender,
+} from "@/lib/personalities/gender";
+import { PRONOUNS, type Pronouns } from "@/lib/personalities/pronouns";
 import { slugifyHandle } from "@/lib/personalities/validation";
 import type { Traits } from "@/lib/types/personality";
 
@@ -1382,11 +1389,11 @@ function randomGender(): Gender {
 }
 
 function randomFirstName(gender: Gender): string {
-  if (gender === "male") {
+  if (isMasculineGender(gender)) {
     return pick([...MALE_FIRST_NAMES, ...NEUTRAL_FIRST_NAMES]);
   }
 
-  if (gender === "female") {
+  if (isFeminineGender(gender)) {
     return pick([...FEMALE_FIRST_NAMES, ...NEUTRAL_FIRST_NAMES]);
   }
 
@@ -1395,6 +1402,14 @@ function randomFirstName(gender: Gender): string {
     ...MALE_FIRST_NAMES,
     ...FEMALE_FIRST_NAMES,
   ]);
+}
+
+function randomPronouns(gender: Gender): Pronouns {
+  if (Math.random() < 0.75) {
+    return defaultPronounsForGender(gender);
+  }
+
+  return pick([...PRONOUNS]);
 }
 
 function randomName(archetype: Archetype, gender: Gender): string {
@@ -1427,6 +1442,7 @@ export type RandomPersonalityDraft = {
   name: string;
   handle: string;
   gender: Gender;
+  pronouns: Pronouns;
   archetype: Archetype;
   traits: Traits;
   interests: string;
@@ -1441,6 +1457,7 @@ export function generateRandomPersonality(): RandomPersonalityDraft {
     name,
     handle: randomHandle(name),
     gender,
+    pronouns: randomPronouns(gender),
     archetype,
     traits: randomTraits(archetype),
     interests: randomInterests(archetype),

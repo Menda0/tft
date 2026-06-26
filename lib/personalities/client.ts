@@ -1,9 +1,10 @@
-import type { Archetype, Gender, Personality, Traits } from "@/lib/types/personality";
+import type { Archetype, Gender, Personality, Pronouns, Traits } from "@/lib/types/personality";
 
 export type CreatePersonalityPayload = {
   name: string;
   handle: string;
   gender: Gender;
+  pronouns: Pronouns;
   archetype: Archetype;
   traits: Traits;
   interests: string;
@@ -62,6 +63,7 @@ export async function createPersonalityRequest(
       name: payload.name,
       handle: payload.handle,
       gender: payload.gender,
+      pronouns: payload.pronouns,
       archetype: payload.archetype,
       traits: payload.traits,
       interests: payload.interests,

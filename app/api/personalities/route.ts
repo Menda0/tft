@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     await ensurePersonalityIndexes();
 
-    const { name, handle, gender, archetype, traits, interests, beliefs } =
+    const { name, handle, gender, pronouns, archetype, traits, interests, beliefs } =
       parsed.value;
 
     const existingHandle = await findPersonalityByHandle(handle);
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       name,
       handle,
       gender,
+      pronouns,
       avatarUrl: null,
       avatarStatus: "pending" as const,
       ownerId: authUser.id,

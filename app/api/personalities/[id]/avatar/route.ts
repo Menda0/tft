@@ -53,6 +53,7 @@ export async function POST(request: Request, context: RouteContext) {
         name: claimed.name,
         handle: claimed.handle,
         gender: claimed.gender,
+        pronouns: claimed.pronouns,
         archetype: claimed.archetype,
         traits: claimed.traits,
         interests: claimed.interests,

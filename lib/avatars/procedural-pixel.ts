@@ -1,5 +1,9 @@
 import type { Archetype } from "@/lib/personalities/archetypes";
-import type { Gender } from "@/lib/personalities/gender";
+import {
+  isFeminineGender,
+  isMasculineGender,
+  type Gender,
+} from "@/lib/personalities/gender";
 import type { Traits } from "@/lib/types/personality";
 
 const PICO8 = [
@@ -52,11 +56,11 @@ function traitColor(traits: Traits, offset: number): string {
 }
 
 function genderHairRows(gender: Gender): number[] {
-  if (gender === "female") {
+  if (isFeminineGender(gender)) {
     return [2, 3, 4, 5, 6, 7, 8, 9];
   }
 
-  if (gender === "male") {
+  if (isMasculineGender(gender)) {
     return [2, 3, 4, 5, 6];
   }
 

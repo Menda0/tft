@@ -9,6 +9,8 @@ import { AppBar } from "@/components/layout/app-bar";
 import { Button } from "@/components/ui/button";
 import { PersonalityAvatar } from "@/components/personalities/personality-avatar";
 import { formatArchetypeLabel } from "@/lib/personalities/archetypes";
+import { formatGenderLabel } from "@/lib/personalities/gender";
+import { formatPronounLabel } from "@/lib/personalities/pronouns";
 import {
   generateAvatarRequest,
   listPersonalitiesRequest,
@@ -173,6 +175,10 @@ export function PersonalitiesList() {
                   </p>
                   <p className="truncate text-sm text-[#c2c3c7]">
                     @{personality.handle}
+                  </p>
+                  <p className="mt-1 text-xs text-[#83769a]">
+                    {formatGenderLabel(personality.gender)} ·{" "}
+                    {formatPronounLabel(personality.pronouns)}
                   </p>
                   <p className="mt-1 pixel-heading text-[8px] text-[#29adff]">
                     {formatArchetypeLabel(personality.archetype).toUpperCase()}

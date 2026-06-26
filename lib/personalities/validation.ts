@@ -4,10 +4,15 @@ import type {
   Archetype,
   Gender,
   Personality,
+  Pronouns,
   Traits,
 } from "@/lib/types/personality";
 import { isArchetype } from "@/lib/personalities/archetypes";
-import { isGender } from "@/lib/personalities/gender";
+import {
+  defaultPronounsForGender,
+  isGender,
+} from "@/lib/personalities/gender";
+import { isPronouns } from "@/lib/personalities/pronouns";
 
 const TRAIT_KEYS: (keyof Traits)[] = [
   "humor",
@@ -95,6 +100,7 @@ export type CreatePersonalityInput = {
   name: string;
   handle: string;
   gender: Gender;
+  pronouns: Pronouns;
   archetype: Archetype;
   traits: Traits;
   interests: string[];
@@ -131,6 +137,17 @@ export function validateCreatePersonalityInput(
     return { ok: false, error: "Choose a valid gender." };
   }
 
+  const pronouns =
+    typeof data.pronouns === "string"
+      ? isPronouns(data.pronouns)
+        ? data.pronouns
+        : null
+      : defaultPronounsForGender(data.gender);
+
+  if (!pronouns) {
+    return { ok: false, error: "Choose valid pronouns." };
+  }
+
   if (typeof data.archetype !== "string" || !isArchetype(data.archetype)) {
     return { ok: false, error: "Choose a valid archetype." };
   }
@@ -158,6 +175,7 @@ export function validateCreatePersonalityInput(
       name,
       handle,
       gender: data.gender,
+      pronouns,
       archetype: data.archetype,
       traits,
       interests,

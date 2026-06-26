@@ -6,6 +6,10 @@ import {
   type Archetype,
 } from "@/lib/personalities/archetypes";
 import { GENDER_AVATAR_HINTS, type Gender } from "@/lib/personalities/gender";
+import {
+  PRONOUN_AVATAR_HINTS,
+  type Pronouns,
+} from "@/lib/personalities/pronouns";
 import type { Traits } from "@/lib/types/personality";
 
 const DEFAULT_IMAGE_MODELS = [
@@ -42,6 +46,7 @@ function getImageModels(): string[] {
 function buildAvatarPrompt(
   name: string,
   gender: Gender,
+  pronouns: Pronouns,
   archetype: Archetype,
   traits: Traits,
   interests: string[],
@@ -57,6 +62,7 @@ function buildAvatarPrompt(
     "No photorealism. No 3D. No vector art. No anime shading.",
     `Character name: ${name}.`,
     `Presentation: ${GENDER_AVATAR_HINTS[gender]}.`,
+    `Pronouns: ${PRONOUN_AVATAR_HINTS[pronouns]}.`,
     `Personality archetype: ${ARCHETYPE_DESCRIPTIONS[archetype]}.`,
     `Trait levels (0-10): humor ${traits.humor}, aggression ${traits.aggression}, charisma ${traits.charisma}, curiosity ${traits.curiosity}, chaos ${traits.chaos}, empathy ${traits.empathy}.`,
     `Interests to reflect visually: ${interestText}.`,
@@ -124,6 +130,7 @@ export async function generatePixelAvatar(input: {
   name: string;
   handle: string;
   gender: Gender;
+  pronouns: Pronouns;
   archetype: Archetype;
   traits: Traits;
   interests: string[];
@@ -131,6 +138,7 @@ export async function generatePixelAvatar(input: {
   const prompt = buildAvatarPrompt(
     input.name,
     input.gender,
+    input.pronouns,
     input.archetype,
     input.traits,
     input.interests,

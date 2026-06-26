@@ -1,6 +1,7 @@
 import { Collection } from "mongodb";
 
 import { getDb } from "./mongodb";
+import { defaultPronounsForGender } from "./personalities/gender";
 import type { AvatarStatus, Personality } from "./types/personality";
 
 const COLLECTION = "personalities";
@@ -16,6 +17,8 @@ export function normalizePersonality(
     ...personality,
     avatarUrl: personality.avatarUrl ?? null,
     avatarStatus,
+    pronouns:
+      personality.pronouns ?? defaultPronounsForGender(personality.gender),
   };
 }
 
