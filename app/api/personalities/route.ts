@@ -1,0 +1,91 @@
+import {
+  ensurePersonalityIndexes,
+  findPersonalityByHandle,
+  getPersonalitiesCollection,
+  insertPersonality,
+} from "@/lib/personalities";
+import { getAuthUser } from "@/lib/auth/server";
+import { generatePixelAvatar } from "@/lib/openai/avatar";
+import { authError } from "@/lib/auth/responses";
+import {
+  createPersonalityId,
+  defaultStats,
+  validateCreatePersonalityInput,
+} from "@/lib/personalities/validation";
+
+export async function POST(request: Request) {
+  try {
+    const authUser = await getAuthUser(request);
+
+    if (!authUser) {
+      return authError("You must be logged in to create a personality.", 401);
+    }
+
+    const parsed = validateCreatePersonalityInput(await request.json());
+
+    if (!parsed.ok) {
+      return authError(parsed.error, 400);
+    }
+
+    await ensurePersonalityIndexes();
+
+    const { name, handle, gender, archetype, traits, interests, beliefs } =
+      parsed.value;
+
+    const existingHandle = await findPersonalityByHandle(handle);
+
+    if (existingHandle) {
+      return authError("Handle is already taken.", 409);
+    }
+
+    const avatarUrl = await generatePixelAvatar({
+      name,
+      gender,
+      archetype,
+      traits,
+      interests,
+    });
+
+    const personality = {
+      id: createPersonalityId(),
+      name,
+      handle,
+      gender,
+      avatarUrl,
+      ownerId: authUser.id,
+      createdAt: new Date(),
+      archetype,
+      traits,
+      interests,
+      beliefs: beliefs ?? {},
+      stats: defaultStats(),
+      memory: [],
+      relationships: {},
+    };
+
+    await insertPersonality(personality);
+
+    return Response.json({ personality }, { status: 201 });
+  } catch (error) {
+    console.error("Create personality failed:", error);
+    return authError("Could not create personality.", 500);
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const authUser = await getAuthUser(request);
+    const collection = await getPersonalitiesCollection();
+    const filter = authUser ? { ownerId: authUser.id } : {};
+    const personalities = await collection
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .toArray();
+
+    return Response.json({ personalities });
+  } catch (error) {
+    console.error("List personalities failed:", error);
+    return authError("Could not load personalities.", 500);
+  }
+}

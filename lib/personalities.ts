@@ -19,6 +19,13 @@ export async function getPersonalityById(
   return collection.findOne({ id });
 }
 
+export async function findPersonalityByHandle(
+  handle: string,
+): Promise<Personality | null> {
+  const collection = await getPersonalitiesCollection();
+  return collection.findOne({ handle });
+}
+
 export async function getAllPersonalities(): Promise<Personality[]> {
   const collection = await getPersonalitiesCollection();
   return collection.find().toArray();
@@ -54,5 +61,7 @@ export async function deletePersonality(id: string): Promise<boolean> {
 export async function ensurePersonalityIndexes(): Promise<void> {
   const collection = await getPersonalitiesCollection();
   await collection.createIndex({ id: 1 }, { unique: true });
+  await collection.createIndex({ handle: 1 }, { unique: true });
   await collection.createIndex({ archetype: 1 });
+  await collection.createIndex({ ownerId: 1 });
 }

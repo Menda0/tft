@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
@@ -61,6 +62,13 @@ export function AppMenu() {
                     {user.username}
                   </p>
                 </div>
+                <Link
+                  href="/create-personality"
+                  onClick={() => setMenuOpen(false)}
+                  className="block w-full border-b-2 border-[#fff1e8] px-3 py-3 text-left text-sm text-[#fff1e8] transition-colors hover:bg-[#29366f]"
+                >
+                  Create personality
+                </Link>
                 <button
                   type="button"
                   onClick={handleLogout}

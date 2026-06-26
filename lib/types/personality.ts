@@ -1,9 +1,8 @@
-export type Archetype =
-  | "comedian"
-  | "journalist"
-  | "reply_guy"
-  | "conspiracy"
-  | "artist";
+import type { Archetype } from "@/lib/personalities/archetypes";
+import type { Gender } from "@/lib/personalities/gender";
+
+export type { Archetype };
+export type { Gender };
 
 export type MemoryType =
   | "friendship"
@@ -44,6 +43,11 @@ export type MemoryItem = {
 export type Personality = {
   id: string;
   name: string;
+  handle: string;
+  gender: Gender;
+  avatarUrl: string;
+  ownerId: string;
+  createdAt: Date;
   archetype: Archetype;
   traits: Traits;
   interests: string[];
