@@ -1,3 +1,4 @@
+import { storeAvatarImage } from "@/lib/avatars/store-avatar";
 import {
   claimAvatarGeneration,
   getPersonalityById,
@@ -5,7 +6,8 @@ import {
   updatePersonality,
 } from "@/lib/personalities";
 import { getAuthUser } from "@/lib/auth/server";
-import { generatePixelAvatar } from "@/lib/openai/avatar";
+import { generatePixelAvatar, AvatarGenerationError } from "@/lib/openai/avatar";
+import { PinataUploadError } from "@/lib/pinata/upload-avatar";
 import { authError } from "@/lib/auth/responses";
 
 export const maxDuration = 120;
@@ -49,7 +51,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     try {
-      const avatarUrl = await generatePixelAvatar({
+      const imageDataUrl = await generatePixelAvatar({
         name: claimed.name,
         handle: claimed.handle,
         gender: claimed.gender,
@@ -57,6 +59,12 @@ export async function POST(request: Request, context: RouteContext) {
         archetype: claimed.archetype,
         traits: claimed.traits,
         interests: claimed.interests,
+      });
+
+      const avatarUrl = await storeAvatarImage({
+        personalityId: id,
+        handle: claimed.handle,
+        imageDataUrl,
       });
 
       const updated = await updatePersonality(id, {
@@ -71,6 +79,28 @@ export async function POST(request: Request, context: RouteContext) {
       console.error("Avatar generation failed:", error);
       const failed = await updatePersonality(id, { avatarStatus: "failed" });
 
+      if (error instanceof AvatarGenerationError) {
+        return Response.json(
+          {
+            personality: failed ? normalizePersonality(failed) : personality,
+            error: error.message,
+            details: error.details,
+          },
+          { status: 502 },
+        );
+      }
+
+      if (error instanceof PinataUploadError) {
+        return Response.json(
+          {
+            personality: failed ? normalizePersonality(failed) : personality,
+            error: error.message,
+            details: error.details,
+          },
+          { status: 502 },
+        );
+      }
+
       if (error instanceof Error && error.message.includes("OPENAI_API_KEY")) {
         return authError("Missing OPENAI_API_KEY. Add it to your env file.", 500);
       }
@@ -78,7 +108,7 @@ export async function POST(request: Request, context: RouteContext) {
       return Response.json(
         {
           personality: failed ? normalizePersonality(failed) : personality,
-          error: "Could not generate pixel avatar.",
+          error: "Could not generate pixel avatar with OpenAI.",
         },
         { status: 502 },
       );

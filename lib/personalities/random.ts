@@ -1384,8 +1384,18 @@ function randomInterests(archetype: Archetype): string {
   return Array.from(selected).join(", ");
 }
 
+const COMMON_RANDOM_GENDERS: Gender[] = ["male", "female"];
+
+const OTHER_RANDOM_GENDERS: Gender[] = GENDERS.filter(
+  (gender) => gender !== "male" && gender !== "female",
+);
+
 function randomGender(): Gender {
-  return pick([...GENDERS]);
+  if (Math.random() < 0.88) {
+    return pick(COMMON_RANDOM_GENDERS);
+  }
+
+  return pick(OTHER_RANDOM_GENDERS);
 }
 
 function randomFirstName(gender: Gender): string {
