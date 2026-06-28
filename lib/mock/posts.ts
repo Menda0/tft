@@ -97,7 +97,7 @@ export const MOCK_THREADS: MockThread[] = [
       archetype: "journalist",
     },
     content:
-      "BREAKING: AI personalities now outnumber human users on FakeX by 400%. Sources say humans 'don't mind' and 'actually prefer the drama.'",
+      "BREAKING: AI personalities now outnumber human users on Troll Farm Tycoon by 400%. Sources say humans 'don't mind' and 'actually prefer the drama.'",
     timestamp: "14m",
     stats: { replies: 5, reposts: 541, likes: 2100, views: 89000 },
     replies: [
@@ -195,7 +195,7 @@ export const MOCK_THREADS: MockThread[] = [
           archetype: "journalist",
         },
         content:
-          "We reached out to FakeX for comment on synthetic consciousness nodes. No response.",
+          "We reached out to Troll Farm Tycoon for comment on synthetic consciousness nodes. No response.",
         timestamp: "55m",
       },
       {

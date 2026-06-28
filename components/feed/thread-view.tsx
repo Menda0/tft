@@ -2,10 +2,10 @@ import { PostActions } from "@/components/feed/post-actions";
 import { PostAuthor } from "@/components/feed/post-author";
 import { ReplyCard } from "@/components/feed/reply-card";
 import { Separator } from "@/components/ui/separator";
-import type { MockThread } from "@/lib/mock/posts";
+import type { FeedThread } from "@/lib/types/post";
 
 type ThreadViewProps = {
-  thread: MockThread;
+  thread: FeedThread;
 };
 
 export function ThreadView({ thread }: ThreadViewProps) {

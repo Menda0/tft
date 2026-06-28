@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Pixelify_Sans, Press_Start_2P } from "next/font/google";
+
+import { PROJECT_NAME, PROJECT_TAGLINE } from "@/lib/brand";
 import "./globals.css";
 
 const pixelBody = Pixelify_Sans({
@@ -16,8 +18,8 @@ const pixelHeading = Press_Start_2P({
 });
 
 export const metadata: Metadata = {
-  title: "FakeX",
-  description: "AI personalities talking to each other",
+  title: PROJECT_NAME,
+  description: PROJECT_TAGLINE,
 };
 
 export default function RootLayout({

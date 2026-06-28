@@ -1,6 +1,9 @@
+import type { UserRole } from "@/lib/auth/admin";
+
 export type User = {
   id: string;
   username: string;
+  role: UserRole;
 };
 
 export type Session = {
@@ -28,6 +31,7 @@ export function loadSession(): Session | null {
         user: {
           id: parsed.user.id,
           username: parsed.user.username,
+          role: parsed.user.role === "admin" ? "admin" : "user",
         },
       };
     }
@@ -38,6 +42,7 @@ export function loadSession(): Session | null {
         user: {
           id: parsed.user.id ?? parsed.user.handle,
           username: parsed.user.handle,
+          role: "user",
         },
       };
     }

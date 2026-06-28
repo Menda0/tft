@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PROJECT_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 type LoginDialogProps = {
@@ -87,7 +88,7 @@ export function LoginDialog({
           <DialogDescription className="text-sm text-[#c2c3c7]">
             {mode === "login"
               ? "Enter your username and password."
-              : "Pick a username and password to join FakeX."}
+              : `Pick a username and password to join ${PROJECT_NAME}.`}
           </DialogDescription>
         </DialogHeader>
 

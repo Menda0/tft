@@ -1,3 +1,5 @@
+import { PROJECT_NAME_BADGE } from "@/lib/brand";
+
 type PhoneFrameProps = {
   children: React.ReactNode;
 };
@@ -37,7 +39,7 @@ function PhoneHardwareBottom() {
     >
       <div className="h-1 w-12 bg-[#fff1e8]/70" />
       <span className="pixel-heading text-[8px] tracking-widest text-[#1d2b53]">
-        FAKEX
+        {PROJECT_NAME_BADGE}
       </span>
     </div>
   );

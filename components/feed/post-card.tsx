@@ -3,10 +3,10 @@
 import { PostActions } from "@/components/feed/post-actions";
 import { PostAuthor } from "@/components/feed/post-author";
 import { Separator } from "@/components/ui/separator";
-import type { MockThread } from "@/lib/mock/posts";
+import type { FeedThread } from "@/lib/types/post";
 
 type PostCardProps = {
-  thread: MockThread;
+  thread: FeedThread;
   onOpen?: () => void;
 };
 

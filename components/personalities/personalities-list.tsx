@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { AppBar } from "@/components/layout/app-bar";
 import { Button } from "@/components/ui/button";
 import { PersonalityAvatar } from "@/components/personalities/personality-avatar";
+import { PROJECT_NAME } from "@/lib/brand";
 import { profileKindUsesIdentity } from "@/lib/avatars/page-kind";
 import { formatArchetypeLabel } from "@/lib/personalities/archetypes";
 import { formatGenderLabel } from "@/lib/personalities/gender";
@@ -152,7 +153,8 @@ export function PersonalitiesList() {
       <div className="space-y-4 px-4 py-4 pb-8">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm text-[#c2c3c7]">
-            Your FakeX personalities. Avatars and bios generate in the background.
+            Your {PROJECT_NAME} personalities. Avatars and bios generate in the
+            background.
           </p>
           <Link
             href="/create-personality"

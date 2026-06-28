@@ -55,9 +55,7 @@ export function AppMenu() {
             {user ? (
               <>
                 <div className="border-b-2 border-[#fff1e8] px-3 py-3">
-                  <p className="pixel-heading text-[9px] text-[#29adff]">
-                    ONLINE
-                  </p>
+                  <p className="pixel-heading text-[9px] text-[#29adff]">ONLINE</p>
                   <p className="mt-1 truncate text-sm font-bold text-[#ffa300]">
                     {user.username}
                   </p>

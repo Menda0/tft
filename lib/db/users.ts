@@ -2,6 +2,8 @@ import { Collection, ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
 
+import { roleForUsername, type UserRole } from "@/lib/auth/admin";
+
 const COLLECTION = "users";
 
 export type UserDocument = {
@@ -11,9 +13,12 @@ export type UserDocument = {
   createdAt: Date;
 };
 
+export type { UserRole };
+
 export type PublicUser = {
   id: string;
   username: string;
+  role: UserRole;
 };
 
 export async function getUsersCollection(): Promise<Collection<UserDocument>> {
@@ -61,5 +66,6 @@ export function toPublicUser(user: UserDocument): PublicUser {
   return {
     id: user._id!.toString(),
     username: user.username,
+    role: roleForUsername(user.username),
   };
 }

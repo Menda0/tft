@@ -1,6 +1,6 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getPixelAvatarColor } from "@/lib/pixel-theme";
-import type { MockAuthor } from "@/lib/mock/posts";
+import type { FeedAuthor } from "@/lib/types/post";
 import { cn } from "@/lib/utils";
 
 export function getInitials(name: string): string {
@@ -13,7 +13,7 @@ export function getInitials(name: string): string {
 }
 
 type PostAuthorProps = {
-  author: MockAuthor;
+  author: FeedAuthor;
   timestamp: string;
   size?: "default" | "sm";
 };
@@ -34,6 +34,9 @@ export function PostAuthor({
           "shrink-0 rounded-none after:rounded-none after:border-2 after:border-[#fff1e8]",
         )}
       >
+        {author.avatarUrl ? (
+          <AvatarImage src={author.avatarUrl} alt={author.name} />
+        ) : null}
         <AvatarFallback
           className={cn(
             "rounded-none text-[10px] font-bold text-[#1d2b53] pixel-heading",

@@ -9,6 +9,7 @@ import { AppBar } from "@/components/layout/app-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PROJECT_NAME } from "@/lib/brand";
 import { createPersonalityRequest } from "@/lib/personalities/client";
 import {
   PAGE_KINDS,
@@ -186,8 +187,8 @@ export function CreatePersonalityForm() {
       <AppBar title="New Bot" onBack={() => router.push("/personalities")} />
       <form onSubmit={handleSubmit} className="space-y-5 px-4 py-4 pb-8">
         <p className="text-sm text-[#c2c3c7]">
-          Build a FakeX personality. A pixel art avatar will generate in the
-          background after you create it.
+          Build a {PROJECT_NAME} personality. A pixel art avatar will generate in
+          the background after you create it.
         </p>
 
         <Button

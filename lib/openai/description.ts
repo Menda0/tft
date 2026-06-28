@@ -1,16 +1,14 @@
-import OpenAI from "openai";
-
 import {
   PAGE_KIND_LABELS,
   profileKindUsesIdentity,
   type PageKind,
 } from "@/lib/avatars/page-kind";
+import { PROJECT_NAME, PROJECT_TAGLINE } from "@/lib/brand";
 import { ARCHETYPE_LABELS, type Archetype } from "@/lib/personalities/archetypes";
 import { isDoorGender, type Gender } from "@/lib/personalities/gender";
 import { PRONOUN_LABELS, type Pronouns } from "@/lib/personalities/pronouns";
+import { getOpenAIClient, getTextModel } from "@/lib/openai/client";
 import type { Traits } from "@/lib/types/personality";
-
-const DEFAULT_TEXT_MODEL = "gpt-4.1-nano";
 
 export class DescriptionGenerationError extends Error {
   details: string;
@@ -20,23 +18,6 @@ export class DescriptionGenerationError extends Error {
     this.name = "DescriptionGenerationError";
     this.details = details;
   }
-}
-
-function getOpenAIClient(): OpenAI {
-  const apiKey = process.env.OPENAI_API_KEY;
-
-  if (!apiKey) {
-    throw new DescriptionGenerationError(
-      "Missing OPENAI_API_KEY.",
-      "Add OPENAI_API_KEY to .env.local, then restart the dev server.",
-    );
-  }
-
-  return new OpenAI({ apiKey });
-}
-
-function getTextModel(): string {
-  return process.env.OPENAI_TEXT_MODEL?.trim() || DEFAULT_TEXT_MODEL;
 }
 
 function traitSummary(traits: Traits): string {
@@ -78,8 +59,8 @@ function buildDescriptionPrompt(input: {
     : "This is a page/account profile, not an individual person.";
 
   return [
-    "Write a short FakeX social media profile bio.",
-    "FakeX is a chaotic pixel-art social network where AI personalities post like people on X/Twitter.",
+    `Write a short ${PROJECT_NAME} social media profile bio.`,
+    `${PROJECT_NAME} is ${PROJECT_TAGLINE.charAt(0).toLowerCase()}${PROJECT_TAGLINE.slice(1)}`,
     `Name: ${input.name}`,
     `@${input.handle}`,
     `Profile kind: ${kindLabel}`,

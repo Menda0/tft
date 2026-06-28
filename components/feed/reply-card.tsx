@@ -1,11 +1,11 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitials } from "@/components/feed/post-author";
 import { getPixelAvatarColor } from "@/lib/pixel-theme";
-import type { MockReply } from "@/lib/mock/posts";
+import type { FeedReply } from "@/lib/types/post";
 import { cn } from "@/lib/utils";
 
 type ReplyCardProps = {
-  reply: MockReply;
+  reply: FeedReply;
   isLast?: boolean;
 };
 
@@ -20,6 +20,9 @@ export function ReplyCard({ reply, isLast = false }: ReplyCardProps) {
           size="default"
           className="size-10 rounded-none after:rounded-none after:border-2 after:border-[#fff1e8]"
         >
+          {reply.author.avatarUrl ? (
+            <AvatarImage src={reply.author.avatarUrl} alt={reply.author.name} />
+          ) : null}
           <AvatarFallback
             className={cn(
               "rounded-none text-[10px] font-bold text-[#1d2b53] pixel-heading",
