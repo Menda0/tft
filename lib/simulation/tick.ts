@@ -17,6 +17,7 @@ import {
   truncateForLog,
   type SimulationLogFn,
 } from "./logger";
+import { getDailyPostLimit, getTrendingTopicsTtlMs } from "./limits";
 import { throwIfCancelled } from "./cancel";
 import type { SimulationWorld } from "./world";
 import { runWithConcurrency, shuffle } from "./utils";
@@ -31,10 +32,56 @@ type PersonalityAction = {
   action: ActionType;
 };
 
+function getTrendingTopicsAnchor(state: SimulationWorld["state"]): Date | null {
+  if (state.trendingTopicsUpdatedAt) {
+    return new Date(state.trendingTopicsUpdatedAt);
+  }
+
+  const firstTopic = state.trendingTopics[0];
+
+  if (firstTopic?.fetchedAt) {
+    return new Date(firstTopic.fetchedAt);
+  }
+
+  return null;
+}
+
+export function shouldRefreshTrendingTopics(
+  state: SimulationWorld["state"],
+  now = Date.now(),
+): boolean {
+  if (state.trendingTopics.length === 0) {
+    return true;
+  }
+
+  const anchor = getTrendingTopicsAnchor(state);
+
+  if (!anchor) {
+    return true;
+  }
+
+  return now - anchor.getTime() >= getTrendingTopicsTtlMs();
+}
+
 async function updateTrendingTopics(
   world: SimulationWorld,
   log: SimulationLogFn,
 ): Promise<void> {
+  if (!shouldRefreshTrendingTopics(world.state)) {
+    const anchor = getTrendingTopicsAnchor(world.state);
+    const labels = world.state.trendingTopics.map((entry) => entry.topic);
+
+    log(
+      "info",
+      `Using cached trending topics from ${anchor?.toISOString() ?? "unknown time"}.`,
+    );
+    log(
+      "success",
+      `Trending topics (${labels.length}): ${labels.join(" | ")}`,
+    );
+    return;
+  }
+
   log("info", "Fetching trending topics...");
 
   let topicLabels: string[];
@@ -58,7 +105,12 @@ async function updateTrendingTopics(
   }));
 
   world.state.trendingTopics = trendingTopics;
-  await saveWorldState({ trendingTopics });
+  world.state.trendingTopicsUpdatedAt = now;
+
+  await saveWorldState({
+    trendingTopics,
+    trendingTopicsUpdatedAt: now,
+  });
 
   if (usedFallback) {
     log("warn", "Trending fetch failed. Using cached/fallback topics.");
@@ -66,7 +118,7 @@ async function updateTrendingTopics(
 
   log(
     "success",
-    `Trending topics (${topicLabels.length}): ${topicLabels.join(", ")}`,
+    `Trending topics refreshed (${topicLabels.length}): ${topicLabels.join(" | ")}`,
   );
 }
 
@@ -81,16 +133,25 @@ async function executeAction(
   switch (action) {
     case "post": {
       log("info", `${handle} chose POST — generating...`);
-      const post = await createPost(personality, world);
+      const result = await createPost(personality, world);
 
-      if (!post) {
-        log("warn", `${handle} failed to post.`);
+      if (!result.ok) {
+        if (result.reason === "daily_limit") {
+          log(
+            "warn",
+            `${handle} hit the daily post limit (${getDailyPostLimit()}/day).`,
+          );
+        } else if (result.reason === "no_topic") {
+          log("warn", `${handle} skipped posting — no fresh topic available.`);
+        } else {
+          log("warn", `${handle} failed to post.`);
+        }
         return;
       }
 
       log(
         "success",
-        `${handle} posted about "${post.topic ?? "general"}": ${truncateForLog(post.content)}`,
+        `${handle} posted about "${result.post.topic ?? "general"}": ${truncateForLog(result.post.content)}`,
       );
       return;
     }

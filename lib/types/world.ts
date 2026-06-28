@@ -8,6 +8,7 @@ export type WorldState = {
   tickNumber: number;
   lastTickAt: Date | null;
   trendingTopics: TrendingTopic[];
+  trendingTopicsUpdatedAt: Date | null;
   isRunning: boolean;
 };
 

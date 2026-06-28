@@ -12,6 +12,7 @@ export function createDefaultWorldState(): WorldState {
     tickNumber: 0,
     lastTickAt: null,
     trendingTopics: [],
+    trendingTopicsUpdatedAt: null,
     isRunning: false,
   };
 }

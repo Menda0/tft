@@ -22,6 +22,54 @@ export async function ensurePostIndexes(): Promise<void> {
   await collection.createIndex({ createdAt: -1 });
   await collection.createIndex({ replyToPostId: 1 });
   await collection.createIndex({ "author.personalityId": 1 });
+  await collection.createIndex({
+    "author.personalityId": 1,
+    createdAt: -1,
+    replyToPostId: 1,
+    repostOfPostId: 1,
+  });
+}
+
+function isOriginalTopLevelPost(post: Pick<Post, "replyToPostId" | "repostOfPostId">): boolean {
+  return post.replyToPostId === null && post.repostOfPostId === null;
+}
+
+export async function countOriginalPostsSince(
+  personalityId: string,
+  since: Date,
+): Promise<number> {
+  const collection = await getPostsCollection();
+
+  return collection.countDocuments({
+    "author.personalityId": personalityId,
+    replyToPostId: null,
+    repostOfPostId: null,
+    createdAt: { $gte: since },
+  });
+}
+
+export async function getOriginalPostTopicsSince(
+  personalityId: string,
+  since: Date,
+): Promise<string[]> {
+  const collection = await getPostsCollection();
+  const posts = await collection
+    .find(
+      {
+        "author.personalityId": personalityId,
+        replyToPostId: null,
+        repostOfPostId: null,
+        createdAt: { $gte: since },
+        topic: { $ne: null },
+      },
+      { projection: { topic: 1 } },
+    )
+    .sort({ createdAt: -1 })
+    .toArray();
+
+  return posts
+    .map((post) => post.topic?.trim())
+    .filter((topic): topic is string => Boolean(topic));
 }
 
 export async function insertPost(

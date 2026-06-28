@@ -1,4 +1,6 @@
 import {
+  countOriginalPostsSince,
+  getOriginalPostTopicsSince,
   incrementPostStat,
   insertPost,
   toPostAuthor,
@@ -8,9 +10,17 @@ import { generateLLMPost, generateLLMReply } from "@/lib/openai/post";
 import type { Post } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
+import {
+  getDailyPostLimit,
+  startOfRollingWindow,
+} from "./limits";
 import { pickTopicForPersonality } from "./topics";
 import type { SimulationWorld } from "./world";
 import { getTopLevelPosts } from "./world";
+
+export type CreatePostResult =
+  | { ok: true; post: Post }
+  | { ok: false; reason: "daily_limit" | "no_topic" | "generation_failed" };
 
 function authorFromPersonality(personality: Personality) {
   return toPostAuthor({
@@ -54,14 +64,32 @@ function pickRandomPersonality(
   return candidates[Math.floor(Math.random() * candidates.length)] ?? null;
 }
 
+export async function canPersonalityPostToday(
+  personalityId: string,
+): Promise<boolean> {
+  const since = startOfRollingWindow();
+  const count = await countOriginalPostsSince(personalityId, since);
+  return count < getDailyPostLimit();
+}
+
 export async function createPost(
   personality: Personality,
   world: SimulationWorld,
-): Promise<Post | null> {
-  const topic = pickTopicForPersonality(
-    personality,
-    world.state.trendingTopics,
-  );
+): Promise<CreatePostResult> {
+  const since = startOfRollingWindow();
+  const postsToday = await countOriginalPostsSince(personality.id, since);
+
+  if (postsToday >= getDailyPostLimit()) {
+    return { ok: false, reason: "daily_limit" };
+  }
+
+  const usedTopics = await getOriginalPostTopicsSince(personality.id, since);
+  const topicLabels = world.state.trendingTopics.map((entry) => entry.topic);
+  const topic = pickTopicForPersonality(personality, topicLabels, usedTopics);
+
+  if (!topic) {
+    return { ok: false, reason: "no_topic" };
+  }
 
   try {
     const content = await generateLLMPost(personality, topic);
@@ -76,10 +104,10 @@ export async function createPost(
     });
 
     world.posts.unshift(post);
-    return post;
+    return { ok: true, post };
   } catch (error) {
     console.error(`createPost failed for ${personality.handle}:`, error);
-    return null;
+    return { ok: false, reason: "generation_failed" };
   }
 }
 
