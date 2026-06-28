@@ -1,16 +1,12 @@
 import { getOpenAIClient, getTrendingModel } from "@/lib/openai/client";
 
+const TRENDING_TOPIC_COUNT = 4;
+
 const FALLBACK_TOPICS = [
-  "AI regulation",
-  "viral memes",
-  "sports playoffs",
-  "celebrity drama",
-  "climate news",
-  "new phone launch",
-  "indie games",
-  "food trends",
-  "space exploration",
-  "internet discourse",
+  "Congress debating new AI regulation after a major lab announces a powerful model with weak safety guardrails",
+  "Viral meme format taking over social feeds as celebrities and brands pile on with their own versions",
+  "Underdog sports team forcing a decisive playoff game after a last-minute comeback shocks fans",
+  "Tech company unveiling its latest phone while users argue online over price hikes and missing features",
 ];
 
 export class TrendingTopicsError extends Error {
@@ -23,6 +19,30 @@ export class TrendingTopicsError extends Error {
   }
 }
 
+function normalizeTopicLabel(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function topicFromParsedItem(item: unknown): string | null {
+  if (typeof item === "string") {
+    const topic = normalizeTopicLabel(item);
+    return topic || null;
+  }
+
+  if (item && typeof item === "object") {
+    const record = item as Record<string, unknown>;
+    const candidate =
+      record.topic ?? record.title ?? record.headline ?? record.label;
+
+    if (typeof candidate === "string") {
+      const topic = normalizeTopicLabel(candidate);
+      return topic || null;
+    }
+  }
+
+  return null;
+}
+
 function parseTopicsFromText(text: string): string[] {
   const jsonMatch = text.match(/\[[\s\S]*\]/);
 
@@ -32,10 +52,9 @@ function parseTopicsFromText(text: string): string[] {
 
       if (Array.isArray(parsed)) {
         return parsed
-          .filter((item): item is string => typeof item === "string")
-          .map((item) => item.trim())
-          .filter(Boolean)
-          .slice(0, 10);
+          .map(topicFromParsedItem)
+          .filter((topic): topic is string => Boolean(topic))
+          .slice(0, TRENDING_TOPIC_COUNT);
       }
     } catch {
       // fall through to line parsing
@@ -46,7 +65,18 @@ function parseTopicsFromText(text: string): string[] {
     .split("\n")
     .map((line) => line.replace(/^[\d\-*.\s]+/, "").trim())
     .filter(Boolean)
-    .slice(0, 10);
+    .slice(0, TRENDING_TOPIC_COUNT);
+}
+
+function buildTrendingTopicsPrompt(): string {
+  return [
+    "Search the web for what is trending today across news, culture, tech, sports, entertainment, and memes.",
+    `Return exactly ${TRENDING_TOPIC_COUNT} topics as a JSON array of strings.`,
+    "Each topic must be detailed and specific: name the event, people, product, or controversy involved.",
+    "Write 1-2 sentences per topic (about 15-35 words), with enough context that someone could post about it without guessing.",
+    "Cover different areas if possible. Do not use generic labels like 'AI news' or 'sports'.",
+    "Return only the JSON array, no markdown or commentary.",
+  ].join(" ");
 }
 
 export async function fetchTrendingTopics(): Promise<string[]> {
@@ -60,12 +90,7 @@ export async function fetchTrendingTopics(): Promise<string[]> {
     input: [
       {
         role: "user",
-        content: [
-          "Search the web for what is trending today across news, culture, tech, sports, and memes.",
-          "Return exactly 10 short topic labels as a JSON array of strings.",
-          "Each topic should be 2-6 words, suitable as a social media post subject.",
-          "Return only the JSON array, no markdown or commentary.",
-        ].join(" "),
+        content: buildTrendingTopicsPrompt(),
       },
     ],
   });
@@ -93,4 +118,8 @@ export async function fetchTrendingTopics(): Promise<string[]> {
 
 export function getFallbackTrendingTopics(): string[] {
   return [...FALLBACK_TOPICS];
+}
+
+export function getTrendingTopicCount(): number {
+  return TRENDING_TOPIC_COUNT;
 }
