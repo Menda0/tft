@@ -1,8 +1,9 @@
-import type { Archetype, Gender, Personality, Pronouns, Traits } from "@/lib/types/personality";
+import type { Archetype, Gender, PageKind, Personality, Pronouns, Traits } from "@/lib/types/personality";
 
 export type CreatePersonalityPayload = {
   name: string;
   handle: string;
+  kind: PageKind;
   gender: Gender;
   pronouns: Pronouns;
   archetype: Archetype;
@@ -62,6 +63,7 @@ export async function createPersonalityRequest(
     body: JSON.stringify({
       name: payload.name,
       handle: payload.handle,
+      kind: payload.kind,
       gender: payload.gender,
       pronouns: payload.pronouns,
       archetype: payload.archetype,

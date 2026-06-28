@@ -10,6 +10,7 @@ import type { Archetype } from "@/lib/personalities/archetypes";
 import type { Gender } from "@/lib/personalities/gender";
 import type { Pronouns } from "@/lib/personalities/pronouns";
 import type { Traits } from "@/lib/types/personality";
+import type { PageKind } from "@/lib/avatars/page-kind";
 
 const DEFAULT_IMAGE_MODELS = [
   "gpt-image-2",
@@ -66,6 +67,7 @@ function isGptImageModel(model: string): boolean {
 function buildAvatarPromptFromInput(input: {
   name: string;
   handle: string;
+  kind?: PageKind;
   gender: Gender;
   pronouns: Pronouns;
   archetype: Archetype;
@@ -195,6 +197,7 @@ function shouldUseProceduralFallback(): boolean {
 function generateProceduralAvatar(input: {
   name: string;
   handle: string;
+  kind?: PageKind;
   gender: Gender;
   pronouns: Pronouns;
   archetype: Archetype;
@@ -227,6 +230,7 @@ function formatOpenAIError(error: unknown): string {
 export async function generatePixelAvatar(input: {
   name: string;
   handle: string;
+  kind?: PageKind;
   gender: Gender;
   pronouns: Pronouns;
   archetype: Archetype;

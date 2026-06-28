@@ -1,6 +1,9 @@
+import type { PageKind } from "@/lib/avatars/page-kind";
 import type { Archetype } from "@/lib/personalities/archetypes";
 import type { Gender } from "@/lib/personalities/gender";
 import type { Pronouns } from "@/lib/personalities/pronouns";
+
+export type { PageKind };
 
 export type { Archetype };
 export type { Gender };
@@ -48,6 +51,7 @@ export type Personality = {
   id: string;
   name: string;
   handle: string;
+  kind: PageKind;
   gender: Gender;
   pronouns: Pronouns;
   avatarUrl: string | null;

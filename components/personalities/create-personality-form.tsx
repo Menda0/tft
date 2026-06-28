@@ -11,6 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createPersonalityRequest } from "@/lib/personalities/client";
 import {
+  PAGE_KINDS,
+  PAGE_KIND_LABELS,
+  type PageKind,
+} from "@/lib/avatars/page-kind";
+import {
   ARCHETYPES,
   ARCHETYPE_LABELS,
   type Archetype,
@@ -38,6 +43,11 @@ const GENDER_OPTIONS = GENDERS.map((value) => ({
 const PRONOUN_OPTIONS = PRONOUNS.map((value) => ({
   value,
   label: PRONOUN_LABELS[value],
+}));
+
+const PAGE_KIND_OPTIONS = PAGE_KINDS.map((value) => ({
+  value,
+  label: PAGE_KIND_LABELS[value],
 }));
 
 const ARCHETYPE_OPTIONS = ARCHETYPES.map((value) => ({
@@ -71,6 +81,7 @@ export function CreatePersonalityForm() {
   const [handleTouched, setHandleTouched] = useState(false);
   const [gender, setGender] = useState<Gender>("nonbinary");
   const [pronouns, setPronouns] = useState<Pronouns>("they_them");
+  const [kind, setKind] = useState<PageKind>("person");
   const [archetype, setArchetype] = useState<Archetype>("comedian");
   const [interests, setInterests] = useState("");
   const [traits, setTraits] = useState<Traits>(DEFAULT_TRAITS);
@@ -101,6 +112,7 @@ export function CreatePersonalityForm() {
     setHandleTouched(true);
     setGender(draft.gender);
     setPronouns(draft.pronouns);
+    setKind(draft.kind);
     setArchetype(draft.archetype);
     setTraits(draft.traits);
     setInterests(draft.interests);
@@ -121,6 +133,7 @@ export function CreatePersonalityForm() {
     const result = await createPersonalityRequest(token, {
       name,
       handle,
+      kind,
       gender,
       pronouns,
       archetype,
@@ -214,6 +227,24 @@ export function CreatePersonalityForm() {
           <p className="text-xs text-[#83769a]">
             Letters, numbers, and underscores only.
           </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="kind" className="text-xs text-[#ffa300]">
+            Profile kind
+          </Label>
+          <select
+            id="kind"
+            value={kind}
+            onChange={(event) => setKind(event.target.value as PageKind)}
+            className="h-10 w-full pixel-border-thin bg-[#29366f] px-3 text-[#fff1e8] outline-none focus:border-[#29adff]"
+          >
+            {PAGE_KIND_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="space-y-2">

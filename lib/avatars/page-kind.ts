@@ -5,7 +5,29 @@ import { PRONOUN_AVATAR_HINTS, type Pronouns } from "@/lib/personalities/pronoun
 import type { Traits } from "@/lib/types/personality";
 import { PIXEL_ART_STYLE } from "@/lib/avatars/pixel-canvas";
 
-export type PageKind = "person" | "mascot" | "brand" | "news" | "meme_page" | "fan_page";
+export const PAGE_KINDS = [
+  "person",
+  "mascot",
+  "brand",
+  "news",
+  "meme_page",
+  "fan_page",
+] as const;
+
+export type PageKind = (typeof PAGE_KINDS)[number];
+
+export const PAGE_KIND_LABELS: Record<PageKind, string> = {
+  person: "Person",
+  mascot: "Mascot page",
+  brand: "Brand page",
+  news: "News page",
+  meme_page: "Meme page",
+  fan_page: "Fan page",
+};
+
+export function isPageKind(value: string): value is PageKind {
+  return (PAGE_KINDS as readonly string[]).includes(value);
+}
 
 export type AvatarPageProfile = {
   kind: PageKind;
@@ -356,9 +378,9 @@ export function buildAvatarPrompt(profile: AvatarPageProfile): string {
     return [
       ...BASE_RULES,
       "Subject: a close-up pixel art face only, filling the frame.",
-      "Show just the face from hairline to chin. No shoulders, body, shirt, or neck.",
-      "No hats, glasses, jewelry, or accessories.",
-      "Variation should come only from haircut, eye shape, eyebrows, mouth, and facial expression.",
+      //"Show just the face from hairline to chin. No shoulders, body, shirt, or neck.",
+      //"No hats, glasses, jewelry, or accessories.",
+      //"Variation should come only from haircut, eye shape, eyebrows, mouth, and facial expression.",
       `Person name: ${profile.name}.`,
       `Presentation: ${GENDER_AVATAR_HINTS[profile.gender]}.`,
       `Pronouns: ${PRONOUN_AVATAR_HINTS[profile.pronouns]}.`,
@@ -433,9 +455,10 @@ export function resolveAvatarPageProfile(input: {
   archetype: Archetype;
   traits: Traits;
   interests: string[];
+  kind?: PageKind;
 }): AvatarPageProfile {
   return {
-    kind: classifyPageKind(input),
+    kind: input.kind ?? classifyPageKind(input),
     ...input,
   };
 }

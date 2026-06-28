@@ -1,5 +1,9 @@
 import { ARCHETYPES, type Archetype } from "@/lib/personalities/archetypes";
 import {
+  PAGE_KINDS,
+  type PageKind,
+} from "@/lib/avatars/page-kind";
+import {
   GENDERS,
   defaultPronounsForGender,
   isFeminineGender,
@@ -1422,25 +1426,143 @@ function randomPronouns(gender: Gender): Pronouns {
   return pick([...PRONOUNS]);
 }
 
-function randomName(archetype: Archetype, gender: Gender): string {
+const NEWS_NAME_PARTS = {
+  prefixes: [
+    "Daily",
+    "Breaking",
+    "Metro",
+    "City",
+    "Global",
+    "Live",
+    "Evening",
+    "Morning",
+    "Capital",
+    "Regional",
+  ],
+  suffixes: [
+    "Times",
+    "Herald",
+    "Bulletin",
+    "Report",
+    "Dispatch",
+    "Chronicle",
+    "Wire",
+    "Observer",
+    "Journal",
+    "Gazette",
+  ],
+};
+
+const BRAND_NAME_PARTS = {
+  prefixes: [
+    "Official",
+    "Prime",
+    "Nova",
+    "Pixel",
+    "Hyper",
+    "Core",
+    "Atlas",
+    "Summit",
+    "Vertex",
+    "Echo",
+  ],
+  suffixes: [
+    "Media",
+    "Labs",
+    "Studio",
+    "HQ",
+    "Digital",
+    "Systems",
+    "Group",
+    "Network",
+    "Hub",
+    "Works",
+  ],
+};
+
+function randomNameForKind(
+  kind: PageKind,
+  archetype: Archetype,
+  gender: Gender,
+): string {
+  if (kind === "person") {
+    const first = randomFirstName(gender);
+    const last = pick(LAST_NAMES);
+
+    if (Math.random() < 0.92) {
+      return `${first} ${last}`;
+    }
+
+    return `${first} ${pick(LAST_NAMES)} ${last}`;
+  }
+
+  if (kind === "news") {
+    return `${pick(NEWS_NAME_PARTS.prefixes)} ${pick(NEWS_NAME_PARTS.suffixes)}`;
+  }
+
+  if (kind === "brand") {
+    return `${pick(BRAND_NAME_PARTS.prefixes)} ${pick(BRAND_NAME_PARTS.suffixes)}`;
+  }
+
   const parts = NAME_PARTS[archetype];
-  const first = randomFirstName(gender);
-  const last = pick(LAST_NAMES);
   const prefix = pick(parts.prefixes);
   const suffix = pick(parts.suffixes);
 
-  const patterns = [
-    () => `${first} ${last}`,
-    () => `${prefix} ${suffix}`,
-    () => `${first} ${suffix}`,
-    () => `${prefix} ${last}`,
-    () => `${first} ${prefix}`,
-    () => `${first} the ${suffix}`,
-    () => `${last} ${suffix}`,
-    () => `${first} ${pick(LAST_NAMES)} ${suffix}`,
-  ];
+  if (kind === "fan_page") {
+    const patterns = [
+      () => `${prefix} Fan Club`,
+      () => `${prefix} Nation`,
+      () => `${suffix} Stans`,
+      () => `Team ${suffix}`,
+      () => `${prefix} ${suffix} Fans`,
+    ];
+    return pick(patterns)();
+  }
 
-  return pick(patterns)();
+  if (kind === "meme_page") {
+    const patterns = [
+      () => `${prefix} ${suffix}`,
+      () => `${prefix} Memes`,
+      () => `${suffix} Posting`,
+      () => `Cursed ${suffix}`,
+      () => `${prefix} Shitposting`,
+    ];
+    return pick(patterns)();
+  }
+
+  return `${prefix} ${suffix}`;
+}
+
+const NON_PERSON_PAGE_KINDS = PAGE_KINDS.filter(
+  (kind): kind is Exclude<PageKind, "person"> => kind !== "person",
+);
+
+function randomPageKind(): PageKind {
+  if (Math.random() < 0.68) {
+    return "person";
+  }
+
+  return pick([...NON_PERSON_PAGE_KINDS]);
+}
+
+function randomArchetypeForKind(kind: PageKind): Archetype {
+  if (kind === "news" && Math.random() < 0.65) {
+    return "journalist";
+  }
+
+  if (kind === "fan_page" && Math.random() < 0.65) {
+    return "fan_account";
+  }
+
+  if (kind === "meme_page" && Math.random() < 0.55) {
+    return pick(["comedian", "troll"]);
+  }
+
+  if (kind === "brand" && Math.random() < 0.45) {
+    return "tech_bro";
+  }
+
+  return pick([...ARCHETYPES]);
 }
 
 function randomHandle(name: string): string {
@@ -1451,6 +1573,7 @@ function randomHandle(name: string): string {
 export type RandomPersonalityDraft = {
   name: string;
   handle: string;
+  kind: PageKind;
   gender: Gender;
   pronouns: Pronouns;
   archetype: Archetype;
@@ -1459,13 +1582,15 @@ export type RandomPersonalityDraft = {
 };
 
 export function generateRandomPersonality(): RandomPersonalityDraft {
-  const archetype = pick([...ARCHETYPES]);
+  const kind = randomPageKind();
+  const archetype = randomArchetypeForKind(kind);
   const gender = randomGender();
-  const name = randomName(archetype, gender);
+  const name = randomNameForKind(kind, archetype, gender);
 
   return {
     name,
     handle: randomHandle(name),
+    kind,
     gender,
     pronouns: randomPronouns(gender),
     archetype,

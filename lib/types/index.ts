@@ -4,6 +4,7 @@ export type { Pronouns } from "@/lib/personalities/pronouns";
 export type {
   MemoryItem,
   MemoryType,
+  PageKind,
   Personality,
   Relationship,
   Stats,

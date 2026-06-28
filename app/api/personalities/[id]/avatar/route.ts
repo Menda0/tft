@@ -54,6 +54,7 @@ export async function POST(request: Request, context: RouteContext) {
       const imageDataUrl = await generatePixelAvatar({
         name: claimed.name,
         handle: claimed.handle,
+        kind: claimed.kind,
         gender: claimed.gender,
         pronouns: claimed.pronouns,
         archetype: claimed.archetype,

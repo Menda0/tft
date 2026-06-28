@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 
+import { isPageKind, type PageKind } from "@/lib/avatars/page-kind";
 import type {
   Archetype,
   Gender,
@@ -99,6 +100,7 @@ export function defaultStats(): Personality["stats"] {
 export type CreatePersonalityInput = {
   name: string;
   handle: string;
+  kind: PageKind;
   gender: Gender;
   pronouns: Pronouns;
   archetype: Archetype;
@@ -152,6 +154,10 @@ export function validateCreatePersonalityInput(
     return { ok: false, error: "Choose a valid archetype." };
   }
 
+  if (typeof data.kind !== "string" || !isPageKind(data.kind)) {
+    return { ok: false, error: "Choose a valid profile kind." };
+  }
+
   const traits = normalizeTraits(data.traits as Partial<Traits>);
 
   if (!traits) {
@@ -174,6 +180,7 @@ export function validateCreatePersonalityInput(
     value: {
       name,
       handle,
+      kind: data.kind,
       gender: data.gender,
       pronouns,
       archetype: data.archetype,
