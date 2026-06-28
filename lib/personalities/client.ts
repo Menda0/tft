@@ -49,6 +49,16 @@ export async function generateAvatarRequest(
   });
 }
 
+export async function generateDescriptionRequest(
+  token: string,
+  personalityId: string,
+): Promise<void> {
+  await fetch(`/api/personalities/${personalityId}/description`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
 export async function createPersonalityRequest(
   token: string,
   payload: CreatePersonalityPayload,

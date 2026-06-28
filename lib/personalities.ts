@@ -3,7 +3,7 @@ import { Collection } from "mongodb";
 import { getDb } from "./mongodb";
 import { classifyPageKind, normalizeStoredPageKind } from "./avatars/page-kind";
 import { defaultPronounsForGender } from "./personalities/gender";
-import type { AvatarStatus, Personality } from "./types/personality";
+import type { AvatarStatus, DescriptionStatus, Personality } from "./types/personality";
 
 const COLLECTION = "personalities";
 
@@ -13,11 +13,16 @@ export function normalizePersonality(
   const avatarStatus: AvatarStatus =
     personality.avatarStatus ??
     (personality.avatarUrl ? "ready" : "pending");
+  const descriptionStatus: DescriptionStatus =
+    personality.descriptionStatus ??
+    (personality.description ? "ready" : "pending");
 
   return {
     ...personality,
     avatarUrl: personality.avatarUrl ?? null,
     avatarStatus,
+    description: personality.description ?? null,
+    descriptionStatus,
     kind:
       normalizeStoredPageKind(personality.kind as string) ??
       classifyPageKind({
@@ -80,6 +85,31 @@ export async function claimAvatarGeneration(
       ],
     },
     { $set: { avatarStatus: "generating" } },
+    { returnDocument: "after" },
+  );
+
+  return result ? normalizePersonality(result) : null;
+}
+
+export async function claimDescriptionGeneration(
+  id: string,
+): Promise<Personality | null> {
+  const collection = await getPersonalitiesCollection();
+  const result = await collection.findOneAndUpdate(
+    {
+      id,
+      $or: [
+        { descriptionStatus: { $in: ["pending", "failed"] } },
+        {
+          descriptionStatus: { $exists: false },
+          $or: [
+            { description: null },
+            { description: { $exists: false } },
+          ],
+        },
+      ],
+    },
+    { $set: { descriptionStatus: "generating" } },
     { returnDocument: "after" },
   );
 

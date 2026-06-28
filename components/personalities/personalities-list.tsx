@@ -14,6 +14,7 @@ import { formatGenderLabel } from "@/lib/personalities/gender";
 import { formatPronounLabel } from "@/lib/personalities/pronouns";
 import {
   generateAvatarRequest,
+  generateDescriptionRequest,
   listPersonalitiesRequest,
 } from "@/lib/personalities/client";
 import type { Personality } from "@/lib/types/personality";
@@ -32,6 +33,20 @@ function isAvatarInProgress(personality: Personality): boolean {
   );
 }
 
+function isDescriptionInProgress(personality: Personality): boolean {
+  return (
+    personality.descriptionStatus === "pending" ||
+    personality.descriptionStatus === "generating"
+  );
+}
+
+function needsDescriptionGeneration(personality: Personality): boolean {
+  return (
+    personality.descriptionStatus === "pending" ||
+    personality.descriptionStatus === "failed"
+  );
+}
+
 export function PersonalitiesList() {
   const router = useRouter();
   const { user, token, isReady } = useAuth();
@@ -39,6 +54,7 @@ export function PersonalitiesList() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const generationStarted = useRef(new Set<string>());
+  const descriptionStarted = useRef(new Set<string>());
 
   const loadPersonalities = useCallback(async () => {
     if (!token) return;
@@ -65,6 +81,20 @@ export function PersonalitiesList() {
     if (!token || personalities.length === 0) return;
 
     for (const personality of personalities) {
+      if (!needsDescriptionGeneration(personality)) continue;
+      if (descriptionStarted.current.has(personality.id)) continue;
+
+      descriptionStarted.current.add(personality.id);
+      void generateDescriptionRequest(token, personality.id).then(() => {
+        void loadPersonalities();
+      });
+    }
+  }, [token, personalities, loadPersonalities]);
+
+  useEffect(() => {
+    if (!token || personalities.length === 0) return;
+
+    for (const personality of personalities) {
       if (!needsAvatarGeneration(personality)) continue;
       if (generationStarted.current.has(personality.id)) continue;
 
@@ -78,7 +108,9 @@ export function PersonalitiesList() {
   useEffect(() => {
     if (!token) return;
 
-    const hasPending = personalities.some(isAvatarInProgress);
+    const hasPending =
+      personalities.some(isAvatarInProgress) ||
+      personalities.some(isDescriptionInProgress);
     if (!hasPending) return;
 
     const interval = window.setInterval(() => {
@@ -120,7 +152,7 @@ export function PersonalitiesList() {
       <div className="space-y-4 px-4 py-4 pb-8">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm text-[#c2c3c7]">
-            Your FakeX personalities. Pixel avatars generate in the background.
+            Your FakeX personalities. Avatars and bios generate in the background.
           </p>
           <Link
             href="/create-personality"
@@ -186,6 +218,31 @@ export function PersonalitiesList() {
                   <p className="mt-1 pixel-heading text-[8px] text-[#29adff]">
                     {formatArchetypeLabel(personality.archetype).toUpperCase()}
                   </p>
+                  {personality.description ? (
+                    <p className="mt-2 text-xs leading-relaxed text-[#c2c3c7]">
+                      {personality.description}
+                    </p>
+                  ) : null}
+                  {isDescriptionInProgress(personality) ? (
+                    <p className="mt-1 text-xs text-[#83769a]">
+                      Writing profile bio...
+                    </p>
+                  ) : null}
+                  {personality.descriptionStatus === "failed" ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        descriptionStarted.current.delete(personality.id);
+                        void generateDescriptionRequest(
+                          token,
+                          personality.id,
+                        ).then(() => loadPersonalities());
+                      }}
+                      className="mt-1 text-xs text-[#ff004d] underline"
+                    >
+                      Retry bio generation
+                    </button>
+                  ) : null}
                   {isAvatarInProgress(personality) ? (
                     <p className="mt-1 text-xs text-[#83769a]">
                       Generating pixel avatar...

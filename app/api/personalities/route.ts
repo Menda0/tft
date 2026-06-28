@@ -47,6 +47,8 @@ export async function POST(request: Request) {
       pronouns,
       avatarUrl: null,
       avatarStatus: "pending" as const,
+      description: null,
+      descriptionStatus: "pending" as const,
       ownerId: authUser.id,
       createdAt: new Date(),
       archetype,

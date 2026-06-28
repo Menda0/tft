@@ -47,6 +47,8 @@ export type MemoryItem = {
 
 export type AvatarStatus = "pending" | "generating" | "ready" | "failed";
 
+export type DescriptionStatus = AvatarStatus;
+
 export type Personality = {
   id: string;
   name: string;
@@ -56,6 +58,8 @@ export type Personality = {
   pronouns: Pronouns;
   avatarUrl: string | null;
   avatarStatus: AvatarStatus;
+  description: string | null;
+  descriptionStatus: DescriptionStatus;
   ownerId: string;
   createdAt: Date;
   archetype: Archetype;
