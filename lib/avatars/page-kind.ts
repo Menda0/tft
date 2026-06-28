@@ -1,6 +1,6 @@
 import type { Archetype } from "@/lib/personalities/archetypes";
 import type { Gender } from "@/lib/personalities/gender";
-import { GENDER_AVATAR_HINTS } from "@/lib/personalities/gender";
+import { GENDER_AVATAR_HINTS, isDoorGender } from "@/lib/personalities/gender";
 import { PRONOUN_AVATAR_HINTS, type Pronouns } from "@/lib/personalities/pronouns";
 import type { Traits } from "@/lib/types/personality";
 import { PIXEL_ART_STYLE } from "@/lib/avatars/pixel-canvas";
@@ -465,6 +465,18 @@ export function buildAvatarPrompt(profile: AvatarPageProfile): string {
   const kind = profile.kind;
 
   if (profileKindUsesIdentity(kind)) {
+    if (isDoorGender(profile.gender)) {
+      return [
+        ...BASE_RULES,
+        "Subject: a pixel art door filling the frame, NOT a human face or person.",
+        "Choose one clear door only: wooden front door, arched portal door, painted cottage door, or office door with a window panel.",
+        `Name inspiration: ${profile.name}.`,
+        `Tone: ${profile.archetype}, ${traits}.`,
+        `Theme cues: ${interests}.`,
+        "Include a visible door frame, panel, and knob or handle. No people, faces, mascots, or extra scenery.",
+      ].join(" ");
+    }
+
     const identityLabel =
       kind === "artist" ? "creative artist" : "person";
 

@@ -17,6 +17,7 @@ export const GENDERS = [
   "androgynous",
   "questioning",
   "prefer_not_to_say",
+  "door",
 ] as const;
 
 export type Gender = (typeof GENDERS)[number];
@@ -38,6 +39,7 @@ export const GENDER_LABELS: Record<Gender, string> = {
   androgynous: "Androgynous",
   questioning: "Questioning",
   prefer_not_to_say: "Prefer not to say",
+  door: "Door",
 };
 
 export const GENDER_AVATAR_HINTS: Record<Gender, string> = {
@@ -57,6 +59,7 @@ export const GENDER_AVATAR_HINTS: Record<Gender, string> = {
   androgynous: "balanced androgynous presentation",
   questioning: "soft neutral presentation while exploring identity",
   prefer_not_to_say: "neutral presentation without explicit gender cues",
+  door: "a door, not a human",
 };
 
 const DEFAULT_PRONOUNS: Record<Gender, Pronouns> = {
@@ -76,6 +79,7 @@ const DEFAULT_PRONOUNS: Record<Gender, Pronouns> = {
   androgynous: "they_them",
   questioning: "they_them",
   prefer_not_to_say: "prefer_not_to_say",
+  door: "it_its",
 };
 
 export function isGender(value: string): value is Gender {
@@ -98,6 +102,14 @@ export function isMasculineGender(gender: Gender): boolean {
   return gender === "male" || gender === "trans_man" || gender === "demiboy";
 }
 
+export function isDoorGender(gender: Gender): boolean {
+  return gender === "door";
+}
+
 export function isNeutralGender(gender: Gender): boolean {
-  return !isFeminineGender(gender) && !isMasculineGender(gender);
+  return (
+    !isFeminineGender(gender) &&
+    !isMasculineGender(gender) &&
+    !isDoorGender(gender)
+  );
 }

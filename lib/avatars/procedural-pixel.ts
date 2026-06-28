@@ -7,6 +7,7 @@ import {
   type PixelGrid,
 } from "@/lib/avatars/pixel-canvas";
 import {
+  isDoorGender,
   isFeminineGender,
   isMasculineGender,
   type Gender,
@@ -429,6 +430,47 @@ function drawMouth(ctx: AvatarContext): void {
   styles[index]?.(ctx);
 }
 
+function drawDoorClassic(ctx: AvatarContext): void {
+  const { grid, palette } = ctx;
+  fillRect(grid, 6, 3, 12, 19, palette.hair);
+  fillRect(grid, 7, 4, 10, 17, palette.skin);
+  fillRect(grid, 7, 4, 1, 17, palette.skinShadow);
+  fillRect(grid, 9, 6, 6, 4, palette.eyeWhite);
+  fillRect(grid, 10, 7, 4, 2, palette.background);
+  fillRect(grid, 14, 14, 1, 2, palette.mouth);
+  setPixel(grid, 14, 13, palette.brow);
+  fillRect(grid, 6, 21, 12, 2, palette.skinShadow);
+}
+
+function drawDoorArched(ctx: AvatarContext): void {
+  const { grid, palette } = ctx;
+  fillRect(grid, 7, 6, 10, 15, palette.skin);
+  fillRect(grid, 6, 5, 12, 16, palette.hair);
+  fillRect(grid, 8, 4, 8, 2, palette.hair);
+  fillRect(grid, 9, 3, 6, 1, palette.hair);
+  fillRect(grid, 7, 6, 1, 15, palette.skinShadow);
+  fillRect(grid, 14, 15, 1, 2, palette.mouth);
+  fillRect(grid, 6, 20, 12, 2, palette.skinShadow);
+}
+
+function drawDoorWindow(ctx: AvatarContext): void {
+  const { grid, palette } = ctx;
+  fillRect(grid, 6, 4, 12, 18, palette.hair);
+  fillRect(grid, 7, 5, 10, 16, palette.skin);
+  fillRect(grid, 8, 6, 8, 5, palette.eyeWhite);
+  fillRect(grid, 9, 7, 6, 3, palette.background);
+  fillRect(grid, 8, 13, 8, 1, palette.skinShadow);
+  fillRect(grid, 8, 15, 8, 1, palette.skinShadow);
+  fillRect(grid, 15, 14, 1, 2, palette.mouth);
+  fillRect(grid, 6, 21, 12, 2, palette.skinShadow);
+}
+
+function drawDoor(ctx: AvatarContext): void {
+  const styles: DrawFn[] = [drawDoorClassic, drawDoorArched, drawDoorWindow];
+  const index = seededInt(ctx.seed, 40, 0, styles.length - 1);
+  styles[index]?.(ctx);
+}
+
 export function generateProceduralPixelAvatar(input: {
   name: string;
   handle: string;
@@ -447,6 +489,12 @@ export function generateProceduralPixelAvatar(input: {
   };
 
   drawBackground(ctx);
+
+  if (isDoorGender(input.gender)) {
+    drawDoor(ctx);
+    return encodeSvgDataUrl(grid);
+  }
+
   drawHair(ctx);
   drawFace(ctx);
   drawEyes(ctx);
