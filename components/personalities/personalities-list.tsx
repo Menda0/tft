@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { AppBar } from "@/components/layout/app-bar";
 import { Button } from "@/components/ui/button";
 import { PersonalityAvatar } from "@/components/personalities/personality-avatar";
+import { profileKindUsesIdentity } from "@/lib/avatars/page-kind";
 import { formatArchetypeLabel } from "@/lib/personalities/archetypes";
 import { formatGenderLabel } from "@/lib/personalities/gender";
 import { formatPronounLabel } from "@/lib/personalities/pronouns";
@@ -176,10 +177,12 @@ export function PersonalitiesList() {
                   <p className="truncate text-sm text-[#c2c3c7]">
                     @{personality.handle}
                   </p>
-                  <p className="mt-1 text-xs text-[#83769a]">
-                    {formatGenderLabel(personality.gender)} ·{" "}
-                    {formatPronounLabel(personality.pronouns)}
-                  </p>
+                  {profileKindUsesIdentity(personality.kind) ? (
+                    <p className="mt-1 text-xs text-[#83769a]">
+                      {formatGenderLabel(personality.gender)} ·{" "}
+                      {formatPronounLabel(personality.pronouns)}
+                    </p>
+                  ) : null}
                   <p className="mt-1 pixel-heading text-[8px] text-[#29adff]">
                     {formatArchetypeLabel(personality.archetype).toUpperCase()}
                   </p>

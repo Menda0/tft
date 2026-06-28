@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 
-import { isPageKind, type PageKind } from "@/lib/avatars/page-kind";
+import { isPageKind, profileKindUsesIdentity, type PageKind } from "@/lib/avatars/page-kind";
 import type {
   Archetype,
   Gender,
@@ -135,27 +135,42 @@ export function validateCreatePersonalityInput(
     return { ok: false, error: handleError };
   }
 
-  if (typeof data.gender !== "string" || !isGender(data.gender)) {
-    return { ok: false, error: "Choose a valid gender." };
+  if (typeof data.kind !== "string" || !isPageKind(data.kind)) {
+    return { ok: false, error: "Choose a valid profile kind." };
   }
 
-  const pronouns =
-    typeof data.pronouns === "string"
-      ? isPronouns(data.pronouns)
-        ? data.pronouns
-        : null
-      : defaultPronounsForGender(data.gender);
+  const kind = data.kind;
+  const usesIdentity = profileKindUsesIdentity(kind);
 
-  if (!pronouns) {
-    return { ok: false, error: "Choose valid pronouns." };
+  let gender: Gender;
+  let pronouns: Pronouns;
+
+  if (usesIdentity) {
+    if (typeof data.gender !== "string" || !isGender(data.gender)) {
+      return { ok: false, error: "Choose a valid gender." };
+    }
+
+    gender = data.gender;
+
+    const parsedPronouns =
+      typeof data.pronouns === "string"
+        ? isPronouns(data.pronouns)
+          ? data.pronouns
+          : null
+        : defaultPronounsForGender(gender);
+
+    if (!parsedPronouns) {
+      return { ok: false, error: "Choose valid pronouns." };
+    }
+
+    pronouns = parsedPronouns;
+  } else {
+    gender = "prefer_not_to_say";
+    pronouns = "prefer_not_to_say";
   }
 
   if (typeof data.archetype !== "string" || !isArchetype(data.archetype)) {
     return { ok: false, error: "Choose a valid archetype." };
-  }
-
-  if (typeof data.kind !== "string" || !isPageKind(data.kind)) {
-    return { ok: false, error: "Choose a valid profile kind." };
   }
 
   const traits = normalizeTraits(data.traits as Partial<Traits>);
@@ -180,8 +195,8 @@ export function validateCreatePersonalityInput(
     value: {
       name,
       handle,
-      kind: data.kind,
-      gender: data.gender,
+      kind,
+      gender,
       pronouns,
       archetype: data.archetype,
       traits,

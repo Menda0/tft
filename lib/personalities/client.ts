@@ -1,11 +1,12 @@
+import { profileKindUsesIdentity } from "@/lib/avatars/page-kind";
 import type { Archetype, Gender, PageKind, Personality, Pronouns, Traits } from "@/lib/types/personality";
 
 export type CreatePersonalityPayload = {
   name: string;
   handle: string;
   kind: PageKind;
-  gender: Gender;
-  pronouns: Pronouns;
+  gender?: Gender;
+  pronouns?: Pronouns;
   archetype: Archetype;
   traits: Traits;
   interests: string;
@@ -64,8 +65,9 @@ export async function createPersonalityRequest(
       name: payload.name,
       handle: payload.handle,
       kind: payload.kind,
-      gender: payload.gender,
-      pronouns: payload.pronouns,
+      ...(profileKindUsesIdentity(payload.kind)
+        ? { gender: payload.gender, pronouns: payload.pronouns }
+        : {}),
       archetype: payload.archetype,
       traits: payload.traits,
       interests: payload.interests,

@@ -7,23 +7,43 @@ import { PIXEL_ART_STYLE } from "@/lib/avatars/pixel-canvas";
 
 export const PAGE_KINDS = [
   "person",
+  "artist",
   "mascot",
   "brand",
+  "company_page",
+  "band_page",
   "news",
   "meme_page",
-  "fan_page",
 ] as const;
 
 export type PageKind = (typeof PAGE_KINDS)[number];
 
 export const PAGE_KIND_LABELS: Record<PageKind, string> = {
   person: "Person",
+  artist: "Artist",
   mascot: "Mascot page",
   brand: "Brand page",
+  company_page: "Company page",
+  band_page: "Band page",
   news: "News page",
   meme_page: "Meme page",
-  fan_page: "Fan page",
 };
+
+export function profileKindUsesIdentity(kind: PageKind): boolean {
+  return kind === "person" || kind === "artist";
+}
+
+export function normalizeStoredPageKind(kind: string | undefined): PageKind | undefined {
+  if (kind === "fan_page") {
+    return "artist";
+  }
+
+  if (kind && isPageKind(kind)) {
+    return kind;
+  }
+
+  return undefined;
+}
 
 export function isPageKind(value: string): value is PageKind {
   return (PAGE_KINDS as readonly string[]).includes(value);
@@ -157,6 +177,22 @@ const NON_PERSON_KEYWORDS = [
   "universe",
   "galaxy",
   "planet",
+  "band",
+  "music",
+  "tour",
+  "records",
+  "vinyl",
+  "gig",
+  "album",
+  "ensemble",
+  "company",
+  "ltd",
+  "llc",
+  "consulting",
+  "partners",
+  "holdings",
+  "solutions",
+  "services",
 ];
 
 const MASCOT_KEYWORDS = [
@@ -286,10 +322,46 @@ export function classifyPageKind(input: {
   }
 
   if (
-    input.archetype === "fan_account" ||
-    containsKeyword(combined, ["fan", "fans", "stan", "team", "club", "nation"])
+    input.archetype === "artist" ||
+    containsKeyword(combined, [
+      "artist",
+      "art",
+      "arts",
+      "painter",
+      "illustrator",
+      "sculptor",
+      "gallery",
+      "canvas",
+      "sketch",
+      "creative",
+      "mural",
+      "designer",
+      "draws",
+      "drawing",
+    ])
   ) {
-    return "fan_page";
+    return "artist";
+  }
+
+  if (
+    containsKeyword(combined, [
+      "band",
+      "music",
+      "tour",
+      "records",
+      "vinyl",
+      "gig",
+      "album",
+      "ensemble",
+      "chorus",
+      "orchestra",
+      "sound",
+      "beats",
+      "riff",
+      "anthem",
+    ])
+  ) {
+    return "band_page";
   }
 
   if (
@@ -319,6 +391,24 @@ export function classifyPageKind(input: {
     input.archetype === "tech_bro"
   ) {
     return "mascot";
+  }
+
+  if (
+    containsKeyword(combined, [
+      "company",
+      "corp",
+      "inc",
+      "ltd",
+      "llc",
+      "consulting",
+      "partners",
+      "holdings",
+      "solutions",
+      "services",
+      "enterprises",
+    ])
+  ) {
+    return "company_page";
   }
 
   if (
@@ -374,17 +464,19 @@ export function buildAvatarPrompt(profile: AvatarPageProfile): string {
   const traits = traitSummary(profile.traits);
   const kind = profile.kind;
 
-  if (kind === "person") {
+  if (profileKindUsesIdentity(kind)) {
+    const identityLabel =
+      kind === "artist" ? "creative artist" : "person";
+
     return [
       ...BASE_RULES,
-      "Subject: a close-up pixel art face only, filling the frame.",
-      //"Show just the face from hairline to chin. No shoulders, body, shirt, or neck.",
-      //"No hats, glasses, jewelry, or accessories.",
-      //"Variation should come only from haircut, eye shape, eyebrows, mouth, and facial expression.",
-      `Person name: ${profile.name}.`,
+      `Subject: a close-up pixel art face of a ${identityLabel}, filling the frame.`,
+      `Name: ${profile.name}.`,
       `Presentation: ${GENDER_AVATAR_HINTS[profile.gender]}.`,
       `Pronouns: ${PRONOUN_AVATAR_HINTS[profile.pronouns]}.`,
-      "Do not turn this into a logo, mascot, animal, object, or scene.",
+      kind === "artist"
+        ? "Give subtle creative-artist energy through expression and style only. No props, tools, or scenery."
+        : "Do not turn this into a logo, mascot, animal, object, or scene.",
     ].join(" ");
   }
 
@@ -397,18 +489,6 @@ export function buildAvatarPrompt(profile: AvatarPageProfile): string {
       `Tone: ${profile.archetype}, ${traits}.`,
       `Topic cues: ${interests}.`,
       "Do not draw a realistic human face or full person.",
-    ].join(" ");
-  }
-
-  if (kind === "fan_page") {
-    return [
-      ...BASE_RULES,
-      "Subject: a pixel art fan-page icon, NOT a human portrait.",
-      "Choose one clear symbol only: foam finger, team scarf, star badge, jersey icon, or cheering mascot emblem.",
-      `Page name inspiration: ${profile.name}.`,
-      `Tone: ${profile.archetype}, ${traits}.`,
-      `Fandom cues: ${interests}.`,
-      "Do not draw a realistic human face unless it is a tiny abstract emblem only.",
     ].join(" ");
   }
 
@@ -433,6 +513,30 @@ export function buildAvatarPrompt(profile: AvatarPageProfile): string {
       `Tone: ${profile.archetype}, ${traits}.`,
       `Theme cues: ${interests}.`,
       "Do not draw a person, face, or mascot character.",
+    ].join(" ");
+  }
+
+  if (kind === "company_page") {
+    return [
+      ...BASE_RULES,
+      "Subject: a pixel art company-page icon, NOT a human portrait.",
+      "Choose one clear symbol only: office building silhouette, briefcase emblem, corporate crest, or boardroom table icon.",
+      `Company name inspiration: ${profile.name}.`,
+      `Tone: ${profile.archetype}, ${traits}.`,
+      `Industry cues: ${interests}.`,
+      "Do not draw a person, face, or mascot character.",
+    ].join(" ");
+  }
+
+  if (kind === "band_page") {
+    return [
+      ...BASE_RULES,
+      "Subject: a pixel art band-page icon, NOT a human portrait.",
+      "Choose one clear symbol only: electric guitar, drum kit, vinyl record, microphone on stand, or music note badge.",
+      `Band name inspiration: ${profile.name}.`,
+      `Tone: ${profile.archetype}, ${traits}.`,
+      `Music cues: ${interests}.`,
+      "Do not draw a realistic human face or full person.",
     ].join(" ");
   }
 

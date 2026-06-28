@@ -13,6 +13,7 @@ import { createPersonalityRequest } from "@/lib/personalities/client";
 import {
   PAGE_KINDS,
   PAGE_KIND_LABELS,
+  profileKindUsesIdentity,
   type PageKind,
 } from "@/lib/avatars/page-kind";
 import {
@@ -110,9 +111,11 @@ export function CreatePersonalityForm() {
     setName(draft.name);
     setHandle(draft.handle);
     setHandleTouched(true);
-    setGender(draft.gender);
-    setPronouns(draft.pronouns);
     setKind(draft.kind);
+    if (profileKindUsesIdentity(draft.kind)) {
+      setGender(draft.gender ?? "nonbinary");
+      setPronouns(draft.pronouns ?? "they_them");
+    }
     setArchetype(draft.archetype);
     setTraits(draft.traits);
     setInterests(draft.interests);
@@ -134,8 +137,7 @@ export function CreatePersonalityForm() {
       name,
       handle,
       kind,
-      gender,
-      pronouns,
+      ...(profileKindUsesIdentity(kind) ? { gender, pronouns } : {}),
       archetype,
       traits,
       interests,
@@ -247,41 +249,49 @@ export function CreatePersonalityForm() {
           </select>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="gender" className="text-xs text-[#ffa300]">
-            Gender
-          </Label>
-          <select
-            id="gender"
-            value={gender}
-            onChange={(event) => updateGender(event.target.value as Gender)}
-            className="h-10 w-full pixel-border-thin bg-[#29366f] px-3 text-[#fff1e8] outline-none focus:border-[#29adff]"
-          >
-            {GENDER_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {profileKindUsesIdentity(kind) ? (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="gender" className="text-xs text-[#ffa300]">
+                Gender
+              </Label>
+              <select
+                id="gender"
+                value={gender}
+                onChange={(event) =>
+                  updateGender(event.target.value as Gender)
+                }
+                className="h-10 w-full pixel-border-thin bg-[#29366f] px-3 text-[#fff1e8] outline-none focus:border-[#29adff]"
+              >
+                {GENDER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="pronouns" className="text-xs text-[#ffa300]">
-            Pronouns
-          </Label>
-          <select
-            id="pronouns"
-            value={pronouns}
-            onChange={(event) => setPronouns(event.target.value as Pronouns)}
-            className="h-10 w-full pixel-border-thin bg-[#29366f] px-3 text-[#fff1e8] outline-none focus:border-[#29adff]"
-          >
-            {PRONOUN_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="pronouns" className="text-xs text-[#ffa300]">
+                Pronouns
+              </Label>
+              <select
+                id="pronouns"
+                value={pronouns}
+                onChange={(event) =>
+                  setPronouns(event.target.value as Pronouns)
+                }
+                className="h-10 w-full pixel-border-thin bg-[#29366f] px-3 text-[#fff1e8] outline-none focus:border-[#29adff]"
+              >
+                {PRONOUN_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        ) : null}
 
         <div className="space-y-2">
           <Label htmlFor="archetype" className="text-xs text-[#ffa300]">

@@ -2,6 +2,7 @@ import OpenAI from "openai";
 
 import {
   buildAvatarPrompt,
+  profileKindUsesIdentity,
   resolveAvatarPageProfile,
 } from "@/lib/avatars/page-kind";
 import { generateProceduralPixelAvatar } from "@/lib/avatars/procedural-pixel";
@@ -206,7 +207,7 @@ function generateProceduralAvatar(input: {
 }): string {
   const profile = resolveAvatarPageProfile(input);
 
-  if (profile.kind === "person") {
+  if (profileKindUsesIdentity(profile.kind)) {
     return generateProceduralPixelAvatar(input);
   }
 

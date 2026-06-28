@@ -205,6 +205,72 @@ function drawBrandEmblem(ctx: SubjectContext): void {
   setPixel(grid, 11, 11, palette.highlight);
 }
 
+function drawCompanyBuilding(ctx: SubjectContext): void {
+  const { grid, palette } = ctx;
+  fillRect(grid, 7, 6, 10, 13, palette.secondary);
+  fillRect(grid, 8, 7, 8, 11, palette.highlight);
+  fillRect(grid, 9, 8, 2, 2, palette.accent);
+  fillRect(grid, 12, 8, 2, 2, palette.accent);
+  fillRect(grid, 9, 11, 2, 2, palette.accent);
+  fillRect(grid, 12, 11, 2, 2, palette.accent);
+  fillRect(grid, 9, 14, 2, 2, palette.accent);
+  fillRect(grid, 12, 14, 2, 2, palette.accent);
+  fillRect(grid, 10, 17, 4, 2, palette.shadow);
+}
+
+function drawCompanyBriefcase(ctx: SubjectContext): void {
+  const { grid, palette } = ctx;
+  fillRect(grid, 7, 10, 10, 8, palette.primary);
+  fillRect(grid, 8, 11, 8, 6, palette.secondary);
+  fillRect(grid, 10, 7, 4, 4, palette.shadow);
+  fillRect(grid, 11, 8, 2, 2, palette.highlight);
+  fillRect(grid, 8, 13, 8, 1, palette.accent);
+  fillRect(grid, 7, 18, 10, 1, palette.shadow);
+}
+
+function drawCompanyCrest(ctx: SubjectContext): void {
+  const { grid, palette } = ctx;
+  fillRect(grid, 8, 5, 8, 14, palette.primary);
+  fillRect(grid, 9, 6, 6, 12, palette.secondary);
+  fillRect(grid, 10, 8, 4, 4, palette.accent);
+  fillRect(grid, 11, 9, 2, 2, palette.highlight);
+  fillRect(grid, 7, 10, 1, 4, palette.shadow);
+  fillRect(grid, 16, 10, 1, 4, palette.shadow);
+  fillRect(grid, 9, 17, 6, 2, palette.shadow);
+}
+
+function drawBandGuitar(ctx: SubjectContext): void {
+  const { grid, palette } = ctx;
+  fillRect(grid, 11, 4, 2, 14, palette.shadow);
+  fillRect(grid, 8, 8, 8, 6, palette.primary);
+  fillRect(grid, 9, 9, 6, 4, palette.secondary);
+  fillRect(grid, 10, 10, 1, 2, palette.accent);
+  fillRect(grid, 13, 10, 1, 2, palette.accent);
+  fillRect(grid, 7, 14, 10, 2, palette.highlight);
+  fillRect(grid, 10, 16, 4, 2, palette.shadow);
+}
+
+function drawBandDrums(ctx: SubjectContext): void {
+  const { grid, palette } = ctx;
+  fillRect(grid, 8, 10, 8, 6, palette.primary);
+  fillRect(grid, 9, 11, 6, 4, palette.secondary);
+  fillRect(grid, 10, 7, 4, 3, palette.accent);
+  fillRect(grid, 11, 8, 2, 1, palette.highlight);
+  fillRect(grid, 6, 12, 2, 2, palette.shadow);
+  fillRect(grid, 16, 12, 2, 2, palette.shadow);
+  fillRect(grid, 10, 16, 4, 2, palette.shadow);
+}
+
+function drawBandVinyl(ctx: SubjectContext): void {
+  const { grid, palette } = ctx;
+  fillRect(grid, 7, 7, 10, 10, palette.shadow);
+  fillRect(grid, 8, 8, 8, 8, palette.primary);
+  fillRect(grid, 10, 10, 4, 4, palette.secondary);
+  fillRect(grid, 11, 11, 2, 2, palette.accent);
+  fillRect(grid, 9, 9, 1, 1, palette.highlight);
+  fillRect(grid, 14, 9, 1, 1, palette.highlight);
+}
+
 function drawMascotRobot(ctx: SubjectContext): void {
   const { grid, palette } = ctx;
   fillRect(grid, 8, 5, 8, 8, palette.secondary);
@@ -277,10 +343,6 @@ function drawByKind(ctx: SubjectContext, kind: PageKind): void {
       else if (variant === 1) drawNewsPaper(ctx);
       else drawNewsTower(ctx);
       return;
-    case "fan_page":
-      if (variant === 0) drawFanStar(ctx);
-      else drawFanFoamFinger(ctx);
-      return;
     case "meme_page":
       if (variant === 0) drawMemeFrog(ctx);
       else if (variant === 1) drawMemeMegaphone(ctx);
@@ -290,6 +352,16 @@ function drawByKind(ctx: SubjectContext, kind: PageKind): void {
       if (variant === 0) drawBrandBadge(ctx);
       else if (variant === 1) drawBrandStorefront(ctx);
       else drawBrandEmblem(ctx);
+      return;
+    case "company_page":
+      if (variant === 0) drawCompanyBuilding(ctx);
+      else if (variant === 1) drawCompanyBriefcase(ctx);
+      else drawCompanyCrest(ctx);
+      return;
+    case "band_page":
+      if (variant === 0) drawBandGuitar(ctx);
+      else if (variant === 1) drawBandDrums(ctx);
+      else drawBandVinyl(ctx);
       return;
     case "mascot":
     default: {

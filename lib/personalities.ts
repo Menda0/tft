@@ -1,7 +1,7 @@
 import { Collection } from "mongodb";
 
 import { getDb } from "./mongodb";
-import { classifyPageKind } from "./avatars/page-kind";
+import { classifyPageKind, normalizeStoredPageKind } from "./avatars/page-kind";
 import { defaultPronounsForGender } from "./personalities/gender";
 import type { AvatarStatus, Personality } from "./types/personality";
 
@@ -19,7 +19,7 @@ export function normalizePersonality(
     avatarUrl: personality.avatarUrl ?? null,
     avatarStatus,
     kind:
-      personality.kind ??
+      normalizeStoredPageKind(personality.kind as string) ??
       classifyPageKind({
         name: personality.name,
         handle: personality.handle,
