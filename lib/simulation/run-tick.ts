@@ -28,6 +28,8 @@ export type SimulationTickResult =
       trendingTopics: string[];
       personalityCount: number;
       postCount: number;
+      simulatedPersonalityCount: number;
+      eligiblePersonalityCount: number;
     }
   | {
       ok: false;
@@ -84,11 +86,13 @@ export async function runSimulationTick(
 
     return {
       ok: true,
-      tickNumber: result.state.tickNumber,
-      lastTickAt: result.state.lastTickAt,
-      trendingTopics: result.state.trendingTopics.map((entry) => entry.topic),
-      personalityCount: result.personalities.length,
-      postCount: result.posts.length,
+      tickNumber: result.world.state.tickNumber,
+      lastTickAt: result.world.state.lastTickAt,
+      trendingTopics: result.world.state.trendingTopics.map((entry) => entry.topic),
+      personalityCount: result.world.personalities.length,
+      postCount: result.world.posts.length,
+      simulatedPersonalityCount: result.simulatedPersonalityCount,
+      eligiblePersonalityCount: result.eligiblePersonalityCount,
     };
   } catch (error) {
     if (isTickCancelled(error) || signal?.aborted) {

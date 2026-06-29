@@ -9,6 +9,8 @@ export type StreamTickEvent =
       trendingTopics: string[];
       personalityCount: number;
       postCount: number;
+      simulatedPersonalityCount: number;
+      eligiblePersonalityCount: number;
     }
   | {
       type: "cancelled";

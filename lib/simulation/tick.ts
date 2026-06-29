@@ -85,9 +85,10 @@ async function simulatePersonality(
 
 async function runEvolutionPass(
   world: SimulationWorld,
+  personalities: Personality[],
   log: SimulationLogFn,
 ): Promise<void> {
-  for (const personality of world.personalities) {
+  for (const personality of personalities) {
     if (isRankNpc(personality)) {
       continue;
     }
@@ -128,11 +129,17 @@ async function runEvolutionPass(
   }
 }
 
+export type SimulationTickOutput = {
+  world: SimulationWorld;
+  simulatedPersonalityCount: number;
+  eligiblePersonalityCount: number;
+};
+
 export async function simulationTick(
   world: SimulationWorld,
   log: SimulationLogFn = noopSimulationLog,
   signal?: AbortSignal,
-): Promise<SimulationWorld> {
+): Promise<SimulationTickOutput> {
   const nextTick = world.state.tickNumber + 1;
   log("info", `--- Tick #${nextTick} starting ---`);
   log("info", `${world.personalities.length} personalities in world.`);
@@ -143,20 +150,28 @@ export async function simulationTick(
 
   throwIfCancelled(signal);
 
-  const eligible = shuffle(
-    world.personalities.filter((personality) => !isRankNpc(personality)),
+  const eligible = world.personalities.filter(
+    (personality) => !isRankNpc(personality),
   );
 
   if (eligible.length === 0) {
     log("warn", "No personalities to simulate.");
   }
 
-  const personalities = eligible.slice(0, getSimulationPersonalitiesPerTick());
+  const batchSize = getSimulationPersonalitiesPerTick();
+  const personalities = shuffle(eligible).slice(0, batchSize);
 
   log(
     "info",
     `Simulating ${personalities.length}/${eligible.length} personalities (read + optional action)`,
   );
+
+  if (personalities.length > 0) {
+    log(
+      "info",
+      `Selected: ${personalities.map((personality) => `@${personality.handle}`).join(", ")}`,
+    );
+  }
 
   await runWithConcurrency(
     personalities,
@@ -173,7 +188,7 @@ export async function simulationTick(
 
   throwIfCancelled(signal);
 
-  await runEvolutionPass(world, log);
+  await runEvolutionPass(world, personalities, log);
 
   throwIfCancelled(signal);
 
@@ -188,7 +203,11 @@ export async function simulationTick(
 
   log("success", `--- Tick #${nextTick} complete ---`);
 
-  return world;
+  return {
+    world,
+    simulatedPersonalityCount: personalities.length,
+    eligiblePersonalityCount: eligible.length,
+  };
 }
 
 export function getSimulationTickIntervalMs(): number {

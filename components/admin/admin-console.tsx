@@ -21,7 +21,7 @@ type ConsoleLine = {
 
 const HELP_TEXT = [
   "Available commands:",
-  "  tick    — run a simulation tick",
+  "  tick    — run a simulation tick (15 random personalities)",
   "  trends  — refresh trending topics",
   "  seed npc — reconcile, sync, and seed parody NPCs (once per day)",
   "  prune npc — delete all mirrored parody NPC posts",
@@ -148,7 +148,7 @@ export function AdminConsole({ open, onClose }: AdminConsoleProps) {
           if (event.type === "done") {
             appendLine(
               "success",
-              `Tick #${event.tickNumber} finished (${event.personalityCount} personalities, ${event.postCount} posts tracked).`,
+              `Tick #${event.tickNumber} finished (simulated ${event.simulatedPersonalityCount}/${event.eligiblePersonalityCount} personalities, ${event.postCount} posts tracked).`,
             );
           }
         },
