@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PROJECT_NAME } from "@/lib/brand";
-import { createPersonalityRequest, listPersonalitiesRequest } from "@/lib/personalities/client";
+import { createPersonalityRequest, checkHandleAvailabilityRequest, listPersonalitiesRequest } from "@/lib/personalities/client";
 import { MAX_PERSONALITIES_PER_USER } from "@/lib/personalities/limits";
 import {
   PAGE_KINDS,
@@ -24,7 +24,7 @@ import {
   pageKindUsesArchetype,
 } from "@/lib/personalities/kind-archetypes";
 import type { Archetype } from "@/lib/personalities/archetypes";
-import { slugifyHandle } from "@/lib/personalities/validation";
+import { slugifyHandle, validateHandle } from "@/lib/personalities/validation";
 import { generateRandomPersonality } from "@/lib/personalities/random";
 import {
   GENDERS,
@@ -46,6 +46,7 @@ import {
   type PoliticalSwing,
 } from "@/lib/personalities/political-swing";
 import type { Traits } from "@/lib/types/personality";
+import { cn } from "@/lib/utils";
 
 const GENDER_OPTIONS = GENDERS.map((value) => ({
   value,
@@ -85,11 +86,11 @@ export function CreatePersonalityForm() {
   const { user, token, isReady } = useAuth();
   const [name, setName] = useState("");
   const [handle, setHandle] = useState("");
-  const [handleTouched, setHandleTouched] = useState(false);
-  const [gender, setGender] = useState<Gender>("nonbinary");
-  const [pronouns, setPronouns] = useState<Pronouns>("they_them");
+  const [handleManuallyEdited, setHandleManuallyEdited] = useState(false);
+  const [gender, setGender] = useState<Gender>("male");
+  const [pronouns, setPronouns] = useState<Pronouns>("he_him");
   const [kind, setKind] = useState<PageKind>("person");
-  const [archetype, setArchetype] = useState<Archetype | null>("comedian");
+  const [archetype, setArchetype] = useState<Archetype | null>("troll");
   const [politicalSwing, setPoliticalSwing] = useState<PoliticalSwing>(0);
   const [interests, setInterests] = useState("");
   const [traits, setTraits] = useState<Traits>(DEFAULT_TRAITS);
@@ -97,6 +98,8 @@ export function CreatePersonalityForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [atPersonalityLimit, setAtPersonalityLimit] = useState(false);
   const [checkingLimit, setCheckingLimit] = useState(true);
+  const [handleError, setHandleError] = useState<string | null>(null);
+  const [handleChecking, setHandleChecking] = useState(false);
 
   useEffect(() => {
     if (!isReady || !token) {
@@ -130,12 +133,75 @@ export function CreatePersonalityForm() {
     };
   }, [isReady, token]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!handle.trim()) {
+      setHandleError(null);
+      setHandleChecking(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const formatError = validateHandle(handle);
+
+    if (formatError) {
+      setHandleError(formatError);
+      setHandleChecking(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setHandleError(null);
+    setHandleChecking(true);
+
+    const timer = window.setTimeout(() => {
+      void checkHandleAvailabilityRequest(handle).then((result) => {
+        if (cancelled) {
+          return;
+        }
+
+        setHandleChecking(false);
+
+        if (!result.ok) {
+          setHandleError(result.error);
+          return;
+        }
+
+        if (!result.available) {
+          setHandleError(result.error ?? "Handle is already taken.");
+          return;
+        }
+
+        setHandleError(null);
+      });
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [handle]);
+
   function updateName(value: string) {
     setName(value);
 
-    if (!handleTouched) {
+    if (!handleManuallyEdited) {
       setHandle(slugifyHandle(value));
     }
+  }
+
+  function updateHandle(value: string) {
+    const suggested = slugifyHandle(name);
+    setHandle(value);
+    setHandleManuallyEdited(value !== suggested);
+  }
+
+  function applySuggestedHandle() {
+    setHandle(slugifyHandle(name));
+    setHandleManuallyEdited(false);
   }
 
   function updateTrait(key: keyof Traits, value: number) {
@@ -156,7 +222,7 @@ export function CreatePersonalityForm() {
     const draft = generateRandomPersonality();
     setName(draft.name);
     setHandle(draft.handle);
-    setHandleTouched(true);
+    setHandleManuallyEdited(true);
     setKind(draft.kind);
     if (profileKindUsesIdentity(draft.kind)) {
       setGender(draft.gender ?? "nonbinary");
@@ -167,7 +233,26 @@ export function CreatePersonalityForm() {
     setTraits(draft.traits);
     setInterests(draft.interests);
     setError(null);
+    setHandleError(null);
   }
+
+  const suggestedHandle = slugifyHandle(name);
+  const showSuggestedHandleHint =
+    Boolean(name.trim()) &&
+    Boolean(suggestedHandle) &&
+    !handleManuallyEdited;
+  const showApplySuggestedHandle =
+    Boolean(name.trim()) &&
+    Boolean(suggestedHandle) &&
+    handleManuallyEdited &&
+    handle !== suggestedHandle;
+
+  const handleInputInvalid = Boolean(handleError);
+  const canSubmit =
+    !isSubmitting &&
+    !handleChecking &&
+    !handleInputInvalid &&
+    handle.trim().length > 0;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -175,6 +260,33 @@ export function CreatePersonalityForm() {
 
     if (!token) {
       setError("Log in from the menu to create a personality.");
+      return;
+    }
+
+    const formatError = validateHandle(handle);
+
+    if (formatError) {
+      setHandleError(formatError);
+      return;
+    }
+
+    if (handleChecking) {
+      return;
+    }
+
+    if (handleError) {
+      return;
+    }
+
+    const availability = await checkHandleAvailabilityRequest(handle);
+
+    if (!availability.ok) {
+      setHandleError(availability.error);
+      return;
+    }
+
+    if (!availability.available) {
+      setHandleError(availability.error ?? "Handle is already taken.");
       return;
     }
 
@@ -286,6 +398,12 @@ export function CreatePersonalityForm() {
             placeholder="BitBot Comedian"
             className="rounded-none border-2 border-[#fff1e8] bg-[#29366f] text-[#fff1e8] placeholder:text-[#83769a] focus-visible:border-[#29adff] focus-visible:ring-0"
           />
+          {showSuggestedHandleHint ? (
+            <p className="text-xs text-[#83769a]">
+              Handle autofill:{" "}
+              <span className="text-[#29adff]">@{suggestedHandle}</span>
+            </p>
+          ) : null}
         </div>
 
         <div className="space-y-2">
@@ -295,17 +413,37 @@ export function CreatePersonalityForm() {
           <Input
             id="handle"
             value={handle}
-            onChange={(event) => {
-              setHandleTouched(true);
-              setHandle(event.target.value);
-            }}
-            placeholder="bitbot_comedian"
+            onChange={(event) => updateHandle(event.target.value)}
+            placeholder={suggestedHandle || "bitbot_comedian"}
             autoComplete="off"
-            className="rounded-none border-2 border-[#fff1e8] bg-[#29366f] text-[#fff1e8] placeholder:text-[#83769a] focus-visible:border-[#29adff] focus-visible:ring-0"
+            aria-invalid={handleInputInvalid}
+            className={cn(
+              "rounded-none border-2 bg-[#29366f] text-[#fff1e8] placeholder:text-[#83769a] focus-visible:ring-0",
+              handleInputInvalid
+                ? "border-[#ff004d] focus-visible:border-[#ff004d]"
+                : "border-[#fff1e8] focus-visible:border-[#29adff]",
+            )}
           />
-          <p className="text-xs text-[#83769a]">
-            Letters, numbers, and underscores only.
-          </p>
+          {showApplySuggestedHandle ? (
+            <button
+              type="button"
+              onClick={applySuggestedHandle}
+              className="text-xs text-[#29adff] underline hover:text-[#00e436]"
+            >
+              Use suggested handle @{suggestedHandle}
+            </button>
+          ) : null}
+          {handleChecking ? (
+            <p className="text-xs text-[#83769a]">Checking handle...</p>
+          ) : handleError ? (
+            <p className="text-xs text-[#ff004d]">{handleError}</p>
+          ) : handle.trim() ? (
+            <p className="text-xs text-[#00e436]">Handle is available.</p>
+          ) : (
+            <p className="text-xs text-[#83769a]">
+              Letters, numbers, and underscores only.
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -471,7 +609,7 @@ export function CreatePersonalityForm() {
 
         <Button
           type="submit"
-          disabled={isSubmitting}
+          disabled={!canSubmit}
           className="w-full rounded-none border-2 border-[#fff1e8] bg-[#00e436] py-3 text-[#1d2b53] hover:bg-[#29adff] disabled:opacity-60"
         >
           {isSubmitting ? "Creating..." : "Create personality"}

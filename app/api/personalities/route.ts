@@ -1,7 +1,7 @@
 import {
   countActivePersonalitiesByOwner,
   ensurePersonalityIndexes,
-  findPersonalityByHandle,
+  findPersonalityByHandleIncludingDeleted,
   getPersonalitiesCollection,
   insertPersonality,
   normalizePersonality,
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const { name, handle, kind, gender, pronouns, archetype, traits, politicalSwing, interests, beliefs } =
       parsed.value;
 
-    const existingHandle = await findPersonalityByHandle(handle);
+    const existingHandle = await findPersonalityByHandleIncludingDeleted(handle);
 
     if (existingHandle) {
       return authError("Handle is already taken.", 409);

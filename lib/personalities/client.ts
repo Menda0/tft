@@ -128,3 +128,32 @@ export async function createPersonalityRequest(
 
   return { ok: true, personality: data.personality };
 }
+
+export async function checkHandleAvailabilityRequest(
+  handle: string,
+): Promise<
+  | { ok: true; available: boolean; error: string | null }
+  | { ok: false; error: string }
+> {
+  const response = await fetch(
+    `/api/personalities/check-handle?handle=${encodeURIComponent(handle)}`,
+  );
+
+  const data = (await response.json()) as {
+    available?: boolean;
+    error?: string | null;
+  };
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      error: data.error ?? "Could not check handle availability.",
+    };
+  }
+
+  return {
+    ok: true,
+    available: Boolean(data.available),
+    error: data.error ?? null,
+  };
+}
