@@ -482,16 +482,8 @@ export function ActivityPanel({
   }
 
   return (
-    <section
-      aria-label="Activity log"
-      className="w-full pixel-border bg-[#1d2b53] p-3 pixel-shadow-sm"
-    >
-      <h3 className="pixel-heading text-[9px] tracking-wide text-[#c2c3c7]">
-        ACTIVITY LOG
-      </h3>
-      <div className="mt-2">
-        <ActivityLogPanel token={token} personalities={personalities} />
-      </div>
+    <section aria-label="Activity log" className="w-full">
+      <ActivityLogPanel token={token} personalities={personalities} />
     </section>
   );
 }

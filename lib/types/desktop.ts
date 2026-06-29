@@ -63,6 +63,18 @@ export type LeaderboardPagePayload =
       updatedAt: string;
     };
 
+export type MyLeaderboardEntriesPayload =
+  | {
+      kind: "personality";
+      tab: "clout-personality" | "heat-personality";
+      entries: PersonalityLeaderboardEntry[];
+    }
+  | {
+      kind: "farmer";
+      tab: "clout-farmers" | "heat-farmers";
+      entry: FarmerLeaderboardEntry | null;
+    };
+
 export type MySocialLeaderboardEntry = {
   rank: number;
   id: string;

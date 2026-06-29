@@ -1,11 +1,17 @@
 import {
+  getMyFarmerLeaderboardEntry,
+  getMyPersonalityLeaderboardEntries,
   getTopFarmersByClout,
   getTopFarmersByHeat,
   getTopPersonalitiesByClout,
   getTopPersonalitiesByHeat,
 } from "@/lib/leaderboards";
 import { LEADERBOARD_LIMIT } from "@/lib/pagination";
-import type { LeaderboardPagePayload, LeaderboardTab } from "@/lib/types/desktop";
+import type {
+  LeaderboardPagePayload,
+  LeaderboardTab,
+  MyLeaderboardEntriesPayload,
+} from "@/lib/types/desktop";
 
 export async function buildLeaderboardPage(
   tab: LeaderboardTab,
@@ -58,5 +64,24 @@ export async function buildLeaderboardPage(
     entries: page.entries,
     hasMore: page.hasMore,
     updatedAt,
+  };
+}
+
+export async function buildMyLeaderboardEntries(
+  ownerId: string,
+  tab: LeaderboardTab,
+): Promise<MyLeaderboardEntriesPayload> {
+  if (tab === "clout-personality" || tab === "heat-personality") {
+    return {
+      kind: "personality",
+      tab,
+      entries: await getMyPersonalityLeaderboardEntries(ownerId, tab),
+    };
+  }
+
+  return {
+    kind: "farmer",
+    tab,
+    entry: await getMyFarmerLeaderboardEntry(ownerId, tab),
   };
 }

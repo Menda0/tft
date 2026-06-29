@@ -59,6 +59,13 @@ export function AppMenu() {
             >
               Posts
             </Link>
+            <Link
+              href="/leaderboards"
+              onClick={() => setMenuOpen(false)}
+              className="block w-full border-b-2 border-[#fff1e8] px-3 py-3 text-left text-sm text-[#fff1e8] transition-colors hover:bg-[#29366f]"
+            >
+              Leaderboards
+            </Link>
             {user ? (
               <>
                 <div className="border-b-2 border-[#fff1e8] px-3 py-3">

@@ -1,11 +1,17 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { useAuth } from "@/components/auth/auth-provider";
 import { getInitials } from "@/components/feed/post-author";
+import { AppBar } from "@/components/layout/app-bar";
 import { ProfileLink } from "@/components/profile/profile-link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { fetchLeaderboardPage } from "@/lib/desktop/client";
+import {
+  fetchLeaderboardPage,
+  fetchMyLeaderboardEntries,
+} from "@/lib/desktop/client";
 import { LEADERBOARD_LIMIT } from "@/lib/pagination";
 import { formatStatValue } from "@/lib/personalities/stats";
 import { getPixelAvatarColor } from "@/lib/pixel-theme";
@@ -13,6 +19,7 @@ import type {
   FarmerLeaderboardEntry,
   LeaderboardPagePayload,
   LeaderboardTab,
+  MyLeaderboardEntriesPayload,
   PersonalityLeaderboardEntry,
 } from "@/lib/types/desktop";
 import { cn } from "@/lib/utils";
@@ -96,13 +103,20 @@ function PersonalityRow({
   entry,
   scoreColor,
   scoreLabel,
+  highlighted = false,
 }: {
   entry: PersonalityLeaderboardEntry;
   scoreColor: string;
   scoreLabel: string;
+  highlighted?: boolean;
 }) {
   return (
-    <li className="flex items-center gap-2 border-b-2 border-[#29366f] py-2 last:border-b-0">
+    <li
+      className={cn(
+        "flex items-center gap-2 border-b-2 border-[#29366f] py-2 last:border-b-0",
+        highlighted && "bg-[#29366f]/50",
+      )}
+    >
       <span
         className="w-6 shrink-0 text-center pixel-heading text-[9px]"
         style={{ color: positionRankColor(entry.rank) }}
@@ -162,13 +176,20 @@ function FarmerRow({
   entry,
   scoreColor,
   scoreLabel,
+  highlighted = false,
 }: {
   entry: FarmerLeaderboardEntry;
   scoreColor: string;
   scoreLabel: string;
+  highlighted?: boolean;
 }) {
   return (
-    <li className="flex items-center gap-2 border-b-2 border-[#29366f] py-2 last:border-b-0">
+    <li
+      className={cn(
+        "flex items-center gap-2 border-b-2 border-[#29366f] py-2 last:border-b-0",
+        highlighted && "bg-[#29366f]/50",
+      )}
+    >
       <span className="w-5 shrink-0 text-center text-xs font-bold text-[#83769a]">
         {entry.rank}
       </span>
@@ -199,6 +220,17 @@ function FarmerRow({
           {formatStatValue(entry.score)}
         </p>
       </div>
+    </li>
+  );
+}
+
+function LeaderboardGap() {
+  return (
+    <li
+      aria-hidden
+      className="border-b-2 border-[#29366f] py-2 text-center text-sm tracking-[0.4em] text-[#83769a]"
+    >
+      ···
     </li>
   );
 }
@@ -242,23 +274,11 @@ function LeaderboardList(props: LeaderboardPanelProps) {
 }
 
 export function LeaderboardPanel(props: LeaderboardPanelProps) {
-  const { title, scoreColor } = props;
+  const { title } = props;
 
   return (
-    <section
-      aria-label={title}
-      className="w-full pixel-border bg-[#1d2b53] p-3 pixel-shadow-sm"
-    >
-      <h2
-        className="pixel-heading text-[9px] tracking-wide"
-        style={{ color: scoreColor }}
-      >
-        {title}
-      </h2>
-
-      <div className="mt-2">
-        <LeaderboardList {...props} />
-      </div>
+    <section aria-label={title} className="w-full">
+      <LeaderboardList {...props} />
     </section>
   );
 }
@@ -336,13 +356,163 @@ function panelPropsFromPayload(
   };
 }
 
+function getPinnedPersonalityEntries(
+  pageEntries: PersonalityLeaderboardEntry[],
+  myEntries: PersonalityLeaderboardEntry[],
+): {
+  showGap: boolean;
+  pinned: PersonalityLeaderboardEntry[];
+} {
+  const pageIds = new Set(pageEntries.map((entry) => entry.id));
+  const pinned = myEntries.filter((entry) => !pageIds.has(entry.id));
+
+  if (pinned.length === 0) {
+    return { showGap: false, pinned: [] };
+  }
+
+  const pageEnd =
+    pageEntries.length > 0
+      ? pageEntries[pageEntries.length - 1]!.rank
+      : 0;
+  const showGap = pinned.some((entry) => entry.rank > pageEnd);
+
+  return { showGap, pinned };
+}
+
+function getPinnedFarmerEntry(
+  pageEntries: FarmerLeaderboardEntry[],
+  myEntry: FarmerLeaderboardEntry | null,
+): {
+  showGap: boolean;
+  pinned: FarmerLeaderboardEntry | null;
+} {
+  if (!myEntry) {
+    return { showGap: false, pinned: null };
+  }
+
+  if (pageEntries.some((entry) => entry.userId === myEntry.userId)) {
+    return { showGap: false, pinned: null };
+  }
+
+  const pageEnd =
+    pageEntries.length > 0
+      ? pageEntries[pageEntries.length - 1]!.rank
+      : 0;
+
+  return {
+    showGap: myEntry.rank > pageEnd,
+    pinned: myEntry,
+  };
+}
+
+function MyLeaderboardEntries({
+  activeTab,
+  activeConfig,
+  payload,
+  myEntries,
+  loading,
+  error,
+}: {
+  activeTab: LeaderboardTab;
+  activeConfig: (typeof TABS)[number];
+  payload: LeaderboardPagePayload | null;
+  myEntries: MyLeaderboardEntriesPayload | null;
+  loading?: boolean;
+  error?: string | null;
+}) {
+  if (loading) {
+    return <p className="mt-3 text-xs text-[#83769a]">Loading your ranks...</p>;
+  }
+
+  if (error) {
+    return <p className="mt-3 text-xs text-[#ff004d]">{error}</p>;
+  }
+
+  if (!myEntries || !payload) {
+    return null;
+  }
+
+  if (
+    activeTab === "clout-personality" ||
+    activeTab === "heat-personality"
+  ) {
+    if (myEntries.kind !== "personality" || myEntries.entries.length === 0) {
+      return null;
+    }
+
+    const { showGap, pinned } = getPinnedPersonalityEntries(
+      payload.kind === "personality" ? payload.entries : [],
+      myEntries.entries,
+    );
+
+    if (pinned.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="mt-3 border-t-2 border-[#29366f] pt-3">
+        <h3 className="pixel-heading text-[8px] tracking-wide text-[#29adff]">
+          YOUR PERSONALITIES
+        </h3>
+        <ul className="mt-2">
+          {showGap ? <LeaderboardGap /> : null}
+          {pinned.map((entry) => (
+            <PersonalityRow
+              key={entry.id}
+              entry={entry}
+              scoreColor={activeConfig.scoreColor}
+              scoreLabel={activeConfig.scoreLabel}
+              highlighted
+            />
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  if (myEntries.kind !== "farmer" || !myEntries.entry) {
+    return null;
+  }
+
+  const { showGap, pinned } = getPinnedFarmerEntry(
+    payload.kind === "farmer" ? payload.entries : [],
+    myEntries.entry,
+  );
+
+  if (!pinned) {
+    return null;
+  }
+
+  return (
+    <div className="mt-3 border-t-2 border-[#29366f] pt-3">
+      <h3 className="pixel-heading text-[8px] tracking-wide text-[#29adff]">
+        YOUR FARM
+      </h3>
+      <ul className="mt-2">
+        {showGap ? <LeaderboardGap /> : null}
+        <FarmerRow
+          entry={pinned}
+          scoreColor={activeConfig.scoreColor}
+          scoreLabel={activeConfig.scoreLabel}
+          highlighted
+        />
+      </ul>
+    </div>
+  );
+}
+
 export function LeaderboardsSection() {
+  const { token } = useAuth();
   const [activeTab, setActiveTab] =
     useState<LeaderboardTab>("clout-personality");
   const [page, setPage] = useState(0);
   const [payload, setPayload] = useState<LeaderboardPagePayload | null>(null);
+  const [myEntries, setMyEntries] =
+    useState<MyLeaderboardEntriesPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [myLoading, setMyLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [myError, setMyError] = useState<string | null>(null);
   const activeConfig = TABS.find((tab) => tab.id === activeTab)!;
 
   const loadLeaderboard = useCallback(async () => {
@@ -364,17 +534,45 @@ export function LeaderboardsSection() {
     setLoading(false);
   }, [activeTab, page]);
 
+  const loadMyEntries = useCallback(async () => {
+    if (!token) {
+      setMyEntries(null);
+      setMyError(null);
+      setMyLoading(false);
+      return;
+    }
+
+    setMyLoading(true);
+
+    const result = await fetchMyLeaderboardEntries(token, activeTab);
+
+    if (!result.ok) {
+      setMyError(result.error);
+      setMyLoading(false);
+      return;
+    }
+
+    setMyError(null);
+    setMyEntries(result.payload);
+    setMyLoading(false);
+  }, [activeTab, token]);
+
   useEffect(() => {
     void loadLeaderboard();
   }, [loadLeaderboard]);
 
   useEffect(() => {
+    void loadMyEntries();
+  }, [loadMyEntries]);
+
+  useEffect(() => {
     const intervalId = window.setInterval(() => {
       void loadLeaderboard();
+      void loadMyEntries();
     }, 60_000);
 
     return () => window.clearInterval(intervalId);
-  }, [loadLeaderboard]);
+  }, [loadLeaderboard, loadMyEntries]);
 
   const panelProps = payload
     ? panelPropsFromPayload(payload, activeConfig)
@@ -392,15 +590,8 @@ export function LeaderboardsSection() {
   const showPagination = page > 0 || (payload?.hasMore ?? false);
 
   return (
-    <section
-      aria-label="Leaderboards"
-      className="w-full pixel-border bg-[#1d2b53] p-3 pixel-shadow-sm"
-    >
-      <h2 className="pixel-heading text-[9px] tracking-wide text-[#ffa300]">
-        LEADERBOARDS
-      </h2>
-
-      <div className="mt-2 flex flex-wrap border-b-2 border-[#29366f]">
+    <section aria-label="Leaderboards" className="w-full">
+      <div className="flex flex-wrap border-b-2 border-[#29366f]">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -445,9 +636,33 @@ export function LeaderboardsSection() {
         />
       ) : null}
 
+      {token ? (
+        <MyLeaderboardEntries
+          activeTab={activeTab}
+          activeConfig={activeConfig}
+          payload={payload}
+          myEntries={myEntries}
+          loading={myLoading}
+          error={myError}
+        />
+      ) : null}
+
       <p className="mt-2 text-[9px] text-[#83769a]">
         Top {LEADERBOARD_LIMIT} · {activeConfig.label}
       </p>
     </section>
+  );
+}
+
+export function LeaderboardsPageView() {
+  const router = useRouter();
+
+  return (
+    <>
+      <AppBar title="Leaderboards" onBack={() => router.push("/")} />
+      <div className="px-4 py-4 pb-8">
+        <LeaderboardsSection />
+      </div>
+    </>
   );
 }

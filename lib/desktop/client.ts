@@ -1,6 +1,7 @@
 import type {
   LeaderboardPagePayload,
   LeaderboardTab,
+  MyLeaderboardEntriesPayload,
   MySocialActivityPayload,
   MySocialPayload,
   ThreadingTopicsPayload,
@@ -70,6 +71,61 @@ export async function fetchLeaderboardPage(
   return {
     ok: true,
     payload: data,
+  };
+}
+
+export async function fetchMyLeaderboardEntries(
+  token: string,
+  tab: LeaderboardTab,
+): Promise<
+  | { ok: true; payload: MyLeaderboardEntriesPayload }
+  | { ok: false; error: string }
+> {
+  const response = await fetch(
+    `/api/desktop/leaderboards/my-entries?tab=${encodeURIComponent(tab)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+  const data = (await response.json()) as MyLeaderboardEntriesPayload & {
+    error?: string;
+  };
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      error: data.error ?? "Could not load your leaderboard ranks.",
+    };
+  }
+
+  if (data.kind === "personality") {
+    if (!Array.isArray(data.entries)) {
+      return { ok: false, error: "Invalid server response." };
+    }
+
+    return {
+      ok: true,
+      payload: {
+        kind: "personality",
+        tab: data.tab,
+        entries: data.entries,
+      },
+    };
+  }
+
+  if (data.kind !== "farmer" || !("entry" in data)) {
+    return { ok: false, error: "Invalid server response." };
+  }
+
+  return {
+    ok: true,
+    payload: {
+      kind: "farmer",
+      tab: data.tab,
+      entry: data.entry ?? null,
+    },
   };
 }
 
