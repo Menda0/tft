@@ -72,7 +72,7 @@ export function PhoneFrame({ children }: PhoneFrameProps) {
     <>
       {/* Mobile: full bleed */}
       <div className="min-h-dvh md:hidden">
-        <div className="pixel-scanlines min-h-dvh overflow-y-auto overscroll-contain">
+        <div className="pixel-scanlines scrollbar-hidden min-h-dvh overflow-y-auto overscroll-contain">
           {children}
         </div>
       </div>
@@ -95,7 +95,7 @@ export function PhoneFrame({ children }: PhoneFrameProps) {
 
                 <div className="relative flex min-h-0 flex-1 flex-col phone-screen-inset bg-[#0a0a2a] p-1">
                   <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
-                    <div className="pixel-scanlines min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                    <div className="pixel-scanlines scrollbar-hidden min-h-0 flex-1 overflow-y-auto overscroll-contain">
                       {children}
                     </div>
                   </div>
