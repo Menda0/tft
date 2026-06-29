@@ -139,9 +139,31 @@ export function formatPoliticalSwingDescription(swing: PoliticalSwing): string {
   return `${info.label} (${info.broadCategory}; e.g. ${info.examples})`;
 }
 
+const RANDOM_POLITICAL_SWING_WEIGHTS: Record<PoliticalPosition, number> = {
+  far_left: 0.05,
+  left: 0.1,
+  center_left: 0.22,
+  center: 0.26,
+  center_right: 0.22,
+  right: 0.1,
+  far_right: 0.05,
+};
+
 export function randomPoliticalSwing(): PoliticalSwing {
+  const roll = Math.random();
+  let cumulative = 0;
+
+  for (const entry of POLITICAL_POSITIONS) {
+    cumulative += RANDOM_POLITICAL_SWING_WEIGHTS[entry.position];
+    if (roll < cumulative) {
+      return clampPoliticalSwing(
+        Math.floor(Math.random() * (entry.max - entry.min + 1)) + entry.min,
+      );
+    }
+  }
+
+  const center = POLITICAL_POSITIONS[3]!;
   return clampPoliticalSwing(
-    Math.floor(Math.random() * (POLITICAL_SWING_MAX - POLITICAL_SWING_MIN + 1)) +
-      POLITICAL_SWING_MIN,
+    Math.floor(Math.random() * (center.max - center.min + 1)) + center.min,
   );
 }

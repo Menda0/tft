@@ -62,15 +62,15 @@ function buildDescriptionPrompt(input: {
     : "This is a page/account profile, not an individual person.";
 
   return [
-    `Write a short ${PROJECT_NAME} social media profile bio.`,
-    `${PROJECT_NAME} is ${PROJECT_TAGLINE.charAt(0).toLowerCase()}${PROJECT_TAGLINE.slice(1)}`,
+    `Write a short social media profile bio.`,
+    // `${PROJECT_NAME} is ${PROJECT_TAGLINE.charAt(0).toLowerCase()}${PROJECT_TAGLINE.slice(1)}`,
     `Name: ${input.name}`,
     `@${input.handle}`,
     `Profile kind: ${kindLabel}`,
     identityLines,
     `Archetype: ${archetypeLabel}`,
     `Political swing: ${formatPoliticalSwingDescription(input.politicalSwing)}.`,
-    `Traits: ${traitSummary(input.traits)}`,
+    //`Traits: ${traitSummary(input.traits)}`,
     `Interests: ${interests}`,
     "Rules:",
     "- Return only the bio text.",
