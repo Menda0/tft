@@ -35,6 +35,12 @@ import {
   PRONOUN_LABELS,
   type Pronouns,
 } from "@/lib/personalities/pronouns";
+import {
+  POLITICAL_SWING_MAX,
+  POLITICAL_SWING_MIN,
+  formatPoliticalSwingLabel,
+  type PoliticalSwing,
+} from "@/lib/personalities/political-swing";
 import type { Traits } from "@/lib/types/personality";
 
 const GENDER_OPTIONS = GENDERS.map((value) => ({
@@ -60,19 +66,19 @@ const ARCHETYPE_OPTIONS = ARCHETYPES.map((value) => ({
 const TRAIT_LABELS: { key: keyof Traits; label: string }[] = [
   { key: "humor", label: "Humor" },
   { key: "aggression", label: "Aggression" },
-  { key: "charisma", label: "Charisma" },
-  { key: "curiosity", label: "Curiosity" },
-  { key: "chaos", label: "Chaos" },
-  { key: "empathy", label: "Empathy" },
+  { key: "troll", label: "Troll" },
+  { key: "woke", label: "Woke" },
+  { key: "negacionist", label: "Negacionist" },
+  { key: "radical", label: "Radical" },
 ];
 
 const DEFAULT_TRAITS: Traits = {
   humor: 5,
   aggression: 3,
-  charisma: 5,
-  curiosity: 5,
-  chaos: 4,
-  empathy: 5,
+  troll: 4,
+  woke: 5,
+  negacionist: 3,
+  radical: 5,
 };
 
 export function CreatePersonalityForm() {
@@ -85,6 +91,7 @@ export function CreatePersonalityForm() {
   const [pronouns, setPronouns] = useState<Pronouns>("they_them");
   const [kind, setKind] = useState<PageKind>("person");
   const [archetype, setArchetype] = useState<Archetype>("comedian");
+  const [politicalSwing, setPoliticalSwing] = useState<PoliticalSwing>(0);
   const [interests, setInterests] = useState("");
   const [traits, setTraits] = useState<Traits>(DEFAULT_TRAITS);
   const [error, setError] = useState<string | null>(null);
@@ -118,6 +125,7 @@ export function CreatePersonalityForm() {
       setPronouns(draft.pronouns ?? "they_them");
     }
     setArchetype(draft.archetype);
+    setPoliticalSwing(draft.politicalSwing);
     setTraits(draft.traits);
     setInterests(draft.interests);
     setError(null);
@@ -140,6 +148,7 @@ export function CreatePersonalityForm() {
       kind,
       ...(profileKindUsesIdentity(kind) ? { gender, pronouns } : {}),
       archetype,
+      politicalSwing,
       traits,
       interests,
     });
@@ -310,6 +319,28 @@ export function CreatePersonalityForm() {
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm text-[#c2c3c7]">
+            <Label htmlFor="politicalSwing" className="text-xs text-[#ffa300]">
+              Political swing
+            </Label>
+            <span>{formatPoliticalSwingLabel(politicalSwing)}</span>
+          </div>
+          <div className="flex items-center justify-between text-[10px] text-[#83769a]">
+            <span>Left ({POLITICAL_SWING_MIN})</span>
+            <span>Right ({POLITICAL_SWING_MAX})</span>
+          </div>
+          <input
+            id="politicalSwing"
+            type="range"
+            min={POLITICAL_SWING_MIN}
+            max={POLITICAL_SWING_MAX}
+            value={politicalSwing}
+            onChange={(event) => setPoliticalSwing(Number(event.target.value))}
+            className="w-full accent-[#29adff]"
+          />
         </div>
 
         <div className="space-y-2">

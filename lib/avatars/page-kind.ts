@@ -456,7 +456,7 @@ function interestText(interests: string[]): string {
 }
 
 function traitSummary(traits: Traits): string {
-  return `humor ${traits.humor}, aggression ${traits.aggression}, charisma ${traits.charisma}, curiosity ${traits.curiosity}, chaos ${traits.chaos}, empathy ${traits.empathy}`;
+  return `humor ${traits.humor}, aggression ${traits.aggression}, troll ${traits.troll}, woke ${traits.woke}, negacionist ${traits.negacionist}, radical ${traits.radical}`;
 }
 
 export function buildAvatarPrompt(profile: AvatarPageProfile): string {

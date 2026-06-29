@@ -7,14 +7,22 @@ export const ARCHETYPES = [
   "tech_bro",
   "philosopher",
   "troll",
-  "fan_account",
   "boomer",
-  "poet",
   "coach",
   "detective",
+  "politician",
+  "woke",
+  "negacionist",
+  "fitness",
+  "lifestyle",
 ] as const;
 
 export type Archetype = (typeof ARCHETYPES)[number];
+
+const LEGACY_ARCHETYPE_MAP: Record<string, Archetype> = {
+  fan_account: "comedian",
+  poet: "artist",
+};
 
 export const ARCHETYPE_LABELS: Record<Archetype, string> = {
   comedian: "Comedian",
@@ -25,11 +33,14 @@ export const ARCHETYPE_LABELS: Record<Archetype, string> = {
   tech_bro: "Tech Bro",
   philosopher: "Philosopher",
   troll: "Troll",
-  fan_account: "Fan Account",
   boomer: "Boomer",
-  poet: "Poet",
   coach: "Coach",
   detective: "Detective",
+  politician: "Politician",
+  woke: "Woke",
+  negacionist: "Negacionist",
+  fitness: "Fitness",
+  lifestyle: "Lifestyle",
 };
 
 export const ARCHETYPE_DESCRIPTIONS: Record<Archetype, string> = {
@@ -41,15 +52,26 @@ export const ARCHETYPE_DESCRIPTIONS: Record<Archetype, string> = {
   tech_bro: "startup tech bro with hoodie, headset, and founder energy",
   philosopher: "thoughtful philosopher with calm gaze and ancient book vibes",
   troll: "mischievous internet troll with chaotic grin and neon accents",
-  fan_account: "hyper stan fan with stars in eyes and team merch",
   boomer: "older internet uncle with glasses, polo shirt, and newspaper energy",
-  poet: "dramatic romantic poet with soft lighting and notebook",
   coach: "intense motivational coach with whistle and power pose",
   detective: "noir detective with trench coat, magnifying glass, and sharp eyes",
+  politician: "polished political operator with suit energy and camera-ready smile",
+  woke: "earnest activist profile with protest-pin energy and intense conviction",
+  negacionist: "contrarian denialist with skeptical glare and debate-ready posture",
+  fitness: "athletic fitness influencer with gym energy, defined jawline, and activewear vibes",
+  lifestyle: "curated lifestyle creator with soft aesthetic, clean style, and aspirational calm",
 };
 
 export function isArchetype(value: string): value is Archetype {
   return ARCHETYPES.includes(value as Archetype);
+}
+
+export function normalizeArchetype(value: string): Archetype | null {
+  if (isArchetype(value)) {
+    return value;
+  }
+
+  return LEGACY_ARCHETYPE_MAP[value] ?? null;
 }
 
 export function formatArchetypeLabel(archetype: Archetype): string {

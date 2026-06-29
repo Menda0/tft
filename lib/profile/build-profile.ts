@@ -28,6 +28,7 @@ export function toPublicPersonality(personality: Personality): PublicPersonality
     gender: normalized.gender,
     pronouns: normalized.pronouns,
     stats: normalized.stats,
+    politicalSwing: normalized.politicalSwing,
   };
 }
 

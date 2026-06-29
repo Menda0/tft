@@ -7,7 +7,9 @@ import { PROJECT_NAME, PROJECT_TAGLINE } from "@/lib/brand";
 import { ARCHETYPE_LABELS, type Archetype } from "@/lib/personalities/archetypes";
 import { isDoorGender, type Gender } from "@/lib/personalities/gender";
 import { PRONOUN_LABELS, type Pronouns } from "@/lib/personalities/pronouns";
+import { formatPoliticalSwingLabel } from "@/lib/personalities/political-swing";
 import { getOpenAIClient, getTextModel } from "@/lib/openai/client";
+import type { PoliticalSwing } from "@/lib/personalities/political-swing";
 import type { Traits } from "@/lib/types/personality";
 
 export class DescriptionGenerationError extends Error {
@@ -24,10 +26,10 @@ function traitSummary(traits: Traits): string {
   return [
     `humor ${traits.humor}/10`,
     `aggression ${traits.aggression}/10`,
-    `charisma ${traits.charisma}/10`,
-    `curiosity ${traits.curiosity}/10`,
-    `chaos ${traits.chaos}/10`,
-    `empathy ${traits.empathy}/10`,
+    `troll ${traits.troll}/10`,
+    `woke ${traits.woke}/10`,
+    `negacionist ${traits.negacionist}/10`,
+    `radical ${traits.radical}/10`,
   ].join(", ");
 }
 
@@ -39,6 +41,7 @@ function buildDescriptionPrompt(input: {
   pronouns: Pronouns;
   archetype: Archetype;
   traits: Traits;
+  politicalSwing: PoliticalSwing;
   interests: string[];
 }): string {
   const interests =
@@ -66,13 +69,14 @@ function buildDescriptionPrompt(input: {
     `Profile kind: ${kindLabel}`,
     identityLines,
     `Archetype: ${archetypeLabel}`,
+    `Political swing: ${formatPoliticalSwingLabel(input.politicalSwing)}.`,
     `Traits: ${traitSummary(input.traits)}`,
     `Interests: ${interests}`,
     "Rules:",
     "- Return only the bio text.",
     "- 1-2 sentences, max 160 characters.",
     "- Match the voice of the archetype and profile kind.",
-    "- Sound like a real social media bio: witty, specific, a little unhinged if chaos is high.",
+    "- Sound like a real social media bio: witty, specific, a little unhinged if troll is high.",
     "- No hashtags, no quotes, no markdown, no labels.",
   ].join("\n");
 }
@@ -93,6 +97,7 @@ export async function generateProfileDescription(input: {
   pronouns: Pronouns;
   archetype: Archetype;
   traits: Traits;
+  politicalSwing: PoliticalSwing;
   interests: string[];
 }): Promise<string> {
   const openai = getOpenAIClient();

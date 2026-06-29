@@ -80,10 +80,11 @@ function pickColor(seed: string, offset: number): string {
 function buildPalette(seed: string, traits: Traits): AvatarPalette {
   const average = Math.round(
     (traits.humor +
-      traits.charisma +
-      traits.curiosity +
-      traits.chaos +
-      traits.empathy) /
+      traits.aggression +
+      traits.troll +
+      traits.woke +
+      traits.negacionist +
+      traits.radical) /
       5,
   );
 

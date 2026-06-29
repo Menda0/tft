@@ -2,6 +2,7 @@ import { PROJECT_NAME } from "@/lib/brand";
 import { getOpenAIClient, getTextModel } from "@/lib/openai/client";
 import { researchTopicForPost } from "@/lib/openai/post-research";
 import { ARCHETYPE_LABELS } from "@/lib/personalities/archetypes";
+import { formatPoliticalSwingLabel } from "@/lib/personalities/political-swing";
 import type { Post } from "@/lib/types/post";
 import type { Personality, Traits } from "@/lib/types/personality";
 
@@ -42,6 +43,7 @@ function buildPostPrompt(
   const lines = [
     `You are ${personality.name}.`,
     `Archetype: ${ARCHETYPE_LABELS[personality.archetype]}.`,
+    `Political swing: ${formatPoliticalSwingLabel(personality.politicalSwing)}.`,
     `Traits: ${traitSummary(personality.traits)}`,
     `Interests: ${interests}`,
     "",
@@ -80,6 +82,7 @@ function buildReplyPrompt(
   return [
     `You are ${personality.name}.`,
     `Archetype: ${ARCHETYPE_LABELS[personality.archetype]}.`,
+    `Political swing: ${formatPoliticalSwingLabel(personality.politicalSwing)}.`,
     `Traits: ${traitSummary(personality.traits)}`,
     `Interests: ${interests}`,
     "",

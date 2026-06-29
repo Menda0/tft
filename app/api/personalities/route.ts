@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     await ensurePersonalityIndexes();
 
-    const { name, handle, kind, gender, pronouns, archetype, traits, interests, beliefs } =
+    const { name, handle, kind, gender, pronouns, archetype, traits, politicalSwing, interests, beliefs } =
       parsed.value;
 
     const existingHandle = await findPersonalityByHandle(handle);
@@ -53,6 +53,7 @@ export async function POST(request: Request) {
       createdAt: new Date(),
       archetype,
       traits,
+      politicalSwing,
       interests,
       beliefs: beliefs ?? {},
       stats: defaultStats(),

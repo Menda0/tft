@@ -70,10 +70,11 @@ function pickColor(seed: string, offset: number): string {
 function buildSubjectPalette(seed: string, traits: Traits): SubjectPalette {
   const average = Math.round(
     (traits.humor +
-      traits.charisma +
-      traits.curiosity +
-      traits.chaos +
-      traits.empathy) /
+      traits.aggression +
+      traits.troll +
+      traits.woke +
+      traits.negacionist +
+      traits.radical) /
       5,
   );
 

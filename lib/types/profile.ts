@@ -1,5 +1,9 @@
 import type { PageKind } from "@/lib/avatars/page-kind";
-import type { Archetype, Gender, Pronouns, Stats } from "@/lib/types/personality";
+import type { Archetype } from "@/lib/personalities/archetypes";
+import type { Gender } from "@/lib/personalities/gender";
+import type { PoliticalSwing } from "@/lib/personalities/political-swing";
+import type { Pronouns } from "@/lib/personalities/pronouns";
+import type { Stats } from "@/lib/types/personality";
 import type { PostStats } from "@/lib/types/post";
 
 export type PublicPersonality = {
@@ -13,6 +17,7 @@ export type PublicPersonality = {
   gender: Gender;
   pronouns: Pronouns;
   stats: Stats;
+  politicalSwing: PoliticalSwing;
 };
 
 export type ProfilePostType = "posts" | "replies" | "reposts";

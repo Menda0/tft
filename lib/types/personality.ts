@@ -1,6 +1,7 @@
 import type { PageKind } from "@/lib/avatars/page-kind";
 import type { Archetype } from "@/lib/personalities/archetypes";
 import type { Gender } from "@/lib/personalities/gender";
+import type { PoliticalSwing } from "@/lib/personalities/political-swing";
 import type { Pronouns } from "@/lib/personalities/pronouns";
 
 export type { PageKind };
@@ -8,6 +9,7 @@ export type { PageKind };
 export type { Archetype };
 export type { Gender };
 export type { Pronouns };
+export type { PoliticalSwing };
 
 export type MemoryType =
   | "friendship"
@@ -19,10 +21,10 @@ export type MemoryType =
 export type Traits = {
   humor: number;
   aggression: number;
-  charisma: number;
-  curiosity: number;
-  chaos: number;
-  empathy: number;
+  troll: number;
+  woke: number;
+  negacionist: number;
+  radical: number;
 };
 
 export type Stats = {
@@ -64,6 +66,7 @@ export type Personality = {
   createdAt: Date;
   archetype: Archetype;
   traits: Traits;
+  politicalSwing: PoliticalSwing;
   interests: string[];
   beliefs: Record<string, number>;
   stats: Stats;

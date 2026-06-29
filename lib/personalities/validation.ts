@@ -8,20 +8,24 @@ import type {
   Pronouns,
   Traits,
 } from "@/lib/types/personality";
-import { isArchetype } from "@/lib/personalities/archetypes";
+import type { PoliticalSwing } from "@/lib/personalities/political-swing";
+import { isArchetype, normalizeArchetype } from "@/lib/personalities/archetypes";
 import {
   defaultPronounsForGender,
   isGender,
 } from "@/lib/personalities/gender";
+import {
+  normalizePoliticalSwing,
+} from "@/lib/personalities/political-swing";
 import { isPronouns } from "@/lib/personalities/pronouns";
 
 const TRAIT_KEYS: (keyof Traits)[] = [
   "humor",
   "aggression",
-  "charisma",
-  "curiosity",
-  "chaos",
-  "empathy",
+  "troll",
+  "woke",
+  "negacionist",
+  "radical",
 ];
 
 export { isArchetype };
@@ -68,20 +72,70 @@ export function parseInterests(raw: string): string[] {
     .slice(0, 8);
 }
 
-export function normalizeTraits(input: Partial<Traits>): Traits | null {
+export function normalizeTraits(input: Partial<Traits> | Record<string, unknown>): Traits | null {
+  const data =
+    input && typeof input === "object"
+      ? (input as Record<string, unknown>)
+      : {};
   const traits = {} as Traits;
 
-  for (const key of TRAIT_KEYS) {
-    const value = input[key];
+  const readTrait = (key: keyof Traits, legacyKeys: string[] = []): number | null => {
+    const direct = data[key];
 
-    if (typeof value !== "number" || Number.isNaN(value)) {
+    if (typeof direct === "number" && !Number.isNaN(direct)) {
+      return Math.min(10, Math.max(0, Math.round(direct)));
+    }
+
+    for (const legacyKey of legacyKeys) {
+      const legacy = data[legacyKey];
+
+      if (typeof legacy === "number" && !Number.isNaN(legacy)) {
+        return Math.min(10, Math.max(0, Math.round(legacy)));
+      }
+    }
+
+    return null;
+  };
+
+  const defaults: Record<keyof Traits, string[]> = {
+    humor: [],
+    aggression: [],
+    troll: ["chaos"],
+    woke: ["empathy"],
+    negacionist: ["curiosity"],
+    radical: ["charisma"],
+  };
+
+  for (const key of TRAIT_KEYS) {
+    const value = readTrait(key, defaults[key]);
+
+    if (value === null) {
       return null;
     }
 
-    traits[key] = Math.min(10, Math.max(0, Math.round(value)));
+    traits[key] = value;
   }
 
   return traits;
+}
+
+export function normalizeStoredTraits(input: unknown): Traits {
+  const normalized = normalizeTraits(
+    input && typeof input === "object" ? (input as Record<string, unknown>) : {},
+  );
+
+  if (normalized) {
+    return normalized;
+  }
+
+  return {
+    humor: 5,
+    aggression: 5,
+    troll: 5,
+    woke: 5,
+    negacionist: 5,
+    radical: 5,
+  };
 }
 
 export function createPersonalityId(): string {
@@ -105,6 +159,7 @@ export type CreatePersonalityInput = {
   pronouns: Pronouns;
   archetype: Archetype;
   traits: Traits;
+  politicalSwing: PoliticalSwing;
   interests: string[];
   beliefs?: Record<string, number>;
 };
@@ -169,7 +224,13 @@ export function validateCreatePersonalityInput(
     pronouns = "prefer_not_to_say";
   }
 
-  if (typeof data.archetype !== "string" || !isArchetype(data.archetype)) {
+  if (typeof data.archetype !== "string") {
+    return { ok: false, error: "Choose a valid archetype." };
+  }
+
+  const archetype = normalizeArchetype(data.archetype);
+
+  if (!archetype) {
     return { ok: false, error: "Choose a valid archetype." };
   }
 
@@ -177,6 +238,12 @@ export function validateCreatePersonalityInput(
 
   if (!traits) {
     return { ok: false, error: "Traits must be numbers from 0 to 10." };
+  }
+
+  const politicalSwing = normalizePoliticalSwing(data.politicalSwing);
+
+  if (politicalSwing === null) {
+    return { ok: false, error: "Political swing must be a number from -10 to 10." };
   }
 
   const interests =
@@ -198,8 +265,9 @@ export function validateCreatePersonalityInput(
       kind,
       gender,
       pronouns,
-      archetype: data.archetype,
+      archetype,
       traits,
+      politicalSwing,
       interests,
       beliefs: {},
     },

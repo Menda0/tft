@@ -4,6 +4,7 @@ import { formatArchetypeLabel } from "@/lib/personalities/archetypes";
 import { formatGenderLabel } from "@/lib/personalities/gender";
 import { formatPronounLabel } from "@/lib/personalities/pronouns";
 import type { AvatarStatus } from "@/lib/types/personality";
+import { formatPoliticalSwingLabel } from "@/lib/personalities/political-swing";
 import type { PublicPersonality } from "@/lib/types/profile";
 
 type ProfileHeaderProps = {
@@ -38,7 +39,8 @@ export function ProfileHeader({ personality }: ProfileHeaderProps) {
             </p>
           ) : null}
           <p className="mt-1 pixel-heading text-[8px] text-[#29adff]">
-            {formatArchetypeLabel(personality.archetype).toUpperCase()}
+            {formatArchetypeLabel(personality.archetype).toUpperCase()} ·{" "}
+            {formatPoliticalSwingLabel(personality.politicalSwing).toUpperCase()}
           </p>
         </div>
       </div>

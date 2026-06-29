@@ -2,7 +2,13 @@ import { Collection } from "mongodb";
 
 import { getDb } from "./mongodb";
 import { classifyPageKind, normalizeStoredPageKind } from "./avatars/page-kind";
+import { normalizeArchetype } from "./personalities/archetypes";
 import { defaultPronounsForGender } from "./personalities/gender";
+import {
+  normalizePoliticalSwing,
+  randomPoliticalSwing,
+} from "./personalities/political-swing";
+import { normalizeStoredTraits } from "./personalities/validation";
 import type { AvatarStatus, DescriptionStatus, Personality } from "./types/personality";
 
 const COLLECTION = "personalities";
@@ -23,6 +29,11 @@ export function normalizePersonality(
     avatarStatus,
     description: personality.description ?? null,
     descriptionStatus,
+    archetype:
+      normalizeArchetype(personality.archetype as string) ?? "comedian",
+    traits: normalizeStoredTraits(personality.traits),
+    politicalSwing:
+      normalizePoliticalSwing(personality.politicalSwing) ?? randomPoliticalSwing(),
     kind:
       normalizeStoredPageKind(personality.kind as string) ??
       classifyPageKind({

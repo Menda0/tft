@@ -1,5 +1,5 @@
 import { profileKindUsesIdentity } from "@/lib/avatars/page-kind";
-import type { Archetype, Gender, PageKind, Personality, Pronouns, Traits } from "@/lib/types/personality";
+import type { Archetype, Gender, PageKind, Personality, PoliticalSwing, Pronouns, Traits } from "@/lib/types/personality";
 
 export type CreatePersonalityPayload = {
   name: string;
@@ -9,6 +9,7 @@ export type CreatePersonalityPayload = {
   pronouns?: Pronouns;
   archetype: Archetype;
   traits: Traits;
+  politicalSwing: PoliticalSwing;
   interests: string;
 };
 
@@ -80,6 +81,7 @@ export async function createPersonalityRequest(
         : {}),
       archetype: payload.archetype,
       traits: payload.traits,
+      politicalSwing: payload.politicalSwing,
       interests: payload.interests,
     }),
   });

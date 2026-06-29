@@ -58,6 +58,7 @@ export async function POST(request: Request, context: RouteContext) {
         pronouns: claimed.pronouns,
         archetype: claimed.archetype,
         traits: claimed.traits,
+        politicalSwing: claimed.politicalSwing,
         interests: claimed.interests,
       });
 
