@@ -5,7 +5,7 @@ import {
   insertPost,
   toPostAuthor,
 } from "@/lib/db/posts";
-import { hasFollow, insertFollow } from "@/lib/db/follows";
+import { deleteFollow, hasFollow, insertFollow } from "@/lib/db/follows";
 import { updatePersonality } from "@/lib/personalities";
 import { generateLLMPost, generateLLMReply } from "@/lib/openai/post";
 import type { Post } from "@/lib/types/post";
@@ -187,6 +187,37 @@ export async function followAuthor(
   }
 
   const nextFollowers = target.stats.followers + 1;
+  await updatePersonality(target.id, {
+    stats: {
+      ...target.stats,
+      followers: nextFollowers,
+    },
+  });
+
+  target.stats.followers = nextFollowers;
+  return target;
+}
+
+export async function unfollowAuthor(
+  personality: Personality,
+  target: Personality,
+  world: SimulationWorld,
+): Promise<Personality | null> {
+  if (target.id === personality.id) {
+    return null;
+  }
+
+  if (!(await hasFollow(personality.id, target.id))) {
+    return null;
+  }
+
+  const removed = await deleteFollow(personality.id, target.id);
+
+  if (!removed) {
+    return null;
+  }
+
+  const nextFollowers = Math.max(0, target.stats.followers - 1);
   await updatePersonality(target.id, {
     stats: {
       ...target.stats,

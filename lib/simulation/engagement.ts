@@ -11,6 +11,7 @@ export type EngagementDecision = {
   respond: boolean;
   responseTone: ResponseTone | null;
   follow: boolean;
+  unfollow: boolean;
 };
 
 const MAX_PROBABILITY = 0.85;
@@ -100,26 +101,7 @@ export function scorePostAlignment(
   const beliefEntries = Object.entries(personality.beliefs);
 
   if (beliefEntries.length > 0 && post.topic) {
-    const topic = normalize(post.topic);
-    const content = normalize(post.content);
-    let matched = 0;
-    let total = 0;
-
-    for (const [belief, strength] of beliefEntries) {
-      const normalizedBelief = normalize(belief);
-
-      if (
-        topic.includes(normalizedBelief) ||
-        content.includes(normalizedBelief)
-      ) {
-        matched += strength;
-        total += 10;
-      }
-    }
-
-    if (total > 0) {
-      beliefAlignment = matched / total;
-    }
+    beliefAlignment = scoreBeliefAlignment(personality, post);
   }
 
   return clamp01(
@@ -127,6 +109,71 @@ export function scorePostAlignment(
       politicalAlignment * 0.3 +
       relationshipAlignment * 0.2 +
       beliefAlignment * 0.1,
+  );
+}
+
+function scoreBeliefAlignment(
+  personality: Pick<Personality, "beliefs">,
+  post: Pick<Post, "topic" | "content">,
+): number {
+  const beliefEntries = Object.entries(personality.beliefs);
+
+  if (beliefEntries.length === 0 || !post.topic) {
+    return 0.5;
+  }
+
+  const topic = normalize(post.topic);
+  const content = normalize(post.content);
+  let matched = 0;
+  let total = 0;
+
+  for (const [belief, strength] of beliefEntries) {
+    const normalizedBelief = normalize(belief);
+
+    if (
+      topic.includes(normalizedBelief) ||
+      content.includes(normalizedBelief)
+    ) {
+      matched += strength;
+      total += 10;
+    }
+  }
+
+  if (total === 0) {
+    return 0.5;
+  }
+
+  return matched / total;
+}
+
+export function scorePostRevelatory(
+  personality: Personality,
+  post: Post,
+  author: Personality | null,
+): number {
+  const beliefAlignment = scoreBeliefAlignment(personality, post);
+  const beliefShock = beliefAlignment < 0.5 ? 1 - beliefAlignment : 0;
+
+  let expectationBetrayal = 0;
+
+  if (author) {
+    const relationship = personality.relationships[author.id];
+
+    if (relationship) {
+      const priorPositive = (relationship.trust + relationship.admiration) / 20;
+      const swingGap =
+        Math.abs(personality.politicalSwing - author.politicalSwing) / 20;
+      expectationBetrayal = priorPositive * swingGap;
+    }
+  }
+
+  const authorShock = author
+    ? (author.traits.radical / 10) * 0.5 +
+      Math.min(1, author.stats.controversy / 40) * 0.5
+    : 0;
+
+  return clamp01(
+    beliefShock * 0.45 + expectationBetrayal * 0.35 + authorShock * 0.2,
   );
 }
 
@@ -184,6 +231,17 @@ export function decideEngagement(context: EngagementContext): EngagementDecision
 
   const skipLike = responseTone === "disagree";
 
+  const revelatory = scorePostRevelatory(personality, post, author);
+  const disagrees = responseTone === "disagree" || alignment < 0.4;
+  const unfollowProbability =
+    alreadyFollowing && disagrees
+      ? 0.02 +
+        (1 - alignment) * 0.1 +
+        revelatory * 0.3 +
+        traits.aggression * 0.01 +
+        traits.negacionist * 0.01
+      : 0;
+
   return {
     like: !skipLike && roll(likeProbability),
     repost: roll(repostProbability),
@@ -193,5 +251,6 @@ export function decideEngagement(context: EngagementContext): EngagementDecision
       !alreadyFollowing &&
       post.author.personalityId !== personality.id &&
       roll(followProbability),
+    unfollow: roll(unfollowProbability),
   };
 }

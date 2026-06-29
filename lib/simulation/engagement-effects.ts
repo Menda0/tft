@@ -183,6 +183,22 @@ export async function recordAgreeReplyEffects(
   }));
 }
 
+export async function recordUnfollowEffects(
+  world: SimulationWorld,
+  actor: Personality,
+  author: Personality,
+  post: Post,
+): Promise<void> {
+  await applyRelationshipAndStats(world, actor.id, author.id, {
+    relationshipDelta: { trust: -2, admiration: -2, rivalry: 1, familiarity: -1 },
+    targetStatsDelta: { reputation: -1 },
+  });
+
+  await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({
+    actorMemory: recordRivalryMemory(freshActor, freshAuthor, post.topic),
+  }));
+}
+
 export async function recordDisagreeReplyEffects(
   world: SimulationWorld,
   actor: Personality,

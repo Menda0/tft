@@ -11,6 +11,7 @@ import {
   recordFollowEffects,
   recordLikeEffects,
   recordRepostEffects,
+  recordUnfollowEffects,
 } from "./engagement-effects";
 import { startOfRollingWindow } from "./limits";
 import { truncateForLog, type SimulationLogFn } from "./logger";
@@ -20,6 +21,7 @@ import {
   recordPostView,
   replyToSpecificPost,
   repostSpecificPost,
+  unfollowAuthor,
 } from "./posts";
 import type { SimulationWorld } from "./world";
 import { weightedSampleWithoutReplacement } from "./utils";
@@ -136,6 +138,19 @@ export async function readPostsAndEngage(
         log(
           "success",
           `${handle} followed @${followed.handle} (${followed.stats.followers} followers)`,
+        );
+      }
+    }
+
+    if (decision.unfollow && author) {
+      const unfollowed = await unfollowAuthor(personality, author, world);
+
+      if (unfollowed) {
+        followingIds.delete(unfollowed.id);
+        await recordUnfollowEffects(world, personality, author, post);
+        log(
+          "success",
+          `${handle} unfollowed @${unfollowed.handle} after disagreeing`,
         );
       }
     }

@@ -60,6 +60,15 @@ export async function insertFollow(
   }
 }
 
+export async function deleteFollow(
+  followerId: string,
+  followingId: string,
+): Promise<boolean> {
+  const collection = await getFollowsCollection();
+  const result = await collection.deleteOne({ followerId, followingId });
+  return result.deletedCount === 1;
+}
+
 export async function getFollowingIds(followerId: string): Promise<Set<string>> {
   const collection = await getFollowsCollection();
   const follows = await collection
