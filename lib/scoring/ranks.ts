@@ -107,3 +107,17 @@ export function resolveSocialRank(context: SocialRankContext): SocialRank {
 export function formatSocialRank(rank: SocialRank): string {
   return SOCIAL_RANK_LABELS[rank];
 }
+
+export function compareSocialRanks(a: SocialRank, b: SocialRank): number {
+  return SOCIAL_RANK_ORDER.indexOf(a) - SOCIAL_RANK_ORDER.indexOf(b);
+}
+
+export function getBestSocialRank(ranks: SocialRank[]): SocialRank {
+  if (ranks.length === 0) {
+    return "novice";
+  }
+
+  return ranks.reduce((best, current) =>
+    compareSocialRanks(current, best) > 0 ? current : best,
+  );
+}

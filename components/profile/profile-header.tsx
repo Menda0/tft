@@ -34,7 +34,7 @@ function ProfileStat({
   return (
     <div className="flex min-w-0 flex-col items-center gap-1 px-1">
       <p className="pixel-heading text-[8px] text-[#83769a]">{label}</p>
-      <p className={`truncate text-sm font-bold ${valueClassName}`}>{value}</p>
+      <p className={`truncate text-sm font-bold leading-none ${valueClassName}`}>{value}</p>
     </div>
   );
 }
@@ -81,7 +81,7 @@ export function ProfileHeader({ personality }: ProfileHeaderProps) {
         </p>
       ) : null}
 
-      <div className="mt-4 grid grid-cols-4 items-start justify-items-center gap-2 border-y-2 border-foreground py-3">
+      <div className="mt-4 grid grid-cols-4 items-end justify-items-center gap-2 border-y-2 border-foreground py-3">
         <div className="flex min-w-0 flex-col items-center gap-1 px-1">
           <p className="pixel-heading text-[8px] text-[#83769a]">FOLLOWERS</p>
           <FollowersCount
@@ -104,7 +104,7 @@ export function ProfileHeader({ personality }: ProfileHeaderProps) {
         <ProfileStat
           label="RANK"
           value={(personality.socialRankLabel ?? "Novice").toUpperCase()}
-          valueClassName="text-[#29adff] pixel-heading text-[8px] pt-0.5"
+          valueClassName="text-[#29adff]"
         />
       </div>
     </header>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { AppBar } from "@/components/layout/app-bar";
@@ -21,6 +21,11 @@ import {
 } from "@/lib/personalities/client";
 import { formatStatValue, normalizeStoredStats } from "@/lib/personalities/stats";
 import type { PersonalityListItem } from "@/lib/profile/social-rank";
+import {
+  formatSocialRank,
+  getBestSocialRank,
+  type SocialRank,
+} from "@/lib/scoring/ranks";
 
 function needsAvatarGeneration(personality: PersonalityListItem): boolean {
   return (
@@ -54,7 +59,7 @@ function PersonalityCardStats({ personality }: { personality: PersonalityListIte
   const stats = normalizeStoredStats(personality.stats);
 
   return (
-    <div className="mt-2 grid grid-cols-4 items-start justify-items-center gap-1 border-t border-[#1d2b53] pt-2">
+    <div className="mt-2 grid grid-cols-4 items-end justify-items-center gap-1 border-t border-[#1d2b53] pt-2">
       <div className="flex min-w-0 flex-col items-center gap-0.5 px-0.5">
         <p className="pixel-heading text-[7px] text-[#83769a]">FOLLOWERS</p>
         <p className="text-xs font-bold text-[#fff1e8]">
@@ -75,8 +80,52 @@ function PersonalityCardStats({ personality }: { personality: PersonalityListIte
       </div>
       <div className="flex min-w-0 flex-col items-center gap-0.5 px-0.5">
         <p className="pixel-heading text-[7px] text-[#83769a]">RANK</p>
-        <p className="pixel-heading text-[7px] font-bold text-[#29adff]">
+        <p className="text-xs font-bold text-[#29adff]">
           {(personality.socialRankLabel ?? "Novice").toUpperCase()}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function FarmSummary({ personalities }: { personalities: PersonalityListItem[] }) {
+  const { totalClout, totalHeat, bestRank } = useMemo(() => {
+    let clout = 0;
+    let heat = 0;
+    const ranks: SocialRank[] = [];
+
+    for (const personality of personalities) {
+      const stats = normalizeStoredStats(personality.stats);
+      clout += stats.socialScore;
+      heat += stats.controversy;
+      ranks.push(personality.socialRank ?? "novice");
+    }
+
+    return {
+      totalClout: clout,
+      totalHeat: heat,
+      bestRank: getBestSocialRank(ranks),
+    };
+  }, [personalities]);
+
+  return (
+    <div className="grid grid-cols-3 items-end gap-2 pixel-border-thin bg-[#1d2b53] px-3 py-3">
+      <div className="flex min-w-0 flex-col items-center gap-1 text-center">
+        <p className="pixel-heading text-[8px] text-[#83769a]">FARMED CLOUT</p>
+        <p className="text-lg font-bold leading-none text-[#ffa300]">
+          {formatStatValue(totalClout)}
+        </p>
+      </div>
+      <div className="flex min-w-0 flex-col items-center gap-1 text-center">
+        <p className="pixel-heading text-[8px] text-[#83769a]">FARMED HEAT</p>
+        <p className="text-lg font-bold leading-none text-[#ff004d]">
+          {formatStatValue(totalHeat)}
+        </p>
+      </div>
+      <div className="flex min-w-0 flex-col items-center gap-1 text-center">
+        <p className="pixel-heading text-[8px] text-[#83769a]">BEST RANK</p>
+        <p className="text-lg font-bold leading-none text-[#29adff]">
+          {formatSocialRank(bestRank).toUpperCase()}
         </p>
       </div>
     </div>
@@ -108,6 +157,7 @@ export function PersonalitiesList() {
       result.personalities.map((personality) => ({
         ...personality,
         stats: normalizeStoredStats(personality.stats),
+        socialRank: personality.socialRank ?? "novice",
         socialRankLabel: personality.socialRankLabel ?? "Novice",
       })),
     );
@@ -206,18 +256,7 @@ export function PersonalitiesList() {
         </div>
 
         {!isLoading && personalities.length > 0 ? (
-          <div className="pixel-border-thin bg-[#1d2b53] px-3 py-2">
-            <p className="pixel-heading text-[8px] text-[#83769a]">FARM CLOUT</p>
-            <p className="text-lg font-bold text-[#ffa300]">
-              {personalities
-                .reduce(
-                  (sum, personality) =>
-                    sum + normalizeStoredStats(personality.stats).socialScore,
-                  0,
-                )
-                .toLocaleString()}
-            </p>
-          </div>
+          <FarmSummary personalities={personalities} />
         ) : null}
 
         {error ? (
