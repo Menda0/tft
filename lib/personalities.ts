@@ -17,11 +17,43 @@ import {
   randomPoliticalSwing,
 } from "./personalities/political-swing";
 import { normalizeStoredTraits } from "./personalities/validation";
-import type { AvatarStatus, DescriptionStatus, Personality } from "./types/personality";
+import type {
+  AvatarStatus,
+  DescriptionStatus,
+  MemoryItem,
+  Personality,
+  Relationship,
+} from "./types/personality";
 
 const COLLECTION = "personalities";
 
 let archetypeMigrationDone = false;
+
+function clampImportance(value: number): number {
+  return Math.min(10, Math.max(1, Math.round(value)));
+}
+
+function normalizeMemory(memory: MemoryItem[] | undefined): MemoryItem[] {
+  if (!Array.isArray(memory)) {
+    return [];
+  }
+
+  return memory.map((item) => ({
+    type: item.type,
+    text: typeof item.text === "string" ? item.text.trim() : "",
+    importance: clampImportance(item.importance),
+  })).filter((item) => item.text.length > 0);
+}
+
+function normalizeRelationships(
+  relationships: Record<string, Relationship> | undefined,
+): Record<string, Relationship> {
+  if (!relationships || typeof relationships !== "object") {
+    return {};
+  }
+
+  return relationships;
+}
 
 export function normalizePersonality(
   personality: Personality,
@@ -65,6 +97,12 @@ export function normalizePersonality(
     kind,
     pronouns:
       personality.pronouns ?? defaultPronounsForGender(personality.gender),
+    memory: normalizeMemory(personality.memory),
+    relationships: normalizeRelationships(personality.relationships),
+    beliefs:
+      personality.beliefs && typeof personality.beliefs === "object"
+        ? personality.beliefs
+        : {},
   };
 }
 
@@ -170,7 +208,7 @@ export async function updatePersonality(
     { $set: updates },
     { returnDocument: "after" },
   );
-  return result ?? null;
+  return result ? normalizePersonality(result) : null;
 }
 
 export async function deletePersonality(id: string): Promise<boolean> {

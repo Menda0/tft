@@ -3,6 +3,7 @@ import { getOpenAIClient, getTextModel } from "@/lib/openai/client";
 import { researchTopicForPost } from "@/lib/openai/post-research";
 import { formatPersonalityVoiceLabel } from "@/lib/personalities/kind-archetypes";
 import { formatPoliticalSwingDescription } from "@/lib/personalities/political-swing";
+import { formatMemoriesForPrompt } from "@/lib/simulation/memory";
 import type { Post } from "@/lib/types/post";
 import type { Personality, Traits } from "@/lib/types/personality";
 
@@ -30,6 +31,20 @@ function normalizePostContent(text: string): string {
     .slice(0, 280);
 }
 
+function memoryPromptLines(personality: Personality): string[] {
+  const memories = formatMemoriesForPrompt(personality.memory);
+
+  if (!memories) {
+    return [];
+  }
+
+  return [
+    "",
+    "Recent memories (use for continuity, do not recite verbatim):",
+    memories,
+  ];
+}
+
 function buildPostPrompt(
   personality: Personality,
   topic: string,
@@ -46,6 +61,7 @@ function buildPostPrompt(
     `Political swing: ${formatPoliticalSwingDescription(personality.politicalSwing)}.`,
     //`Traits: ${traitSummary(personality.traits)}`,
     `Interests: ${interests}`,
+    ...memoryPromptLines(personality),
     "",
     `Write one short social-media post about: ${topic}`,
   ];
@@ -95,6 +111,7 @@ function buildReplyPrompt(
     `Political swing: ${formatPoliticalSwingDescription(personality.politicalSwing)}.`,
     //`Traits: ${traitSummary(personality.traits)}`,
     `Interests: ${interests}`,
+    ...memoryPromptLines(personality),
     "",
     `Reply to this post from @${targetPost.author.handle}:`,
     `"${targetPost.content}"`,

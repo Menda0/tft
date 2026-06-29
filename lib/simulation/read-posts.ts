@@ -5,6 +5,13 @@ import type { Post } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
 import { decideEngagement } from "./engagement";
+import {
+  recordAgreeReplyEffects,
+  recordDisagreeReplyEffects,
+  recordFollowEffects,
+  recordLikeEffects,
+  recordRepostEffects,
+} from "./engagement-effects";
 import { startOfRollingWindow } from "./limits";
 import { truncateForLog, type SimulationLogFn } from "./logger";
 import {
@@ -108,13 +115,15 @@ export async function readPostsAndEngage(
       alreadyFollowing: followingIds.has(post.author.personalityId),
     });
 
-    if (decision.like) {
+    if (decision.like && author) {
       await likePost(personality, post, world);
+      await recordLikeEffects(world, personality, author);
       log("success", `${handle} liked @${post.author.handle}`);
     }
 
-    if (decision.repost) {
+    if (decision.repost && author) {
       await repostSpecificPost(personality, post, world);
+      await recordRepostEffects(world, personality, author);
       log("success", `${handle} reposted @${post.author.handle}`);
     }
 
@@ -123,6 +132,7 @@ export async function readPostsAndEngage(
 
       if (followed) {
         followingIds.add(followed.id);
+        await recordFollowEffects(world, personality, author, post);
         log(
           "success",
           `${handle} followed @${followed.handle} (${followed.stats.followers} followers)`,
@@ -136,6 +146,8 @@ export async function readPostsAndEngage(
   }
 
   for (const { post, tone } of respondQueue) {
+    const author = findAuthor(world, post.author.personalityId);
+
     log(
       "info",
       `${handle} ${tone === "agree" ? "agreeing with" : "pushing back on"} @${post.author.handle}...`,
@@ -146,6 +158,14 @@ export async function readPostsAndEngage(
     if (!reply) {
       log("warn", `${handle} failed to reply to @${post.author.handle}.`);
       continue;
+    }
+
+    if (author) {
+      if (tone === "agree") {
+        await recordAgreeReplyEffects(world, personality, author, post);
+      } else {
+        await recordDisagreeReplyEffects(world, personality, author, post);
+      }
     }
 
     log(

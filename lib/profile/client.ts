@@ -1,4 +1,5 @@
 import type {
+  ProfileCharacterSheet,
   ProfileFollower,
   ProfilePostItem,
   ProfilePostType,
@@ -66,4 +67,31 @@ export async function fetchProfileFollowers(
   }
 
   return { ok: true, followers: data.followers ?? [] };
+}
+
+export async function fetchProfileCharacter(
+  handle: string,
+): Promise<
+  { ok: true; character: ProfileCharacterSheet } | { ok: false; error: string }
+> {
+  const response = await fetch(
+    `/api/u/${encodeURIComponent(handle)}/character`,
+  );
+  const data = (await response.json()) as {
+    character?: ProfileCharacterSheet;
+    error?: string;
+  };
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      error: data.error ?? "Could not load character sheet.",
+    };
+  }
+
+  if (!data.character) {
+    return { ok: false, error: "Invalid server response." };
+  }
+
+  return { ok: true, character: data.character };
 }

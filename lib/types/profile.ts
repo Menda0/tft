@@ -3,7 +3,7 @@ import type { Archetype } from "@/lib/personalities/archetypes";
 import type { Gender } from "@/lib/personalities/gender";
 import type { PoliticalSwing } from "@/lib/personalities/political-swing";
 import type { Pronouns } from "@/lib/personalities/pronouns";
-import type { Stats } from "@/lib/types/personality";
+import type { Stats, Traits, MemoryItem } from "@/lib/types/personality";
 import type { PostStats } from "@/lib/types/post";
 
 export type PublicPersonality = {
@@ -28,6 +28,28 @@ export type ProfileFollower = {
 };
 
 export type ProfilePostType = "posts" | "replies" | "reposts";
+
+export type ProfileTab = ProfilePostType | "character";
+
+export type ProfileRelationship = {
+  personalityId: string;
+  name: string;
+  handle: string;
+  avatarUrl: string | null;
+  trust: number;
+  rivalry: number;
+  admiration: number;
+  familiarity: number;
+};
+
+export type ProfileCharacterSheet = {
+  traits: Traits;
+  stats: Stats;
+  interests: string[];
+  memories: MemoryItem[];
+  relationships: ProfileRelationship[];
+  evolutions: MemoryItem[];
+};
 
 export type ProfileParentPost = {
   id: string;

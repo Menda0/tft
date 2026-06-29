@@ -3,12 +3,17 @@ import { saveWorldState } from "@/lib/db/world";
 import { chooseOptionalAction } from "./actions";
 import { createPost } from "./posts";
 import {
+  evolvePersonality,
+  shouldAttemptEvolution,
+} from "./evolution";
+import {
   noopSimulationLog,
   truncateForLog,
   type SimulationLogFn,
 } from "./logger";
 import { getDailyPostLimit } from "./limits";
 import { throwIfCancelled } from "./cancel";
+import { applyPersonalityUpdate } from "./personality-state";
 import { readPostsAndEngage } from "./read-posts";
 import { refreshTrendingTopics } from "./trending-state";
 import type { SimulationWorld } from "./world";
@@ -38,11 +43,15 @@ async function simulatePersonality(
 
   await readPostsAndEngage(personality, world, log);
 
-  const optional = chooseOptionalAction(personality);
+  const current =
+    world.personalities.find((entry) => entry.id === personality.id) ??
+    personality;
+
+  const optional = chooseOptionalAction(current);
 
   if (optional === "post") {
     log("info", `${handle} chose POST`);
-    const result = await createPost(personality, world, log);
+    const result = await createPost(current, world, log);
 
     if (!result.ok) {
       if (result.reason === "daily_limit") {
@@ -67,6 +76,34 @@ async function simulatePersonality(
 
   if (optional === "lurk") {
     log("info", `${handle} is lurking.`);
+  }
+}
+
+async function runEvolutionPass(
+  world: SimulationWorld,
+  log: SimulationLogFn,
+): Promise<void> {
+  for (const personality of world.personalities) {
+    if (!shouldAttemptEvolution()) {
+      continue;
+    }
+
+    const patch = evolvePersonality(personality);
+
+    if (!patch) {
+      continue;
+    }
+
+    const updated = await applyPersonalityUpdate(world, personality.id, patch);
+
+    if (!updated) {
+      continue;
+    }
+
+    log(
+      "success",
+      `@${personality.handle} evolved: ${patch.memory?.map((memory) => memory.text).join(" ") ?? "traits or stats shifted"}`,
+    );
   }
 }
 
@@ -101,6 +138,10 @@ export async function simulationTick(
     },
     signal,
   );
+
+  throwIfCancelled(signal);
+
+  await runEvolutionPass(world, log);
 
   throwIfCancelled(signal);
 

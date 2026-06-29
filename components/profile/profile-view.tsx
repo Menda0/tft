@@ -3,18 +3,30 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { ProfileCharacterSheetView } from "@/components/profile/profile-character-sheet";
 import { ProfileHeader } from "@/components/profile/profile-header";
 import { ProfilePostList } from "@/components/profile/profile-post-list";
 import { AppBar } from "@/components/layout/app-bar";
 import { Separator } from "@/components/ui/separator";
-import { fetchProfile, fetchProfilePosts } from "@/lib/profile/client";
-import type { ProfilePostItem, ProfilePostType, PublicPersonality } from "@/lib/types/profile";
+import {
+  fetchProfile,
+  fetchProfileCharacter,
+  fetchProfilePosts,
+} from "@/lib/profile/client";
+import type {
+  ProfileCharacterSheet,
+  ProfilePostItem,
+  ProfilePostType,
+  ProfileTab,
+  PublicPersonality,
+} from "@/lib/types/profile";
 import { cn } from "@/lib/utils";
 
-const TABS: { id: ProfilePostType; label: string }[] = [
+const TABS: { id: ProfileTab; label: string }[] = [
   { id: "posts", label: "Posts" },
   { id: "replies", label: "Replies" },
   { id: "reposts", label: "Reposts" },
+  { id: "character", label: "Character" },
 ];
 
 const EMPTY_MESSAGES: Record<ProfilePostType, string> = {
@@ -27,15 +39,23 @@ type ProfileViewProps = {
   handle: string;
 };
 
+function isPostTab(tab: ProfileTab): tab is ProfilePostType {
+  return tab !== "character";
+}
+
 export function ProfileView({ handle }: ProfileViewProps) {
   const router = useRouter();
   const [personality, setPersonality] = useState<PublicPersonality | null>(
     null,
   );
-  const [activeTab, setActiveTab] = useState<ProfilePostType>("posts");
+  const [activeTab, setActiveTab] = useState<ProfileTab>("posts");
   const [items, setItems] = useState<ProfilePostItem[]>([]);
+  const [character, setCharacter] = useState<ProfileCharacterSheet | null>(
+    null,
+  );
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  const [loadingCharacter, setLoadingCharacter] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleBack = useCallback(() => {
@@ -75,11 +95,16 @@ export function ProfileView({ handle }: ProfileViewProps) {
   }, [handle]);
 
   useEffect(() => {
+    if (!isPostTab(activeTab)) {
+      return;
+    }
+
+    const postTab = activeTab;
     let cancelled = false;
 
     async function loadPosts() {
       setLoadingPosts(true);
-      const result = await fetchProfilePosts(handle, activeTab);
+      const result = await fetchProfilePosts(handle, postTab);
 
       if (cancelled) return;
 
@@ -95,6 +120,37 @@ export function ProfileView({ handle }: ProfileViewProps) {
     }
 
     void loadPosts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [handle, activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "character") {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadCharacter() {
+      setLoadingCharacter(true);
+      const result = await fetchProfileCharacter(handle);
+
+      if (cancelled) return;
+
+      if (!result.ok) {
+        setError(result.error);
+        setLoadingCharacter(false);
+        return;
+      }
+
+      setCharacter(result.character);
+      setError(null);
+      setLoadingCharacter(false);
+    }
+
+    void loadCharacter();
 
     return () => {
       cancelled = true;
@@ -129,7 +185,7 @@ export function ProfileView({ handle }: ProfileViewProps) {
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex-1 px-2 py-3 text-center pixel-heading text-[9px] transition-colors",
+                  "flex-1 px-1 py-3 text-center pixel-heading text-[8px] transition-colors",
                   activeTab === tab.id
                     ? "border-b-2 border-[#ffa300] text-[#ffa300]"
                     : "text-[#83769a] hover:text-[#c2c3c7]",
@@ -140,7 +196,17 @@ export function ProfileView({ handle }: ProfileViewProps) {
             ))}
           </div>
 
-          {loadingPosts ? (
+          {activeTab === "character" ? (
+            loadingCharacter ? (
+              <p className="px-4 py-6 text-sm text-[#83769a]">
+                Loading character sheet...
+              </p>
+            ) : error ? (
+              <p className="px-4 py-6 text-sm text-[#ff004d]">{error}</p>
+            ) : character ? (
+              <ProfileCharacterSheetView character={character} />
+            ) : null
+          ) : loadingPosts ? (
             <p className="px-4 py-6 text-sm text-[#83769a]">Loading posts...</p>
           ) : error ? (
             <p className="px-4 py-6 text-sm text-[#ff004d]">{error}</p>
