@@ -53,7 +53,7 @@ export type SyncAllRankNpcsResult = {
 };
 
 const MISSING_AUTH_MESSAGE =
-  "Missing TWITTERAPI_IO_API_KEY. Get one at https://twitterapi.io/ and add it to .env.";
+  "Missing X_API_BEARER_TOKEN. Add your X API bearer token to .env.";
 
 function previewTweetText(text: string, maxLength = 72): string {
   const normalized = text.replace(/\s+/g, " ").trim();
@@ -185,7 +185,7 @@ export async function syncRankNpc(
       sinceId: mirroredCount > 0 ? sinceId : null,
     });
 
-    log(`@${xHandle}: fetched ${tweets.length} tweet(s) from TwitterAPI.io.`);
+    log(`@${xHandle}: fetched ${tweets.length} tweet(s) from the X API.`);
 
     let newPosts = 0;
     let newestTweetId = sinceId;
@@ -336,8 +336,7 @@ export async function syncActiveRankNpcs(
       errors.push({ xHandle: result.xHandle, error: result.error });
     }
 
-    const delayRaw = process.env.TWITTERAPI_IO_SYNC_DELAY_MS?.trim() ??
-      process.env.X_SYNC_DELAY_MS?.trim();
+    const delayRaw = process.env.X_SYNC_DELAY_MS?.trim();
     const delay = delayRaw ? Number.parseInt(delayRaw, 10) : 500;
 
     if (Number.isFinite(delay) && delay > 0) {

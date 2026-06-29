@@ -232,8 +232,8 @@ export function RankNpcsAdminList() {
           Configured in{" "}
           <code className="text-[#ffa300]">config/rank-npcs.json</code>. X
           mirroring uses{" "}
-          <code className="text-[#ffa300]">TWITTERAPI_IO_API_KEY</code> from
-          your environment.
+          <code className="text-[#ffa300]">X_API_BEARER_TOKEN</code> from your
+          environment.
         </p>
 
         {actionMessage ? (
