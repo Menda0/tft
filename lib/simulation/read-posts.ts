@@ -21,6 +21,22 @@ const READ_POST_COUNT = 5;
 const FOLLOWED_AUTHOR_WEIGHT = 3;
 const DEFAULT_AUTHOR_WEIGHT = 1;
 
+function engagementReadWeight(post: Post): number {
+  const { replies, views, reposts, likes } = post.stats;
+  const engagementScore =
+    replies * 4 + likes * 2 + reposts * 3 + views * 0.05;
+
+  return 1 + Math.log1p(engagementScore);
+}
+
+function getPostReadWeight(post: Post, followingIds: Set<string>): number {
+  const followWeight = followingIds.has(post.author.personalityId)
+    ? FOLLOWED_AUTHOR_WEIGHT
+    : DEFAULT_AUTHOR_WEIGHT;
+
+  return followWeight * engagementReadWeight(post);
+}
+
 function findAuthor(
   world: SimulationWorld,
   personalityId: string,
@@ -48,10 +64,7 @@ async function pickPostsToRead(
   return weightedSampleWithoutReplacement(
     eligible,
     READ_POST_COUNT,
-    (post) =>
-      followingIds.has(post.author.personalityId)
-        ? FOLLOWED_AUTHOR_WEIGHT
-        : DEFAULT_AUTHOR_WEIGHT,
+    (post) => getPostReadWeight(post, followingIds),
   );
 }
 
