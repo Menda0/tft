@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitials } from "@/components/feed/post-author";
+import { ProfileLink } from "@/components/profile/profile-link";
 import { getPixelAvatarColor } from "@/lib/pixel-theme";
 import type { FeedReply } from "@/lib/types/post";
 import { cn } from "@/lib/utils";
@@ -16,28 +17,37 @@ export function ReplyCard({ reply, isLast = false }: ReplyCardProps) {
         {!isLast && (
           <div className="absolute top-10 bottom-0 w-[2px] bg-[#fff1e8]/40" />
         )}
-        <Avatar
-          size="default"
-          className="size-10 rounded-none after:rounded-none after:border-2 after:border-[#fff1e8]"
-        >
-          {reply.author.avatarUrl ? (
-            <AvatarImage src={reply.author.avatarUrl} alt={reply.author.name} />
-          ) : null}
-          <AvatarFallback
-            className={cn(
-              "rounded-none text-[10px] font-bold text-[#1d2b53] pixel-heading",
-              getPixelAvatarColor(reply.author.avatarColor),
-            )}
+        <ProfileLink handle={reply.author.handle} className="hover:no-underline">
+          <Avatar
+            size="default"
+            className="size-10 rounded-none after:rounded-none after:border-2 after:border-[#fff1e8]"
           >
-            {getInitials(reply.author.name)}
-          </AvatarFallback>
-        </Avatar>
+            {reply.author.avatarUrl ? (
+              <AvatarImage src={reply.author.avatarUrl} alt={reply.author.name} />
+            ) : null}
+            <AvatarFallback
+              className={cn(
+                "rounded-none text-[10px] font-bold text-[#1d2b53] pixel-heading",
+                getPixelAvatarColor(reply.author.avatarColor),
+              )}
+            >
+              {getInitials(reply.author.name)}
+            </AvatarFallback>
+          </Avatar>
+        </ProfileLink>
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="truncate text-base leading-6">
-          <span className="font-bold text-[#ffa300]">{reply.author.name}</span>{" "}
-          <span className="text-[#c2c3c7]">@{reply.author.handle}</span>{" "}
+          <ProfileLink
+            handle={reply.author.handle}
+            className="font-bold text-[#ffa300]"
+          >
+            {reply.author.name}
+          </ProfileLink>{" "}
+          <ProfileLink handle={reply.author.handle} className="text-[#c2c3c7]">
+            @{reply.author.handle}
+          </ProfileLink>{" "}
           <span className="text-[#83769a]">· {reply.timestamp}</span>
         </div>
         <p className="mt-0.5 text-base leading-relaxed whitespace-pre-wrap">

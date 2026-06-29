@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { AppBar } from "@/components/layout/app-bar";
 import { Button } from "@/components/ui/button";
 import { PersonalityAvatar } from "@/components/personalities/personality-avatar";
+import { ProfileLink } from "@/components/profile/profile-link";
 import { PROJECT_NAME } from "@/lib/brand";
 import { profileKindUsesIdentity } from "@/lib/avatars/page-kind";
 import { formatArchetypeLabel } from "@/lib/personalities/archetypes";
@@ -203,13 +204,19 @@ export function PersonalitiesList() {
                 key={personality.id}
                 className="flex gap-3 pixel-border-thin bg-[#29366f] p-3"
               >
-                <PersonalityAvatar personality={personality} size="md" />
+                <ProfileLink handle={personality.handle} className="shrink-0 hover:no-underline">
+                  <PersonalityAvatar personality={personality} size="md" />
+                </ProfileLink>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-bold text-[#ffa300]">
-                    {personality.name}
+                    <ProfileLink handle={personality.handle}>
+                      {personality.name}
+                    </ProfileLink>
                   </p>
                   <p className="truncate text-sm text-[#c2c3c7]">
-                    @{personality.handle}
+                    <ProfileLink handle={personality.handle}>
+                      @{personality.handle}
+                    </ProfileLink>
                   </p>
                   {profileKindUsesIdentity(personality.kind) ? (
                     <p className="mt-1 text-xs text-[#83769a]">

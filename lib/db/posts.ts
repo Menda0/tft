@@ -117,6 +117,61 @@ export async function getPostById(id: string): Promise<Post | null> {
   return collection.findOne({ id });
 }
 
+export async function getPostsByIds(ids: string[]): Promise<Post[]> {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const collection = await getPostsCollection();
+  return collection.find({ id: { $in: ids } }).toArray();
+}
+
+export async function getOriginalPostsByPersonality(
+  personalityId: string,
+  limit = 50,
+): Promise<Post[]> {
+  const collection = await getPostsCollection();
+  return collection
+    .find({
+      "author.personalityId": personalityId,
+      replyToPostId: null,
+      repostOfPostId: null,
+    })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .toArray();
+}
+
+export async function getRepliesByPersonality(
+  personalityId: string,
+  limit = 50,
+): Promise<Post[]> {
+  const collection = await getPostsCollection();
+  return collection
+    .find({
+      "author.personalityId": personalityId,
+      replyToPostId: { $ne: null },
+    })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .toArray();
+}
+
+export async function getRepostsByPersonality(
+  personalityId: string,
+  limit = 50,
+): Promise<Post[]> {
+  const collection = await getPostsCollection();
+  return collection
+    .find({
+      "author.personalityId": personalityId,
+      repostOfPostId: { $ne: null },
+    })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .toArray();
+}
+
 export async function incrementPostStat(
   id: string,
   field: "replies" | "reposts" | "likes" | "views",

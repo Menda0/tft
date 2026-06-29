@@ -1,5 +1,6 @@
 import {
   ensurePostIndexes,
+  getPostById,
   getRepliesForPosts,
   getTopLevelPosts,
 } from "@/lib/db/posts";
@@ -43,6 +44,30 @@ function toFeedThread(
     stats: post.stats,
     replies: replies.map((reply) => toFeedReply(reply, now)),
   };
+}
+
+export async function buildThreadByPostId(
+  postId: string,
+): Promise<FeedThread | null> {
+  await ensurePostIndexes();
+
+  const post = await getPostById(postId);
+
+  if (!post) {
+    return null;
+  }
+
+  const rootId = post.replyToPostId ?? post.id;
+  const rootPost = rootId === post.id ? post : await getPostById(rootId);
+
+  if (!rootPost) {
+    return null;
+  }
+
+  const replies = await getRepliesForPosts([rootPost.id]);
+  const now = Date.now();
+
+  return toFeedThread(rootPost, replies, now);
 }
 
 export async function buildFeedThreads(limit = 50): Promise<FeedThread[]> {

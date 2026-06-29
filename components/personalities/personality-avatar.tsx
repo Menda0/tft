@@ -5,8 +5,13 @@ import { getPixelAvatarColor } from "@/lib/pixel-theme";
 import type { Personality } from "@/lib/types/personality";
 import { cn } from "@/lib/utils";
 
+type PersonalityAvatarSource = Pick<
+  Personality,
+  "name" | "handle" | "avatarUrl" | "avatarStatus"
+>;
+
 type PersonalityAvatarProps = {
-  personality: Personality;
+  personality: PersonalityAvatarSource;
   size?: "sm" | "md" | "lg";
   className?: string;
 };
