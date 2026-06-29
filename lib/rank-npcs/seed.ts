@@ -2,6 +2,7 @@ import { getActiveRankNpcs } from "@/lib/personalities";
 import { loadRankNpcConfig } from "@/lib/rank-npcs/config";
 import { queueRankNpcAssetGeneration } from "@/lib/rank-npcs/assets";
 import { defaultRankNpcLog, type RankNpcLog } from "@/lib/rank-npcs/logger";
+import { queuePendingMirroredPostMedia } from "@/lib/rank-npcs/post-media";
 import { reconcileRankNpcs } from "@/lib/rank-npcs/reconcile";
 import { syncActiveRankNpcs } from "@/lib/x/sync";
 
@@ -67,6 +68,11 @@ export async function seedRankNpcsFromConfig(options?: {
   log(
     `Asset pass complete: ${assets.descriptions} bio(s) generated, ${assets.avatarsQueued} avatar(s) queued.`,
   );
+
+  const pendingMedia = await queuePendingMirroredPostMedia({ log });
+  if (pendingMedia > 0) {
+    log(`Queued ${pendingMedia} pending post media job(s).`);
+  }
 
   return { reconcile, sync, assets };
 }

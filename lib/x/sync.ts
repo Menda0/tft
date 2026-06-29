@@ -3,6 +3,7 @@ import {
   findPostByExternalId,
   insertPost,
   toPostAuthor,
+  updatePost,
 } from "@/lib/db/posts";
 import {
   getActiveRankNpcs,
@@ -13,11 +14,15 @@ import { loadRankNpcConfig } from "@/lib/rank-npcs/config";
 import { defaultRankNpcLog, type RankNpcLog } from "@/lib/rank-npcs/logger";
 import { reconcileRankNpcs } from "@/lib/rank-npcs/reconcile";
 import {
+  scheduleMirroredPostMediaGeneration,
+} from "@/lib/rank-npcs/post-media";
+import {
   fetchUserTweets,
   isTwitterApiConfigured,
   sleep,
   truncateTweetText,
   TwitterApiError,
+  pickRandomImageUrl,
   type ScrapedTweet,
 } from "@/lib/x/twitterapi";
 import type { Personality, XSyncState } from "@/lib/types/personality";
@@ -76,16 +81,34 @@ function buildXSyncUpdate(
 async function insertMirroredPost(
   personality: Personality,
   tweet: ScrapedTweet,
-): Promise<boolean> {
+  log: RankNpcLog,
+): Promise<{ inserted: boolean; mediaQueued: boolean }> {
   const existing = await findPostByExternalId(tweet.id);
+  const sourceImageUrl = pickRandomImageUrl(tweet.imageUrls);
+  const hasImages = Boolean(sourceImageUrl);
 
   if (existing) {
-    return false;
+    if (
+      hasImages &&
+      !existing.mediaUrl &&
+      existing.mediaStatus !== "generating" &&
+      existing.mediaStatus !== "ready"
+    ) {
+      await updatePost(existing.id, {
+        sourceImageUrls: [sourceImageUrl!],
+        mediaStatus: "pending",
+        mediaUrl: null,
+      });
+      scheduleMirroredPostMediaGeneration([existing.id], { log });
+      return { inserted: false, mediaQueued: true };
+    }
+
+    return { inserted: false, mediaQueued: false };
   }
 
   const normalized = normalizePersonality(personality);
 
-  await insertPost({
+  const post = await insertPost({
     author: toPostAuthor({
       personalityId: normalized.id,
       name: normalized.name,
@@ -101,9 +124,19 @@ async function insertMirroredPost(
     repostOfPostId: null,
     source: "mirrored",
     externalId: tweet.id,
+    sourceImageUrls: hasImages ? [sourceImageUrl!] : undefined,
+    mediaUrl: null,
+    mediaStatus: hasImages ? "pending" : "none",
   });
 
-  return true;
+  if (hasImages) {
+    scheduleMirroredPostMediaGeneration([post.id], { log });
+    log(
+      `@${normalized.handle}: queued pixel art for post ${tweet.id} (1 of ${tweet.imageUrls.length} image(s)).`,
+    );
+  }
+
+  return { inserted: true, mediaQueued: hasImages };
 }
 
 export async function syncRankNpc(
@@ -159,9 +192,9 @@ export async function syncRankNpc(
     const createdPosts: SyncCreatedPost[] = [];
 
     for (const tweet of [...tweets].reverse()) {
-      const inserted = await insertMirroredPost(normalized, tweet);
+      const result = await insertMirroredPost(normalized, tweet, log);
 
-      if (inserted) {
+      if (result.inserted) {
         newPosts += 1;
         const preview = previewTweetText(tweet.text);
         createdPosts.push({

@@ -7,6 +7,13 @@ export type PostStats = {
 
 export type PostSource = "simulated" | "mirrored";
 
+export type PostMediaStatus =
+  | "none"
+  | "pending"
+  | "generating"
+  | "ready"
+  | "failed";
+
 export type PostAuthor = {
   personalityId: string;
   name: string;
@@ -27,6 +34,9 @@ export type Post = {
   repostOfPostId: string | null;
   source?: PostSource;
   externalId?: string | null;
+  sourceImageUrls?: string[];
+  mediaUrl?: string | null;
+  mediaStatus?: PostMediaStatus;
 };
 
 export function defaultPostStats(): PostStats {
@@ -59,5 +69,7 @@ export type FeedThread = {
   content: string;
   timestamp: string;
   stats: PostStats;
+  mediaUrl?: string | null;
+  mediaStatus?: PostMediaStatus;
   replies: FeedReply[];
 };

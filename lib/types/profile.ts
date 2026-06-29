@@ -5,7 +5,7 @@ import type { PoliticalSwing } from "@/lib/personalities/political-swing";
 import type { Pronouns } from "@/lib/personalities/pronouns";
 import type { Stats, Traits, MemoryItem } from "@/lib/types/personality";
 import type { SocialRank } from "@/lib/scoring/ranks";
-import type { PostStats } from "@/lib/types/post";
+import type { PostMediaStatus, PostStats } from "@/lib/types/post";
 
 export type PublicPersonality = {
   id: string;
@@ -67,6 +67,8 @@ export type ProfilePostItem = {
   content: string;
   timestamp: string;
   threadId: string;
+  mediaUrl?: string | null;
+  mediaStatus?: PostMediaStatus;
   stats?: PostStats;
   replyToPostId?: string;
   parentAuthorHandle?: string;

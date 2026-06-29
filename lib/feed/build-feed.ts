@@ -45,6 +45,8 @@ function toFeedThread(
     content: post.content,
     timestamp: formatRelativeTime(post.createdAt, now),
     stats: post.stats,
+    mediaUrl: post.mediaUrl ?? null,
+    mediaStatus: post.mediaStatus ?? "none",
     replies: replies.map((reply) => toFeedReply(reply, now)),
   };
 }

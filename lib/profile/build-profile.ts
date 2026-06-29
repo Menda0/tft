@@ -49,6 +49,8 @@ function toProfilePostItem(
     content: post.content,
     timestamp: formatRelativeTime(post.createdAt, now),
     threadId: post.id,
+    mediaUrl: post.mediaUrl ?? null,
+    mediaStatus: post.mediaStatus ?? "none",
   };
 
   if (type === "posts") {

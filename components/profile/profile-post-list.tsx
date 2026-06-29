@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { RefObject } from "react";
 
 import { PostActions } from "@/components/feed/post-actions";
+import { PostMedia } from "@/components/feed/post-media";
 import { Separator } from "@/components/ui/separator";
 import type { ProfilePostItem } from "@/lib/types/profile";
 
@@ -64,6 +65,10 @@ export function ProfilePostList({
             <p className="text-base leading-relaxed whitespace-pre-wrap text-[#fff1e8]">
               {item.content}
             </p>
+            <PostMedia
+              mediaUrl={item.mediaUrl}
+              mediaStatus={item.mediaStatus}
+            />
             <p className="mt-1 text-xs text-[#83769a]">{item.timestamp}</p>
             {item.stats ? (
               <div onClick={(event) => event.preventDefault()}>

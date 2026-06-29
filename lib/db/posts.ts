@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { Collection } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
-import { defaultPostStats, type Post, type PostAuthor } from "@/lib/types/post";
+import { defaultPostStats, type Post, type PostAuthor, type PostMediaStatus } from "@/lib/types/post";
 
 const COLLECTION = "posts";
 
@@ -32,6 +32,7 @@ export async function ensurePostIndexes(): Promise<void> {
     { externalId: 1 },
     { unique: true, sparse: true },
   );
+  await collection.createIndex({ mediaStatus: 1 });
 }
 
 function isOriginalTopLevelPost(post: Pick<Post, "replyToPostId" | "repostOfPostId">): boolean {
@@ -324,6 +325,49 @@ export async function incrementPostStat(
     { id },
     { $inc: { [`stats.${field}`]: amount } },
   );
+}
+
+export async function updatePost(
+  id: string,
+  updates: Partial<Omit<Post, "id">>,
+): Promise<Post | null> {
+  const collection = await getPostsCollection();
+  const result = await collection.findOneAndUpdate(
+    { id },
+    { $set: updates },
+    { returnDocument: "after" },
+  );
+
+  return result;
+}
+
+export async function claimPostMediaGeneration(
+  postId: string,
+): Promise<Post | null> {
+  const collection = await getPostsCollection();
+  const result = await collection.findOneAndUpdate(
+    {
+      id: postId,
+      mediaStatus: { $in: ["pending", "failed"] },
+      sourceImageUrls: { $exists: true, $ne: [] },
+    },
+    { $set: { mediaStatus: "generating" } },
+    { returnDocument: "after" },
+  );
+
+  return result;
+}
+
+export async function getPostsPendingMedia(limit = 100): Promise<Post[]> {
+  const collection = await getPostsCollection();
+  return collection
+    .find({
+      mediaStatus: { $in: ["pending", "failed"] },
+      sourceImageUrls: { $exists: true, $ne: [] },
+    })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .toArray();
 }
 
 export function toPostAuthor(input: {

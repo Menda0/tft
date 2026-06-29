@@ -4,6 +4,7 @@ export type ScrapedTweet = {
   id: string;
   text: string;
   createdAt: Date;
+  imageUrls: string[];
 };
 
 export class TwitterApiError extends Error {
@@ -22,6 +23,13 @@ type TwitterApiTweet = {
   createdAt?: string;
   isReply?: boolean;
   retweeted_tweet?: unknown;
+  extendedEntities?: {
+    media?: Array<{
+      type?: string;
+      media_url_https?: string;
+      url?: string;
+    }>;
+  };
 };
 
 type LastTweetsResponse = {
@@ -86,6 +94,40 @@ function isOriginalTweet(tweet: TwitterApiTweet): boolean {
   return Boolean(tweet.id && tweet.text?.trim());
 }
 
+function extractImageUrls(tweet: TwitterApiTweet): string[] {
+  const media = tweet.extendedEntities?.media ?? [];
+  const urls: string[] = [];
+
+  for (const item of media) {
+    const type = item.type?.toLowerCase();
+
+    if (type !== "photo" && type !== "video" && type !== "animated_gif") {
+      continue;
+    }
+
+    const url = item.media_url_https?.trim() || item.url?.trim();
+
+    if (url && !urls.includes(url)) {
+      urls.push(url);
+    }
+  }
+
+  return urls;
+}
+
+export function pickRandomImageUrl(urls: string[]): string | undefined {
+  if (urls.length === 0) {
+    return undefined;
+  }
+
+  if (urls.length === 1) {
+    return urls[0];
+  }
+
+  const index = Math.floor(Math.random() * urls.length);
+  return urls[index];
+}
+
 function parseTweet(tweet: TwitterApiTweet): ScrapedTweet | null {
   if (!isOriginalTweet(tweet) || !tweet.id || !tweet.text) {
     return null;
@@ -98,6 +140,7 @@ function parseTweet(tweet: TwitterApiTweet): ScrapedTweet | null {
       typeof tweet.createdAt === "string"
         ? new Date(tweet.createdAt)
         : new Date(),
+    imageUrls: extractImageUrls(tweet),
   };
 }
 

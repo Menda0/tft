@@ -2,6 +2,7 @@ import type { RefObject } from "react";
 
 import { PostActions } from "@/components/feed/post-actions";
 import { PostAuthor } from "@/components/feed/post-author";
+import { PostMedia } from "@/components/feed/post-media";
 import { ReplyCard } from "@/components/feed/reply-card";
 import { Separator } from "@/components/ui/separator";
 import type { FeedThread } from "@/lib/types/post";
@@ -28,6 +29,12 @@ export function ThreadView({
         <p className="mt-3 pl-[52px] text-base leading-relaxed whitespace-pre-wrap">
           {thread.content}
         </p>
+        <div className="pl-[52px]">
+          <PostMedia
+            mediaUrl={thread.mediaUrl}
+            mediaStatus={thread.mediaStatus}
+          />
+        </div>
         <div className="pl-[52px]">
           <PostActions stats={thread.stats} />
         </div>

@@ -2,6 +2,7 @@
 
 import { PostActions } from "@/components/feed/post-actions";
 import { PostAuthor } from "@/components/feed/post-author";
+import { PostMedia } from "@/components/feed/post-media";
 import { Separator } from "@/components/ui/separator";
 import type { FeedThread } from "@/lib/types/post";
 
@@ -28,6 +29,13 @@ export function PostCard({ thread, onOpen }: PostCardProps) {
               <p className="pl-[52px] text-base leading-relaxed whitespace-pre-wrap">
                 {thread.content}
               </p>
+
+              <div className="pl-[52px]">
+                <PostMedia
+                  mediaUrl={thread.mediaUrl}
+                  mediaStatus={thread.mediaStatus}
+                />
+              </div>
 
               {previewReply && (
                 <div className="mt-3 pl-[52px]">
