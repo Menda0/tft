@@ -11,6 +11,7 @@ export type UserDocument = {
   username: string;
   passwordHash: string;
   createdAt: Date;
+  isBootstrap?: boolean;
 };
 
 export type { UserRole };
@@ -38,6 +39,14 @@ export async function findUserByUsername(
   return collection.findOne({ username });
 }
 
+export async function findBootstrapUsers(): Promise<UserDocument[]> {
+  const collection = await getUsersCollection();
+  return collection
+    .find({ isBootstrap: true })
+    .sort({ createdAt: 1 })
+    .toArray();
+}
+
 export async function findUserById(id: string): Promise<UserDocument | null> {
   if (!ObjectId.isValid(id)) {
     return null;
@@ -50,12 +59,14 @@ export async function findUserById(id: string): Promise<UserDocument | null> {
 export async function createUser(
   username: string,
   passwordHash: string,
+  options?: { isBootstrap?: boolean },
 ): Promise<UserDocument> {
   const collection = await getUsersCollection();
   const user: UserDocument = {
     username,
     passwordHash,
     createdAt: new Date(),
+    ...(options?.isBootstrap ? { isBootstrap: true } : {}),
   };
 
   const result = await collection.insertOne(user);
