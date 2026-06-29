@@ -4,7 +4,8 @@ import {
   type PageKind,
 } from "@/lib/avatars/page-kind";
 import { PROJECT_NAME, PROJECT_TAGLINE } from "@/lib/brand";
-import { ARCHETYPE_LABELS, type Archetype } from "@/lib/personalities/archetypes";
+import { formatPersonalityVoiceLabel } from "@/lib/personalities/kind-archetypes";
+import type { Archetype } from "@/lib/personalities/archetypes";
 import { isDoorGender, type Gender } from "@/lib/personalities/gender";
 import { PRONOUN_LABELS, type Pronouns } from "@/lib/personalities/pronouns";
 import { formatPoliticalSwingDescription } from "@/lib/personalities/political-swing";
@@ -39,7 +40,7 @@ function buildDescriptionPrompt(input: {
   kind: PageKind;
   gender: Gender;
   pronouns: Pronouns;
-  archetype: Archetype;
+  archetype: Archetype | null;
   traits: Traits;
   politicalSwing: PoliticalSwing;
   interests: string[];
@@ -47,7 +48,7 @@ function buildDescriptionPrompt(input: {
   const interests =
     input.interests.length > 0 ? input.interests.join(", ") : "social media";
   const kindLabel = PAGE_KIND_LABELS[input.kind];
-  const archetypeLabel = ARCHETYPE_LABELS[input.archetype];
+  const voiceLabel = formatPersonalityVoiceLabel(input.kind, input.archetype);
 
   const identityLines = profileKindUsesIdentity(input.kind)
     ? [
@@ -68,7 +69,9 @@ function buildDescriptionPrompt(input: {
     `@${input.handle}`,
     `Profile kind: ${kindLabel}`,
     identityLines,
-    `Archetype: ${archetypeLabel}`,
+    input.archetype
+      ? `Archetype: ${voiceLabel}`
+      : `Voice: ${voiceLabel} page`,
     `Political swing: ${formatPoliticalSwingDescription(input.politicalSwing)}.`,
     //`Traits: ${traitSummary(input.traits)}`,
     `Interests: ${interests}`,
@@ -95,7 +98,7 @@ export async function generateProfileDescription(input: {
   kind: PageKind;
   gender: Gender;
   pronouns: Pronouns;
-  archetype: Archetype;
+  archetype: Archetype | null;
   traits: Traits;
   politicalSwing: PoliticalSwing;
   interests: string[];

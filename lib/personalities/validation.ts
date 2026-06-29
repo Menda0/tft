@@ -1,6 +1,10 @@
 import { randomUUID } from "crypto";
 
 import { isPageKind, profileKindUsesIdentity, type PageKind } from "@/lib/avatars/page-kind";
+import {
+  isArchetypeAllowedForPageKind,
+  pageKindUsesArchetype,
+} from "@/lib/personalities/kind-archetypes";
 import type {
   Archetype,
   Gender,
@@ -157,7 +161,7 @@ export type CreatePersonalityInput = {
   kind: PageKind;
   gender: Gender;
   pronouns: Pronouns;
-  archetype: Archetype;
+  archetype: Archetype | null;
   traits: Traits;
   politicalSwing: PoliticalSwing;
   interests: string[];
@@ -224,14 +228,42 @@ export function validateCreatePersonalityInput(
     pronouns = "prefer_not_to_say";
   }
 
-  if (typeof data.archetype !== "string") {
-    return { ok: false, error: "Choose a valid archetype." };
-  }
+  let archetype: Archetype | null;
 
-  const archetype = normalizeArchetype(data.archetype);
+  if (!pageKindUsesArchetype(kind)) {
+    const rawArchetype = data.archetype;
 
-  if (!archetype) {
-    return { ok: false, error: "Choose a valid archetype." };
+    if (
+      rawArchetype !== undefined &&
+      rawArchetype !== null &&
+      rawArchetype !== ""
+    ) {
+      return {
+        ok: false,
+        error: "This profile kind does not use an archetype.",
+      };
+    }
+
+    archetype = null;
+  } else {
+    if (typeof data.archetype !== "string") {
+      return { ok: false, error: "Choose a valid archetype." };
+    }
+
+    const parsedArchetype = normalizeArchetype(data.archetype);
+
+    if (!parsedArchetype) {
+      return { ok: false, error: "Choose a valid archetype." };
+    }
+
+    if (!isArchetypeAllowedForPageKind(kind, parsedArchetype)) {
+      return {
+        ok: false,
+        error: "That archetype doesn't fit this profile kind.",
+      };
+    }
+
+    archetype = parsedArchetype;
   }
 
   const traits = normalizeTraits(data.traits as Partial<Traits>);

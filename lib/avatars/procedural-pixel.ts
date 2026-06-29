@@ -476,7 +476,7 @@ export function generateProceduralPixelAvatar(input: {
   name: string;
   handle: string;
   gender: Gender;
-  archetype: Archetype;
+  archetype: Archetype | null;
   traits: Traits;
 }): string {
   const seed = `${input.handle}:${input.name}`;

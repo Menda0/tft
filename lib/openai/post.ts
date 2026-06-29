@@ -1,7 +1,7 @@
 import { PROJECT_NAME } from "@/lib/brand";
 import { getOpenAIClient, getTextModel } from "@/lib/openai/client";
 import { researchTopicForPost } from "@/lib/openai/post-research";
-import { ARCHETYPE_LABELS } from "@/lib/personalities/archetypes";
+import { formatPersonalityVoiceLabel } from "@/lib/personalities/kind-archetypes";
 import { formatPoliticalSwingDescription } from "@/lib/personalities/political-swing";
 import type { Post } from "@/lib/types/post";
 import type { Personality, Traits } from "@/lib/types/personality";
@@ -42,12 +42,12 @@ function buildPostPrompt(
 
   const lines = [
     `You are ${personality.name}.`,
-    `Archetype: ${ARCHETYPE_LABELS[personality.archetype]}.`,
+    `Archetype: ${formatPersonalityVoiceLabel(personality.kind, personality.archetype)}.`,
     `Political swing: ${formatPoliticalSwingDescription(personality.politicalSwing)}.`,
-    `Traits: ${traitSummary(personality.traits)}`,
+    //`Traits: ${traitSummary(personality.traits)}`,
     `Interests: ${interests}`,
     "",
-    `Write one short ${PROJECT_NAME} social-media post about: ${topic}`,
+    `Write one short social-media post about: ${topic}`,
   ];
 
   if (researchNotes) {
@@ -91,9 +91,9 @@ function buildReplyPrompt(
 
   return [
     `You are ${personality.name}.`,
-    `Archetype: ${ARCHETYPE_LABELS[personality.archetype]}.`,
+    `Archetype: ${formatPersonalityVoiceLabel(personality.kind, personality.archetype)}.`,
     `Political swing: ${formatPoliticalSwingDescription(personality.politicalSwing)}.`,
-    `Traits: ${traitSummary(personality.traits)}`,
+    //`Traits: ${traitSummary(personality.traits)}`,
     `Interests: ${interests}`,
     "",
     `Reply to this post from @${targetPost.author.handle}:`,

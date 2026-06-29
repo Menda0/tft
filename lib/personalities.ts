@@ -1,9 +1,17 @@
 import { Collection } from "mongodb";
 
 import { getDb } from "./mongodb";
-import { classifyPageKind, normalizeStoredPageKind } from "./avatars/page-kind";
+import {
+  classifyPageKind,
+  normalizeStoredPageKind,
+} from "./avatars/page-kind";
 import { normalizeArchetype } from "./personalities/archetypes";
 import { defaultPronounsForGender } from "./personalities/gender";
+import {
+  coerceArchetypeForPageKind,
+  migrateStoredPageKind,
+  remapArchetypeForMigration,
+} from "./personalities/kind-archetypes";
 import {
   normalizePoliticalSwing,
   randomPoliticalSwing,
@@ -12,6 +20,8 @@ import { normalizeStoredTraits } from "./personalities/validation";
 import type { AvatarStatus, DescriptionStatus, Personality } from "./types/personality";
 
 const COLLECTION = "personalities";
+
+let archetypeMigrationDone = false;
 
 export function normalizePersonality(
   personality: Personality,
@@ -23,24 +33,36 @@ export function normalizePersonality(
     personality.descriptionStatus ??
     (personality.description ? "ready" : "pending");
 
+  const kind =
+    normalizeStoredPageKind(personality.kind as string) ??
+    migrateStoredPageKind(personality.kind as string) ??
+    classifyPageKind({
+      name: personality.name,
+      handle: personality.handle,
+      archetype:
+        normalizeArchetype(personality.archetype as string) ??
+        (personality.archetype as Personality["archetype"]),
+    });
+
+  const normalizedArchetype =
+    personality.archetype === null || personality.archetype === undefined
+      ? null
+      : normalizeArchetype(personality.archetype as string);
+
   return {
     ...personality,
     avatarUrl: personality.avatarUrl ?? null,
     avatarStatus,
     description: personality.description ?? null,
     descriptionStatus,
-    archetype:
-      normalizeArchetype(personality.archetype as string) ?? "comedian",
+    archetype: coerceArchetypeForPageKind(
+      kind,
+      normalizedArchetype ?? remapArchetypeForMigration(kind, normalizedArchetype),
+    ),
     traits: normalizeStoredTraits(personality.traits),
     politicalSwing:
       normalizePoliticalSwing(personality.politicalSwing) ?? randomPoliticalSwing(),
-    kind:
-      normalizeStoredPageKind(personality.kind as string) ??
-      classifyPageKind({
-        name: personality.name,
-        handle: personality.handle,
-        archetype: personality.archetype,
-      }),
+    kind,
     pronouns:
       personality.pronouns ?? defaultPronounsForGender(personality.gender),
   };
@@ -157,10 +179,45 @@ export async function deletePersonality(id: string): Promise<boolean> {
   return result.deletedCount === 1;
 }
 
+async function migrateInvalidPersonalityArchetypes(): Promise<void> {
+  if (archetypeMigrationDone) {
+    return;
+  }
+
+  archetypeMigrationDone = true;
+
+  const collection = await getPersonalitiesCollection();
+  const personalities = await collection.find().toArray();
+  let updated = 0;
+
+  for (const personality of personalities) {
+    const normalized = normalizePersonality(personality);
+    const updates: Partial<Personality> = {};
+
+    if (normalized.kind !== personality.kind) {
+      updates.kind = normalized.kind;
+    }
+
+    if (normalized.archetype !== personality.archetype) {
+      updates.archetype = normalized.archetype;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await collection.updateOne({ id: personality.id }, { $set: updates });
+      updated += 1;
+    }
+  }
+
+  if (updated > 0) {
+    console.info(`Migrated ${updated} personalities to valid kind/archetype pairs.`);
+  }
+}
+
 export async function ensurePersonalityIndexes(): Promise<void> {
   const collection = await getPersonalitiesCollection();
   await collection.createIndex({ id: 1 }, { unique: true });
   await collection.createIndex({ handle: 1 }, { unique: true });
   await collection.createIndex({ archetype: 1 });
   await collection.createIndex({ ownerId: 1 });
+  await migrateInvalidPersonalityArchetypes();
 }

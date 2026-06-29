@@ -1,9 +1,13 @@
-import { ARCHETYPES, type Archetype } from "@/lib/personalities/archetypes";
+import { type Archetype } from "@/lib/personalities/archetypes";
 import {
   PAGE_KINDS,
   profileKindUsesIdentity,
   type PageKind,
 } from "@/lib/avatars/page-kind";
+import {
+  getArchetypesForPageKind,
+  pageKindUsesArchetype,
+} from "@/lib/personalities/kind-archetypes";
 import {
   GENDERS,
   defaultPronounsForGender,
@@ -1043,6 +1047,38 @@ const NAME_PARTS: Record<Archetype, { prefixes: string[]; suffixes: string[] }> 
         "Edition",
       ],
     },
+    fakenews: {
+      prefixes: ["Breaking", "Shocking", "Secret", "Leaked", "Insider"],
+      suffixes: ["Wire", "Alert", "Report", "Dispatch", "Bulletin"],
+    },
+    traditional: {
+      prefixes: ["Daily", "Metro", "City", "National", "Evening"],
+      suffixes: ["Times", "Herald", "Gazette", "Journal", "Post"],
+    },
+    politics: {
+      prefixes: ["Capitol", "Policy", "Campaign", "Electoral", "Parliament"],
+      suffixes: ["Desk", "Watch", "Brief", "Wire", "Report"],
+    },
+    crime: {
+      prefixes: ["Metro", "Night", "Case", "Street", "Cold"],
+      suffixes: ["Watch", "Files", "Desk", "Report", "Scanner"],
+    },
+    sports: {
+      prefixes: ["Game", "Final", "Playoff", "Rivalry", "Highlight"],
+      suffixes: ["Wire", "Desk", "Report", "Central", "Zone"],
+    },
+    tech: {
+      prefixes: ["Pixel", "Cloud", "Stack", "Byte", "Signal"],
+      suffixes: ["Labs", "Works", "Hub", "Systems", "Co"],
+    },
+    food_and_beverages: {
+      prefixes: ["Fresh", "Daily", "Craft", "Urban", "Golden"],
+      suffixes: ["Kitchen", "Bites", "Brew", "Table", "Pantry"],
+    },
+    other: {
+      prefixes: ["Official", "Prime", "Urban", "Nova", "Central"],
+      suffixes: ["Co", "Hub", "Works", "Group", "Page"],
+    },
   };
 
 const SHARED_INTERESTS = [
@@ -1594,6 +1630,77 @@ const INTERESTS: Record<Archetype, string[]> = {
     "calm productivity",
     ...SHARED_INTERESTS,
   ],
+  fakenews: [
+    "clickbait",
+    "outrage cycles",
+    "hoaxes",
+    "viral rumors",
+    "tabloid drama",
+    "conspiracy threads",
+    ...SHARED_INTERESTS,
+  ],
+  traditional: [
+    "headlines",
+    "press briefings",
+    "editorials",
+    "wire reports",
+    "local news",
+    "investigative pieces",
+    ...SHARED_INTERESTS,
+  ],
+  politics: [
+    "elections",
+    "policy fights",
+    "campaign drama",
+    "polling",
+    "debates",
+    "partisan takes",
+    ...SHARED_INTERESTS,
+  ],
+  crime: [
+    "cold cases",
+    "court updates",
+    "police reports",
+    "true crime",
+    "investigations",
+    "missing persons",
+    ...SHARED_INTERESTS,
+  ],
+  sports: [
+    "game recaps",
+    "trade rumors",
+    "highlights",
+    "fantasy leagues",
+    "rivalries",
+    "playoff chaos",
+    ...SHARED_INTERESTS,
+  ],
+  tech: [
+    "product launches",
+    "startup culture",
+    "AI hype",
+    "gadget reviews",
+    "developer tools",
+    "SaaS drama",
+    ...SHARED_INTERESTS,
+  ],
+  food_and_beverages: [
+    "new menus",
+    "coffee culture",
+    "craft drinks",
+    "restaurant openings",
+    "recipe drops",
+    "snack reviews",
+    ...SHARED_INTERESTS,
+  ],
+  other: [
+    "brand updates",
+    "community posts",
+    "announcements",
+    "customer stories",
+    "behind the scenes",
+    ...SHARED_INTERESTS,
+  ],
 };
 
 const TRAIT_KEYS: (keyof Traits)[] = [
@@ -1622,6 +1729,14 @@ const TRAIT_BIAS: Record<Archetype, Partial<Traits>> = {
   negacionist: { negacionist: 10, troll: 6, aggression: 5 },
   fitness: { radical: 8, aggression: 5, humor: 4 },
   lifestyle: { woke: 5, radical: 4, humor: 4 },
+  fakenews: { negacionist: 9, troll: 7, humor: 6 },
+  traditional: { radical: 5, aggression: 4, humor: 3 },
+  politics: { radical: 8, aggression: 6, negacionist: 5 },
+  crime: { aggression: 7, radical: 6, humor: 3 },
+  sports: { radical: 7, aggression: 5, humor: 5 },
+  tech: { radical: 6, humor: 5, aggression: 4 },
+  food_and_beverages: { humor: 5, woke: 4, radical: 4 },
+  other: { humor: 5, radical: 4, aggression: 4 },
 };
 
 function pick<T>(items: T[]): T {
@@ -1632,20 +1747,59 @@ function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function randomTraits(archetype: Archetype): Traits {
-  const bias = TRAIT_BIAS[archetype];
+const KIND_INTERESTS: Partial<Record<PageKind, string[]>> = {
+  artist: [
+    "painting",
+    "illustration",
+    "gallery shows",
+    "sketching",
+    "color theory",
+    "murals",
+    "creative process",
+    "studio life",
+  ],
+  band_page: [
+    "touring",
+    "vinyl",
+    "new releases",
+    "live gigs",
+    "setlists",
+    "merch drops",
+    "backstage chaos",
+    "music videos",
+  ],
+  news: ["headlines", "breaking news", "press briefings", "wire reports"],
+  brand: ["product launches", "brand voice", "customer stories", "campaigns"],
+  meme_page: ["memes", "shitposting", "viral clips", "ratio wars"],
+};
+
+function randomTraits(archetype: Archetype | null, kind: PageKind): Traits {
+  const bias = archetype ? TRAIT_BIAS[archetype] : undefined;
   const traits = {} as Traits;
 
   for (const key of TRAIT_KEYS) {
-    const base = bias[key] ?? randomInt(3, 7);
+    const base = bias?.[key] ?? randomInt(3, 7);
     traits[key] = Math.min(10, Math.max(0, base + randomInt(-2, 2)));
+  }
+
+  if (!archetype && kind === "artist") {
+    traits.humor = Math.min(10, traits.humor + 1);
+    traits.radical = Math.min(10, traits.radical + 1);
+  }
+
+  if (!archetype && kind === "band_page") {
+    traits.humor = Math.min(10, traits.humor + 2);
+    traits.aggression = Math.min(10, traits.aggression + 1);
   }
 
   return traits;
 }
 
-function randomInterests(archetype: Archetype): string {
-  const pool = INTERESTS[archetype];
+function randomInterests(archetype: Archetype | null, kind: PageKind): string {
+  const pool =
+    (archetype ? INTERESTS[archetype] : undefined) ??
+    KIND_INTERESTS[kind] ??
+    SHARED_INTERESTS;
   const count = randomInt(3, 6);
   const selected = new Set<string>();
 
@@ -1826,10 +1980,6 @@ function randomNameForKind(
     return `${pick(BRAND_NAME_PARTS.prefixes)} ${pick(BRAND_NAME_PARTS.suffixes)}`;
   }
 
-  if (kind === "company_page") {
-    return `${pick(COMPANY_NAME_PARTS.prefixes)} ${pick(COMPANY_NAME_PARTS.suffixes)}`;
-  }
-
   if (kind === "band_page") {
     const patterns = [
       () => `The ${pick(BAND_NAME_PARTS.prefixes)} ${pick(BAND_NAME_PARTS.suffixes)}`,
@@ -1839,11 +1989,10 @@ function randomNameForKind(
     return pick(patterns)();
   }
 
-  const parts = NAME_PARTS[archetype];
-  const prefix = pick(parts.prefixes);
-  const suffix = pick(parts.suffixes);
-
-  if (kind === "meme_page") {
+  if (kind === "meme_page" && archetype) {
+    const parts = NAME_PARTS[archetype];
+    const prefix = pick(parts.prefixes);
+    const suffix = pick(parts.suffixes);
     const patterns = [
       () => `${prefix} ${suffix}`,
       () => `${prefix} Memes`,
@@ -1854,7 +2003,7 @@ function randomNameForKind(
     return pick(patterns)();
   }
 
-  return `${prefix} ${suffix}`;
+  return `${pick(BRAND_NAME_PARTS.prefixes)} ${pick(BRAND_NAME_PARTS.suffixes)}`;
 }
 
 const NON_IDENTITY_PAGE_KINDS = PAGE_KINDS.filter(
@@ -1869,36 +2018,18 @@ function randomPageKind(): PageKind {
   return pick([...NON_IDENTITY_PAGE_KINDS]);
 }
 
-function randomArchetypeForKind(kind: PageKind): Archetype {
-  if (kind === "news" && Math.random() < 0.65) {
-    return "journalist";
+function randomArchetypeForKind(kind: PageKind): Archetype | null {
+  if (!pageKindUsesArchetype(kind)) {
+    return null;
   }
 
-  if (kind === "artist" && Math.random() < 0.7) {
-    return "artist";
+  const allowed = getArchetypesForPageKind(kind);
+
+  if (!allowed || allowed.length === 0) {
+    return null;
   }
 
-  if (kind === "meme_page" && Math.random() < 0.55) {
-    return pick(["comedian", "troll"]);
-  }
-
-  if (kind === "brand" && Math.random() < 0.45) {
-    return "tech_bro";
-  }
-
-  if (kind === "company_page" && Math.random() < 0.5) {
-    return pick(["tech_bro", "coach"]);
-  }
-
-  if (kind === "band_page" && Math.random() < 0.55) {
-    return pick(["artist", "woke"]);
-  }
-
-  if (Math.random() < 0.12) {
-    return pick(["politician", "woke", "negacionist", "fitness", "lifestyle"]);
-  }
-
-  return pick([...ARCHETYPES]);
+  return pick([...allowed]);
 }
 
 function randomHandle(name: string): string {
@@ -1912,7 +2043,7 @@ export type RandomPersonalityDraft = {
   kind: PageKind;
   gender?: Gender;
   pronouns?: Pronouns;
-  archetype: Archetype;
+  archetype: Archetype | null;
   traits: Traits;
   politicalSwing: PoliticalSwing;
   interests: string;
@@ -1922,7 +2053,11 @@ export function generateRandomPersonality(): RandomPersonalityDraft {
   const kind = randomPageKind();
   const archetype = randomArchetypeForKind(kind);
   const gender = profileKindUsesIdentity(kind) ? randomGender() : undefined;
-  const name = randomNameForKind(kind, archetype, gender ?? "nonbinary");
+  const name = randomNameForKind(
+    kind,
+    archetype ?? "comedian",
+    gender ?? "nonbinary",
+  );
 
   return {
     name,
@@ -1932,8 +2067,8 @@ export function generateRandomPersonality(): RandomPersonalityDraft {
       ? { gender, pronouns: randomPronouns(gender) }
       : {}),
     archetype,
-    traits: randomTraits(archetype),
+    traits: randomTraits(archetype, kind),
     politicalSwing: randomPoliticalSwing(),
-    interests: randomInterests(archetype),
+    interests: randomInterests(archetype, kind),
   };
 }

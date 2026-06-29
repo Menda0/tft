@@ -7,7 +7,7 @@ export type CreatePersonalityPayload = {
   kind: PageKind;
   gender?: Gender;
   pronouns?: Pronouns;
-  archetype: Archetype;
+  archetype: Archetype | null;
   traits: Traits;
   politicalSwing: PoliticalSwing;
   interests: string;

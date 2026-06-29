@@ -12,7 +12,7 @@ export type PublicPersonality = {
   handle: string;
   avatarUrl: string | null;
   description: string | null;
-  archetype: Archetype;
+  archetype: Archetype | null;
   kind: PageKind;
   gender: Gender;
   pronouns: Pronouns;

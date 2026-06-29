@@ -224,9 +224,11 @@ export function PersonalitiesList() {
                       {formatPronounLabel(personality.pronouns)}
                     </p>
                   ) : null}
-                  <p className="mt-1 pixel-heading text-[8px] text-[#29adff]">
-                    {formatArchetypeLabel(personality.archetype).toUpperCase()}
-                  </p>
+                  {personality.archetype ? (
+                    <p className="mt-1 pixel-heading text-[8px] text-[#29adff]">
+                      {formatArchetypeLabel(personality.archetype).toUpperCase()}
+                    </p>
+                  ) : null}
                   {personality.description ? (
                     <p className="mt-2 text-xs leading-relaxed text-[#c2c3c7]">
                       {personality.description}

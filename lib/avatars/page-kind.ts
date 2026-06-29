@@ -8,9 +8,7 @@ import { PIXEL_ART_STYLE } from "@/lib/avatars/pixel-canvas";
 export const PAGE_KINDS = [
   "person",
   "artist",
-  "mascot",
   "brand",
-  "company_page",
   "band_page",
   "news",
   "meme_page",
@@ -21,9 +19,7 @@ export type PageKind = (typeof PAGE_KINDS)[number];
 export const PAGE_KIND_LABELS: Record<PageKind, string> = {
   person: "Person",
   artist: "Artist",
-  mascot: "Mascot page",
   brand: "Brand page",
-  company_page: "Company page",
   band_page: "Band page",
   news: "News page",
   meme_page: "Meme page",
@@ -36,6 +32,10 @@ export function profileKindUsesIdentity(kind: PageKind): boolean {
 export function normalizeStoredPageKind(kind: string | undefined): PageKind | undefined {
   if (kind === "fan_page") {
     return "artist";
+  }
+
+  if (kind === "mascot" || kind === "company_page") {
+    return "brand";
   }
 
   if (kind && isPageKind(kind)) {
@@ -53,7 +53,7 @@ export type AvatarPageProfile = {
   kind: PageKind;
   name: string;
   handle: string;
-  archetype: Archetype;
+  archetype: Archetype | null;
   gender: Gender;
   pronouns: Pronouns;
   traits: Traits;
@@ -289,7 +289,7 @@ function isCompoundPageName(name: string): boolean {
 export function classifyPageKind(input: {
   name: string;
   handle: string;
-  archetype: Archetype;
+  archetype: Archetype | null;
 }): PageKind {
   const nameText = normalizeText(input.name);
   const handleText = normalizeText(input.handle);
@@ -301,6 +301,11 @@ export function classifyPageKind(input: {
 
   if (
     input.archetype === "journalist" ||
+    input.archetype === "traditional" ||
+    input.archetype === "fakenews" ||
+    input.archetype === "politics" ||
+    input.archetype === "crime" ||
+    input.archetype === "sports" ||
     containsKeyword(combined, [
       "news",
       "daily",
@@ -386,14 +391,6 @@ export function classifyPageKind(input: {
   }
 
   if (
-    containsKeyword(combined, MASCOT_KEYWORDS) ||
-    isCompoundPageName(input.name) ||
-    input.archetype === "tech_bro"
-  ) {
-    return "mascot";
-  }
-
-  if (
     containsKeyword(combined, [
       "company",
       "corp",
@@ -406,16 +403,7 @@ export function classifyPageKind(input: {
       "solutions",
       "services",
       "enterprises",
-    ])
-  ) {
-    return "company_page";
-  }
-
-  if (
-    containsKeyword(combined, [
       "official",
-      "corp",
-      "inc",
       "hq",
       "media",
       "studio",
@@ -429,7 +417,11 @@ export function classifyPageKind(input: {
       "digital",
       "hub",
       "portal",
-    ])
+    ]) ||
+    containsKeyword(combined, MASCOT_KEYWORDS) ||
+    isCompoundPageName(input.name) ||
+    input.archetype === "tech_bro" ||
+    input.archetype === "tech"
   ) {
     return "brand";
   }
@@ -438,7 +430,7 @@ export function classifyPageKind(input: {
     return "brand";
   }
 
-  return "mascot";
+  return "brand";
 }
 
 const BASE_RULES = [
@@ -459,9 +451,18 @@ function traitSummary(traits: Traits): string {
   return `humor ${traits.humor}, aggression ${traits.aggression}, troll ${traits.troll}, woke ${traits.woke}, negacionist ${traits.negacionist}, radical ${traits.radical}`;
 }
 
+function toneLine(archetype: Archetype | null, traits: Traits): string {
+  const summary = traitSummary(traits);
+
+  if (archetype) {
+    return `Tone: ${archetype}, ${summary}.`;
+  }
+
+  return `Tone: ${summary}.`;
+}
+
 export function buildAvatarPrompt(profile: AvatarPageProfile): string {
   const interests = interestText(profile.interests);
-  const traits = traitSummary(profile.traits);
   const kind = profile.kind;
 
   if (profileKindUsesIdentity(kind)) {
@@ -471,7 +472,7 @@ export function buildAvatarPrompt(profile: AvatarPageProfile): string {
         "Subject: a pixel art door filling the frame, NOT a human face or person.",
         "Choose one clear door only: wooden front door, arched portal door, painted cottage door, or office door with a window panel.",
         `Name inspiration: ${profile.name}.`,
-        `Tone: ${profile.archetype}, ${traits}.`,
+        toneLine(profile.archetype, profile.traits),
         `Theme cues: ${interests}.`,
         "Include a visible door frame, panel, and knob or handle. No people, faces, mascots, or extra scenery.",
       ].join(" ");
@@ -498,7 +499,7 @@ export function buildAvatarPrompt(profile: AvatarPageProfile): string {
       "Subject: a pixel art news-page icon, NOT a human portrait.",
       "Choose one clear symbol only: vintage microphone, folded newspaper, broadcast tower, or press badge emblem.",
       `Page name inspiration: ${profile.name}.`,
-      `Tone: ${profile.archetype}, ${traits}.`,
+      toneLine(profile.archetype, profile.traits),
       `Topic cues: ${interests}.`,
       "Do not draw a realistic human face or full person.",
     ].join(" ");
@@ -510,7 +511,7 @@ export function buildAvatarPrompt(profile: AvatarPageProfile): string {
       "Subject: a pixel art meme-page icon, NOT a realistic human portrait.",
       "Choose one clear symbol only: cartoon frog-like mascot, reaction face icon, megaphone, clown nose badge, or chaotic emoji creature.",
       `Page name inspiration: ${profile.name}.`,
-      `Tone: ${profile.archetype}, ${traits}.`,
+      toneLine(profile.archetype, profile.traits),
       `Meme cues: ${interests}.`,
       "Keep it playful and simple. No realistic humans.",
     ].join(" ");
@@ -522,20 +523,8 @@ export function buildAvatarPrompt(profile: AvatarPageProfile): string {
       "Subject: a pixel art brand emblem or app icon, NOT a human portrait.",
       "Choose one clear symbol only: geometric badge, monogram-like shape without letters, storefront icon, or abstract emblem tied to the page theme.",
       `Brand/page name inspiration: ${profile.name}.`,
-      `Tone: ${profile.archetype}, ${traits}.`,
+      toneLine(profile.archetype, profile.traits),
       `Theme cues: ${interests}.`,
-      "Do not draw a person, face, or mascot character.",
-    ].join(" ");
-  }
-
-  if (kind === "company_page") {
-    return [
-      ...BASE_RULES,
-      "Subject: a pixel art company-page icon, NOT a human portrait.",
-      "Choose one clear symbol only: office building silhouette, briefcase emblem, corporate crest, or boardroom table icon.",
-      `Company name inspiration: ${profile.name}.`,
-      `Tone: ${profile.archetype}, ${traits}.`,
-      `Industry cues: ${interests}.`,
       "Do not draw a person, face, or mascot character.",
     ].join(" ");
   }
@@ -546,7 +535,7 @@ export function buildAvatarPrompt(profile: AvatarPageProfile): string {
       "Subject: a pixel art band-page icon, NOT a human portrait.",
       "Choose one clear symbol only: electric guitar, drum kit, vinyl record, microphone on stand, or music note badge.",
       `Band name inspiration: ${profile.name}.`,
-      `Tone: ${profile.archetype}, ${traits}.`,
+      toneLine(profile.archetype, profile.traits),
       `Music cues: ${interests}.`,
       "Do not draw a realistic human face or full person.",
     ].join(" ");
@@ -554,12 +543,12 @@ export function buildAvatarPrompt(profile: AvatarPageProfile): string {
 
   return [
     ...BASE_RULES,
-    "Subject: a pixel art mascot for a social media page, NOT a realistic human.",
-    "Choose one clear mascot only: robot, goblin, slime, cat, owl, tiny dragon, alien, or cartoon creature.",
+    "Subject: a pixel art brand emblem or app icon, NOT a human portrait.",
+    "Choose one clear symbol only: geometric badge, monogram-like shape without letters, storefront icon, or abstract emblem tied to the page theme.",
     `Page name inspiration: ${profile.name}.`,
-    `Tone: ${profile.archetype}, ${traits}.`,
+    toneLine(profile.archetype, profile.traits),
     `Theme cues: ${interests}.`,
-    "Center the mascot, head and upper body only. No human realism.",
+    "Do not draw a person, face, or mascot character.",
   ].join(" ");
 }
 
@@ -568,7 +557,7 @@ export function resolveAvatarPageProfile(input: {
   handle: string;
   gender: Gender;
   pronouns: Pronouns;
-  archetype: Archetype;
+  archetype: Archetype | null;
   traits: Traits;
   interests: string[];
   kind?: PageKind;

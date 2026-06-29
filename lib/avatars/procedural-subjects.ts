@@ -24,7 +24,7 @@ type SubjectContext = {
   seed: string;
   grid: PixelGrid;
   palette: SubjectPalette;
-  archetype: Archetype;
+  archetype: Archetype | null;
   traits: Traits;
   name: string;
 };
@@ -352,26 +352,18 @@ function drawByKind(ctx: SubjectContext, kind: PageKind): void {
     case "brand":
       if (variant === 0) drawBrandBadge(ctx);
       else if (variant === 1) drawBrandStorefront(ctx);
-      else drawBrandEmblem(ctx);
-      return;
-    case "company_page":
-      if (variant === 0) drawCompanyBuilding(ctx);
-      else if (variant === 1) drawCompanyBriefcase(ctx);
-      else drawCompanyCrest(ctx);
+      else if (variant === 2) drawBrandEmblem(ctx);
+      else drawCompanyBuilding(ctx);
       return;
     case "band_page":
       if (variant === 0) drawBandGuitar(ctx);
       else if (variant === 1) drawBandDrums(ctx);
       else drawBandVinyl(ctx);
       return;
-    case "mascot":
     default: {
-      const mascot = seededInt(ctx.seed, 91, 0, 4);
-      if (mascot === 0) drawMascotRobot(ctx);
-      else if (mascot === 1) drawMascotGoblin(ctx);
-      else if (mascot === 2) drawMascotSlime(ctx);
-      else if (mascot === 3) drawMascotOwl(ctx);
-      else drawMascotCat(ctx);
+      if (variant === 0) drawBrandBadge(ctx);
+      else if (variant === 1) drawBrandStorefront(ctx);
+      else drawBrandEmblem(ctx);
     }
   }
 }
@@ -379,7 +371,7 @@ function drawByKind(ctx: SubjectContext, kind: PageKind): void {
 export function generateProceduralSubjectAvatar(input: {
   name: string;
   handle: string;
-  archetype: Archetype;
+  archetype: Archetype | null;
   traits: Traits;
   kind: PageKind;
 }): string {

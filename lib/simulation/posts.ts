@@ -29,7 +29,7 @@ function authorFromPersonality(personality: Personality) {
     personalityId: personality.id,
     name: personality.name,
     handle: personality.handle,
-    archetype: personality.archetype,
+    archetype: personality.archetype ?? "",
     avatarUrl: personality.avatarUrl,
   });
 }

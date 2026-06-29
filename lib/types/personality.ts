@@ -64,7 +64,7 @@ export type Personality = {
   descriptionStatus: DescriptionStatus;
   ownerId: string;
   createdAt: Date;
-  archetype: Archetype;
+  archetype: Archetype | null;
   traits: Traits;
   politicalSwing: PoliticalSwing;
   interests: string[];

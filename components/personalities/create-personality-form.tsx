@@ -18,10 +18,11 @@ import {
   type PageKind,
 } from "@/lib/avatars/page-kind";
 import {
-  ARCHETYPES,
-  ARCHETYPE_LABELS,
-  type Archetype,
-} from "@/lib/personalities/archetypes";
+  coerceArchetypeForPageKind,
+  getArchetypeOptionsForPageKind,
+  pageKindUsesArchetype,
+} from "@/lib/personalities/kind-archetypes";
+import type { Archetype } from "@/lib/personalities/archetypes";
 import { slugifyHandle } from "@/lib/personalities/validation";
 import { generateRandomPersonality } from "@/lib/personalities/random";
 import {
@@ -60,11 +61,6 @@ const PAGE_KIND_OPTIONS = PAGE_KINDS.map((value) => ({
   label: PAGE_KIND_LABELS[value],
 }));
 
-const ARCHETYPE_OPTIONS = ARCHETYPES.map((value) => ({
-  value,
-  label: ARCHETYPE_LABELS[value],
-}));
-
 const TRAIT_LABELS: { key: keyof Traits; label: string }[] = [
   { key: "humor", label: "Humor" },
   { key: "aggression", label: "Aggression" },
@@ -92,7 +88,7 @@ export function CreatePersonalityForm() {
   const [gender, setGender] = useState<Gender>("nonbinary");
   const [pronouns, setPronouns] = useState<Pronouns>("they_them");
   const [kind, setKind] = useState<PageKind>("person");
-  const [archetype, setArchetype] = useState<Archetype>("comedian");
+  const [archetype, setArchetype] = useState<Archetype | null>("comedian");
   const [politicalSwing, setPoliticalSwing] = useState<PoliticalSwing>(0);
   const [interests, setInterests] = useState("");
   const [traits, setTraits] = useState<Traits>(DEFAULT_TRAITS);
@@ -114,6 +110,11 @@ export function CreatePersonalityForm() {
   function updateGender(value: Gender) {
     setGender(value);
     setPronouns(defaultPronounsForGender(value));
+  }
+
+  function updateKind(value: PageKind) {
+    setKind(value);
+    setArchetype((current) => coerceArchetypeForPageKind(value, current));
   }
 
   function randomizeForm() {
@@ -250,7 +251,7 @@ export function CreatePersonalityForm() {
           <select
             id="kind"
             value={kind}
-            onChange={(event) => setKind(event.target.value as PageKind)}
+            onChange={(event) => updateKind(event.target.value as PageKind)}
             className="h-10 w-full pixel-border-thin bg-[#29366f] px-3 text-[#fff1e8] outline-none focus:border-[#29adff]"
           >
             {PAGE_KIND_OPTIONS.map((option) => (
@@ -305,23 +306,27 @@ export function CreatePersonalityForm() {
           </>
         ) : null}
 
-        <div className="space-y-2">
-          <Label htmlFor="archetype" className="text-xs text-[#ffa300]">
-            Archetype
-          </Label>
-          <select
-            id="archetype"
-            value={archetype}
-            onChange={(event) => setArchetype(event.target.value as Archetype)}
-            className="h-10 w-full pixel-border-thin bg-[#29366f] px-3 text-[#fff1e8] outline-none focus:border-[#29adff]"
-          >
-            {ARCHETYPE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {pageKindUsesArchetype(kind) ? (
+          <div className="space-y-2">
+            <Label htmlFor="archetype" className="text-xs text-[#ffa300]">
+              Archetype
+            </Label>
+            <select
+              id="archetype"
+              value={archetype ?? ""}
+              onChange={(event) =>
+                setArchetype(event.target.value as Archetype)
+              }
+              className="h-10 w-full pixel-border-thin bg-[#29366f] px-3 text-[#fff1e8] outline-none focus:border-[#29adff]"
+            >
+              {getArchetypeOptionsForPageKind(kind).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         <div className="space-y-2">
           <Label htmlFor="politicalSwing" className="text-xs text-[#ffa300]">

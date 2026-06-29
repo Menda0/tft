@@ -1,4 +1,4 @@
-export const ARCHETYPES = [
+export const PERSON_ARCHETYPES = [
   "comedian",
   "journalist",
   "reply_guy",
@@ -17,7 +17,37 @@ export const ARCHETYPES = [
   "lifestyle",
 ] as const;
 
-export type Archetype = (typeof ARCHETYPES)[number];
+/** @deprecated Use PERSON_ARCHETYPES for person-only sets. */
+export const ARCHETYPES = PERSON_ARCHETYPES;
+
+export const NEWS_ARCHETYPES = [
+  "fakenews",
+  "conspiracy",
+  "traditional",
+  "politics",
+  "crime",
+  "sports",
+] as const;
+
+export const BRAND_ARCHETYPES = [
+  "tech",
+  "fitness",
+  "food_and_beverages",
+  "other",
+] as const;
+
+export const ALL_ARCHETYPE_SLUGS = [
+  ...new Set([
+    ...PERSON_ARCHETYPES,
+    ...NEWS_ARCHETYPES,
+    ...BRAND_ARCHETYPES,
+  ]),
+] as const;
+
+export type PersonArchetype = (typeof PERSON_ARCHETYPES)[number];
+export type NewsArchetype = (typeof NEWS_ARCHETYPES)[number];
+export type BrandArchetype = (typeof BRAND_ARCHETYPES)[number];
+export type Archetype = (typeof ALL_ARCHETYPE_SLUGS)[number];
 
 const LEGACY_ARCHETYPE_MAP: Record<string, Archetype> = {
   fan_account: "comedian",
@@ -41,9 +71,17 @@ export const ARCHETYPE_LABELS: Record<Archetype, string> = {
   negacionist: "Negacionist",
   fitness: "Fitness",
   lifestyle: "Lifestyle",
+  fakenews: "Fake News",
+  traditional: "Traditional",
+  politics: "Politics",
+  crime: "Crime",
+  sports: "Sports",
+  tech: "Tech",
+  food_and_beverages: "Food & Beverages",
+  other: "Other",
 };
 
-export const ARCHETYPE_DESCRIPTIONS: Record<Archetype, string> = {
+export const ARCHETYPE_DESCRIPTIONS: Record<PersonArchetype, string> = {
   comedian: "witty chaotic comedian with expressive eyes and a smirk",
   journalist: "sharp focused investigative journalist with notepad energy",
   reply_guy: "opinionated internet debater with confident posture",
@@ -63,7 +101,19 @@ export const ARCHETYPE_DESCRIPTIONS: Record<Archetype, string> = {
 };
 
 export function isArchetype(value: string): value is Archetype {
-  return ARCHETYPES.includes(value as Archetype);
+  return (ALL_ARCHETYPE_SLUGS as readonly string[]).includes(value);
+}
+
+export function isPersonArchetype(value: string): value is PersonArchetype {
+  return (PERSON_ARCHETYPES as readonly string[]).includes(value);
+}
+
+export function isNewsArchetype(value: string): value is NewsArchetype {
+  return (NEWS_ARCHETYPES as readonly string[]).includes(value);
+}
+
+export function isBrandArchetype(value: string): value is BrandArchetype {
+  return (BRAND_ARCHETYPES as readonly string[]).includes(value);
 }
 
 export function normalizeArchetype(value: string): Archetype | null {
@@ -74,6 +124,10 @@ export function normalizeArchetype(value: string): Archetype | null {
   return LEGACY_ARCHETYPE_MAP[value] ?? null;
 }
 
-export function formatArchetypeLabel(archetype: Archetype): string {
+export function formatArchetypeLabel(archetype: Archetype | null): string {
+  if (!archetype) {
+    return "";
+  }
+
   return ARCHETYPE_LABELS[archetype];
 }

@@ -39,10 +39,16 @@ export function ProfileHeader({ personality }: ProfileHeaderProps) {
               {formatPronounLabel(personality.pronouns)}
             </p>
           ) : null}
-          <p className="mt-1 pixel-heading text-[8px] text-[#29adff]">
-            {formatArchetypeLabel(personality.archetype).toUpperCase()} ·{" "}
-            {formatPoliticalSwingLabel(personality.politicalSwing).toUpperCase()}
-          </p>
+          {personality.archetype ? (
+            <p className="mt-1 pixel-heading text-[8px] text-[#29adff]">
+              {formatArchetypeLabel(personality.archetype).toUpperCase()} ·{" "}
+              {formatPoliticalSwingLabel(personality.politicalSwing).toUpperCase()}
+            </p>
+          ) : (
+            <p className="mt-1 pixel-heading text-[8px] text-[#29adff]">
+              {formatPoliticalSwingLabel(personality.politicalSwing).toUpperCase()}
+            </p>
+          )}
           <p className="mt-1 text-[10px] text-[#83769a]">
             {formatPoliticalSwingCategory(personality.politicalSwing)}
           </p>

@@ -71,7 +71,7 @@ function buildAvatarPromptFromInput(input: {
   kind?: PageKind;
   gender: Gender;
   pronouns: Pronouns;
-  archetype: Archetype;
+  archetype: Archetype | null;
   traits: Traits;
   interests: string[];
 }): string {
@@ -201,7 +201,7 @@ function generateProceduralAvatar(input: {
   kind?: PageKind;
   gender: Gender;
   pronouns: Pronouns;
-  archetype: Archetype;
+  archetype: Archetype | null;
   traits: Traits;
   interests: string[];
 }): string {
@@ -234,7 +234,7 @@ export async function generatePixelAvatar(input: {
   kind?: PageKind;
   gender: Gender;
   pronouns: Pronouns;
-  archetype: Archetype;
+  archetype: Archetype | null;
   traits: Traits;
   interests: string[];
 }): Promise<string> {
