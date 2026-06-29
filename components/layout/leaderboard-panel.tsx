@@ -1,39 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { getInitials } from "@/components/feed/post-author";
 import { ProfileLink } from "@/components/profile/profile-link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { fetchLeaderboardPage } from "@/lib/desktop/client";
+import { LEADERBOARD_LIMIT } from "@/lib/pagination";
 import { formatStatValue } from "@/lib/personalities/stats";
 import { getPixelAvatarColor } from "@/lib/pixel-theme";
 import type {
   FarmerLeaderboardEntry,
-  LeaderboardsPayload,
+  LeaderboardPagePayload,
+  LeaderboardTab,
   PersonalityLeaderboardEntry,
 } from "@/lib/types/desktop";
 import { cn } from "@/lib/utils";
-
-type LeaderboardTab =
-  | "clout-personality"
-  | "clout-farmers"
-  | "heat-personality"
-  | "heat-farmers";
 
 const TABS: {
   id: LeaderboardTab;
   label: string;
   scoreLabel: string;
   scoreColor: string;
+  title: string;
 }[] = [
-  { id: "clout-personality", label: "CLOUT", scoreLabel: "CLOUT", scoreColor: "#ffa300" },
-  { id: "clout-farmers", label: "FARMERS", scoreLabel: "CLOUT", scoreColor: "#29adff" },
-  { id: "heat-personality", label: "HEAT", scoreLabel: "HEAT", scoreColor: "#ff004d" },
+  {
+    id: "clout-personality",
+    label: "CLOUT",
+    scoreLabel: "CLOUT",
+    scoreColor: "#ffa300",
+    title: "TOP CLOUT",
+  },
+  {
+    id: "clout-farmers",
+    label: "FARMERS",
+    scoreLabel: "CLOUT",
+    scoreColor: "#29adff",
+    title: "TOP FARMERS",
+  },
+  {
+    id: "heat-personality",
+    label: "HEAT",
+    scoreLabel: "HEAT",
+    scoreColor: "#ff004d",
+    title: "TOP HEAT",
+  },
   {
     id: "heat-farmers",
     label: "CONTROVERSIAL",
     scoreLabel: "HEAT",
     scoreColor: "#ff004d",
+    title: "TOP CONTROVERSIAL",
   },
 ];
 
@@ -246,66 +263,133 @@ export function LeaderboardPanel(props: LeaderboardPanelProps) {
   );
 }
 
-function panelPropsForTab(
-  tab: LeaderboardTab,
-  leaderboards: LeaderboardsPayload,
+function LeaderboardPagination({
+  page,
+  hasPrevious,
+  hasNext,
+  loading,
+  onPrevious,
+  onNext,
+}: {
+  page: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  loading: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div className="mt-3 flex items-center justify-between gap-3">
+      <button
+        type="button"
+        onClick={onPrevious}
+        disabled={!hasPrevious || loading}
+        className={cn(
+          "pixel-heading border-2 border-foreground px-3 py-2 text-[8px] transition-colors",
+          hasPrevious && !loading
+            ? "bg-[#1d2b53] text-[#ffa300] hover:bg-[#29366f]"
+            : "cursor-not-allowed bg-[#1d2b53]/50 text-[#83769a]",
+        )}
+      >
+        PREVIOUS
+      </button>
+      <span className="pixel-heading text-[8px] text-[#83769a]">
+        PAGE {page + 1}
+      </span>
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={!hasNext || loading}
+        className={cn(
+          "pixel-heading border-2 border-foreground px-3 py-2 text-[8px] transition-colors",
+          hasNext && !loading
+            ? "bg-[#1d2b53] text-[#ffa300] hover:bg-[#29366f]"
+            : "cursor-not-allowed bg-[#1d2b53]/50 text-[#83769a]",
+        )}
+      >
+        NEXT
+      </button>
+    </div>
+  );
+}
+
+function panelPropsFromPayload(
+  payload: LeaderboardPagePayload,
+  config: (typeof TABS)[number],
 ): LeaderboardPanelProps {
-  const config = TABS.find((entry) => entry.id === tab)!;
-
-  if (tab === "clout-personality") {
+  if (payload.kind === "personality") {
     return {
       kind: "personality",
-      title: "TOP CLOUT",
+      title: config.title,
       scoreLabel: config.scoreLabel,
       scoreColor: config.scoreColor,
-      entries: leaderboards.personalitiesByClout,
-    };
-  }
-
-  if (tab === "clout-farmers") {
-    return {
-      kind: "farmer",
-      title: "TOP FARMERS",
-      scoreLabel: config.scoreLabel,
-      scoreColor: config.scoreColor,
-      entries: leaderboards.farmersByClout,
-    };
-  }
-
-  if (tab === "heat-personality") {
-    return {
-      kind: "personality",
-      title: "TOP HEAT",
-      scoreLabel: config.scoreLabel,
-      scoreColor: config.scoreColor,
-      entries: leaderboards.personalitiesByHeat,
+      entries: payload.entries,
     };
   }
 
   return {
     kind: "farmer",
-    title: "TOP CONTROVERSIAL",
+    title: config.title,
     scoreLabel: config.scoreLabel,
     scoreColor: config.scoreColor,
-    entries: leaderboards.farmersByHeat,
+    entries: payload.entries,
   };
 }
 
-type LeaderboardsSectionProps = {
-  leaderboards: LeaderboardsPayload;
-  loading?: boolean;
-  error?: string | null;
-};
-
-export function LeaderboardsSection({
-  leaderboards,
-  loading,
-  error,
-}: LeaderboardsSectionProps) {
+export function LeaderboardsSection() {
   const [activeTab, setActiveTab] =
     useState<LeaderboardTab>("clout-personality");
+  const [page, setPage] = useState(0);
+  const [payload, setPayload] = useState<LeaderboardPagePayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const activeConfig = TABS.find((tab) => tab.id === activeTab)!;
-  const panelProps = panelPropsForTab(activeTab, leaderboards);
+
+  const loadLeaderboard = useCallback(async () => {
+    setLoading(true);
+
+    const result = await fetchLeaderboardPage(activeTab, {
+      offset: page * LEADERBOARD_LIMIT,
+      limit: LEADERBOARD_LIMIT,
+    });
+
+    if (!result.ok) {
+      setError(result.error);
+      setLoading(false);
+      return;
+    }
+
+    setError(null);
+    setPayload(result.payload);
+    setLoading(false);
+  }, [activeTab, page]);
+
+  useEffect(() => {
+    void loadLeaderboard();
+  }, [loadLeaderboard]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      void loadLeaderboard();
+    }, 60_000);
+
+    return () => window.clearInterval(intervalId);
+  }, [loadLeaderboard]);
+
+  const panelProps = payload
+    ? panelPropsFromPayload(payload, activeConfig)
+    : {
+        kind:
+          activeTab === "clout-personality" || activeTab === "heat-personality"
+            ? ("personality" as const)
+            : ("farmer" as const),
+        title: activeConfig.title,
+        scoreLabel: activeConfig.scoreLabel,
+        scoreColor: activeConfig.scoreColor,
+        entries: [],
+      };
+
+  const showPagination = page > 0 || (payload?.hasMore ?? false);
 
   return (
     <section
@@ -321,7 +405,10 @@ export function LeaderboardsSection({
           <button
             key={tab.id}
             type="button"
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setActiveTab(tab.id);
+              setPage(0);
+            }}
             className={cn(
               "flex-1 px-1 py-2 text-center pixel-heading text-[7px] transition-colors",
               activeTab === tab.id
@@ -347,8 +434,19 @@ export function LeaderboardsSection({
         />
       </div>
 
+      {showPagination ? (
+        <LeaderboardPagination
+          page={page}
+          hasPrevious={page > 0}
+          hasNext={payload?.hasMore ?? false}
+          loading={loading}
+          onPrevious={() => setPage((current) => Math.max(0, current - 1))}
+          onNext={() => setPage((current) => current + 1)}
+        />
+      ) : null}
+
       <p className="mt-2 text-[9px] text-[#83769a]">
-        Top 5 · {activeConfig.label}
+        Top {LEADERBOARD_LIMIT} · {activeConfig.label}
       </p>
     </section>
   );

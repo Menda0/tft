@@ -41,13 +41,27 @@ export type FarmerLeaderboardEntry = {
   botCount: number;
 };
 
-export type LeaderboardsPayload = {
-  personalitiesByClout: PersonalityLeaderboardEntry[];
-  farmersByClout: FarmerLeaderboardEntry[];
-  personalitiesByHeat: PersonalityLeaderboardEntry[];
-  farmersByHeat: FarmerLeaderboardEntry[];
-  updatedAt: string;
-};
+export type LeaderboardTab =
+  | "clout-personality"
+  | "clout-farmers"
+  | "heat-personality"
+  | "heat-farmers";
+
+export type LeaderboardPagePayload =
+  | {
+      kind: "personality";
+      tab: LeaderboardTab;
+      entries: PersonalityLeaderboardEntry[];
+      hasMore: boolean;
+      updatedAt: string;
+    }
+  | {
+      kind: "farmer";
+      tab: LeaderboardTab;
+      entries: FarmerLeaderboardEntry[];
+      hasMore: boolean;
+      updatedAt: string;
+    };
 
 export type MySocialLeaderboardEntry = {
   rank: number;

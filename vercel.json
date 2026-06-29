@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/heat-decay",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/trending-refresh",
+      "schedule": "0 */3 * * *"
     }
   ]
 }

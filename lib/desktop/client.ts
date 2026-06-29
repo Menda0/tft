@@ -1,10 +1,11 @@
 import type {
-  LeaderboardsPayload,
+  LeaderboardPagePayload,
+  LeaderboardTab,
   MySocialActivityPayload,
   MySocialPayload,
   ThreadingTopicsPayload,
 } from "@/lib/types/desktop";
-import { PAGE_SIZE } from "@/lib/pagination";
+import { LEADERBOARD_LIMIT, PAGE_SIZE } from "@/lib/pagination";
 
 export async function fetchThreadingTopics(): Promise<
   | { ok: true; payload: ThreadingTopicsPayload }
@@ -35,12 +36,19 @@ export async function fetchThreadingTopics(): Promise<
   };
 }
 
-export async function fetchLeaderboards(): Promise<
-  | { ok: true; payload: LeaderboardsPayload }
+export async function fetchLeaderboardPage(
+  tab: LeaderboardTab,
+  options?: { offset?: number; limit?: number },
+): Promise<
+  | { ok: true; payload: LeaderboardPagePayload }
   | { ok: false; error: string }
 > {
-  const response = await fetch("/api/desktop/leaderboards");
-  const data = (await response.json()) as LeaderboardsPayload & {
+  const offset = options?.offset ?? 0;
+  const limit = options?.limit ?? LEADERBOARD_LIMIT;
+  const response = await fetch(
+    `/api/desktop/leaderboards?tab=${encodeURIComponent(tab)}&offset=${offset}&limit=${limit}`,
+  );
+  const data = (await response.json()) as LeaderboardPagePayload & {
     error?: string;
   };
 
@@ -52,23 +60,16 @@ export async function fetchLeaderboards(): Promise<
   }
 
   if (
-    !Array.isArray(data.personalitiesByClout) ||
-    !Array.isArray(data.farmersByClout) ||
-    !Array.isArray(data.personalitiesByHeat) ||
-    !Array.isArray(data.farmersByHeat)
+    (data.kind !== "personality" && data.kind !== "farmer") ||
+    !Array.isArray(data.entries) ||
+    typeof data.hasMore !== "boolean"
   ) {
     return { ok: false, error: "Invalid server response." };
   }
 
   return {
     ok: true,
-    payload: {
-      personalitiesByClout: data.personalitiesByClout,
-      farmersByClout: data.farmersByClout,
-      personalitiesByHeat: data.personalitiesByHeat,
-      farmersByHeat: data.farmersByHeat,
-      updatedAt: data.updatedAt ?? new Date().toISOString(),
-    },
+    payload: data,
   };
 }
 

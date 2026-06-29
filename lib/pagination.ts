@@ -1,5 +1,6 @@
 export const PAGE_SIZE = 10;
 export const CHARACTER_SECTION_PAGE_SIZE = 5;
+export const LEADERBOARD_LIMIT = 5;
 
 export function parsePositiveInt(value: string | null, fallback: number): number {
   const parsed = Number(value);

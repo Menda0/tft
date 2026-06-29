@@ -12,14 +12,12 @@ import {
 import { ProfileLink } from "@/components/profile/profile-link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  fetchLeaderboards,
   fetchMySocial,
   fetchThreadingTopics,
 } from "@/lib/desktop/client";
 import { PROJECT_NAME, PROJECT_TAGLINE } from "@/lib/brand";
 import { getPixelAvatarColor } from "@/lib/pixel-theme";
 import type {
-  LeaderboardsPayload,
   MySocialPayload,
   ThreadingTopic,
   ThreadingTopicParticipant,
@@ -46,14 +44,6 @@ const SIDEBAR_TABS: {
   },
   { id: "activity", label: "ACTIVITY", color: "#c2c3c7", requiresAuth: true },
 ];
-
-const EMPTY_LEADERBOARDS: LeaderboardsPayload = {
-  personalitiesByClout: [],
-  farmersByClout: [],
-  personalitiesByHeat: [],
-  farmersByHeat: [],
-  updatedAt: "",
-};
 
 const EMPTY_MY_SOCIAL: MySocialPayload = {
   leaderboard: [],
@@ -134,16 +124,10 @@ function CommunityPanel({
   topics,
   topicsLoading,
   topicsError,
-  leaderboards,
-  leaderboardsLoading,
-  leaderboardsError,
 }: {
   topics: ThreadingTopic[];
   topicsLoading: boolean;
   topicsError: string | null;
-  leaderboards: LeaderboardsPayload;
-  leaderboardsLoading: boolean;
-  leaderboardsError: string | null;
 }) {
   return (
     <div className="space-y-6">
@@ -170,11 +154,7 @@ function CommunityPanel({
         )}
       </section>
 
-      <LeaderboardsSection
-        leaderboards={leaderboards}
-        loading={leaderboardsLoading}
-        error={leaderboardsError}
-      />
+      <LeaderboardsSection />
     </div>
   );
 }
@@ -188,12 +168,6 @@ export function DesktopSidebar() {
   const [topics, setTopics] = useState<ThreadingTopic[]>([]);
   const [topicsLoading, setTopicsLoading] = useState(true);
   const [topicsError, setTopicsError] = useState<string | null>(null);
-  const [leaderboards, setLeaderboards] =
-    useState<LeaderboardsPayload>(EMPTY_LEADERBOARDS);
-  const [leaderboardsLoading, setLeaderboardsLoading] = useState(true);
-  const [leaderboardsError, setLeaderboardsError] = useState<string | null>(
-    null,
-  );
   const [mySocial, setMySocial] = useState<MySocialPayload>(EMPTY_MY_SOCIAL);
   const [mySocialLoading, setMySocialLoading] = useState(false);
   const [mySocialError, setMySocialError] = useState<string | null>(null);
@@ -206,10 +180,7 @@ export function DesktopSidebar() {
     let cancelled = false;
 
     async function loadCommunity() {
-      const [topicsResult, leaderboardsResult] = await Promise.all([
-        fetchThreadingTopics(),
-        fetchLeaderboards(),
-      ]);
+      const topicsResult = await fetchThreadingTopics();
 
       if (cancelled) {
         return;
@@ -222,14 +193,6 @@ export function DesktopSidebar() {
         setTopicsError(null);
       }
       setTopicsLoading(false);
-
-      if (!leaderboardsResult.ok) {
-        setLeaderboardsError(leaderboardsResult.error);
-      } else {
-        setLeaderboards(leaderboardsResult.payload);
-        setLeaderboardsError(null);
-      }
-      setLeaderboardsLoading(false);
     }
 
     void loadCommunity();
@@ -327,9 +290,6 @@ export function DesktopSidebar() {
           topics={topics}
           topicsLoading={topicsLoading}
           topicsError={topicsError}
-          leaderboards={leaderboards}
-          leaderboardsLoading={leaderboardsLoading}
-          leaderboardsError={leaderboardsError}
         />
       ) : activeTab === "my-personalities" ? (
         <MyPersonalitiesPanel

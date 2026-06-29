@@ -11,12 +11,11 @@ import { normalizeStoredStats } from "@/lib/personalities/stats";
 import { resolveSocialRanksForPersonalities } from "@/lib/profile/social-rank";
 import type { SocialRank } from "@/lib/scoring/ranks";
 import type { Personality } from "@/lib/types/personality";
+import { LEADERBOARD_LIMIT } from "@/lib/pagination";
 import type {
   FarmerLeaderboardEntry,
   PersonalityLeaderboardEntry,
 } from "@/lib/types/desktop";
-
-export const LEADERBOARD_LIMIT = 5;
 
 function toPersonalityEntry(
   personality: Personality,
@@ -40,11 +39,17 @@ function toPersonalityEntry(
   };
 }
 
+type LeaderboardPage<T> = {
+  entries: T[];
+  hasMore: boolean;
+};
+
 async function sortPersonalitiesByScore(
   personalities: Personality[],
   getScore: (personality: Personality) => number,
+  offset: number,
   limit: number,
-): Promise<PersonalityLeaderboardEntry[]> {
+): Promise<LeaderboardPage<PersonalityLeaderboardEntry>> {
   const sorted = personalities
     .map((raw) => {
       const personality = normalizePersonality(raw);
@@ -59,12 +64,15 @@ async function sortPersonalitiesByScore(
       }
 
       return a.personality.id.localeCompare(b.personality.id);
-    })
-    .slice(0, limit);
+    });
+
+  const page = sorted.slice(offset, offset + limit + 1);
+  const hasMore = page.length > limit;
+  const items = hasMore ? page.slice(0, limit) : page;
 
   const ownerIds = [
     ...new Set(
-      sorted
+      items
         .map((entry) => entry.personality.ownerId)
         .filter((ownerId): ownerId is string => Boolean(ownerId)),
     ),
@@ -79,28 +87,32 @@ async function sortPersonalitiesByScore(
   );
 
   const socialRanks = await resolveSocialRanksForPersonalities(
-    sorted.map((entry) => entry.personality),
+    items.map((entry) => entry.personality),
   );
 
-  return sorted.map((entry, index) => {
-    const rankInfo = socialRanks.get(entry.personality.id);
+  return {
+    entries: items.map((entry, index) => {
+      const rankInfo = socialRanks.get(entry.personality.id);
 
-    return toPersonalityEntry(
-      entry.personality,
-      entry.score,
-      index + 1,
-      entry.personality.ownerId
-        ? (usernameByOwnerId.get(entry.personality.ownerId) ?? "Unknown")
-        : "Unknown",
-      rankInfo?.rank ?? "novice",
-      rankInfo?.label ?? "Novice",
-    );
-  });
+      return toPersonalityEntry(
+        entry.personality,
+        entry.score,
+        offset + index + 1,
+        entry.personality.ownerId
+          ? (usernameByOwnerId.get(entry.personality.ownerId) ?? "Unknown")
+          : "Unknown",
+        rankInfo?.rank ?? "novice",
+        rankInfo?.label ?? "Novice",
+      );
+    }),
+    hasMore,
+  };
 }
 
 export async function getTopPersonalitiesByClout(
+  offset = 0,
   limit = LEADERBOARD_LIMIT,
-): Promise<PersonalityLeaderboardEntry[]> {
+): Promise<LeaderboardPage<PersonalityLeaderboardEntry>> {
   const collection = await getPersonalitiesCollection();
   const personalities = await collection
     .find(
@@ -116,13 +128,15 @@ export async function getTopPersonalitiesByClout(
   return sortPersonalitiesByScore(
     personalities,
     (personality) => normalizeStoredStats(personality.stats).socialScore,
+    offset,
     limit,
   );
 }
 
 export async function getTopPersonalitiesByHeat(
+  offset = 0,
   limit = LEADERBOARD_LIMIT,
-): Promise<PersonalityLeaderboardEntry[]> {
+): Promise<LeaderboardPage<PersonalityLeaderboardEntry>> {
   const collection = await getPersonalitiesCollection();
   const personalities = await collection
     .find(
@@ -138,14 +152,16 @@ export async function getTopPersonalitiesByHeat(
   return sortPersonalitiesByScore(
     personalities,
     (personality) => normalizeStoredStats(personality.stats).controversy,
+    offset,
     limit,
   );
 }
 
 async function getTopFarmersByMetric(
   getScore: (personality: Personality) => number,
+  offset: number,
   limit: number,
-): Promise<FarmerLeaderboardEntry[]> {
+): Promise<LeaderboardPage<FarmerLeaderboardEntry>> {
   const collection = await getPersonalitiesCollection();
   const personalities = await collection.find().toArray();
 
@@ -169,43 +185,52 @@ async function getTopFarmersByMetric(
     }
   }
 
-  const sorted = [...farmTotals.entries()]
-    .sort((a, b) => {
-      if (b[1].score !== a[1].score) {
-        return b[1].score - a[1].score;
-      }
+  const sorted = [...farmTotals.entries()].sort((a, b) => {
+    if (b[1].score !== a[1].score) {
+      return b[1].score - a[1].score;
+    }
 
-      return a[0].localeCompare(b[0]);
-    })
-    .slice(0, limit);
+    return a[0].localeCompare(b[0]);
+  });
+
+  const page = sorted.slice(offset, offset + limit + 1);
+  const hasMore = page.length > limit;
+  const items = hasMore ? page.slice(0, limit) : page;
 
   const users = await Promise.all(
-    sorted.map(([userId]) => findUserById(userId)),
+    items.map(([userId]) => findUserById(userId)),
   );
 
-  return sorted.map(([userId, totals], index) => ({
-    rank: index + 1,
-    userId,
-    username: users[index]?.username ?? "Unknown",
-    score: totals.score,
-    botCount: totals.botCount,
-  }));
+  return {
+    entries: items.map(([userId, totals], index) => ({
+      rank: offset + index + 1,
+      userId,
+      username: users[index]?.username ?? "Unknown",
+      score: totals.score,
+      botCount: totals.botCount,
+    })),
+    hasMore,
+  };
 }
 
 export async function getTopFarmersByClout(
+  offset = 0,
   limit = LEADERBOARD_LIMIT,
-): Promise<FarmerLeaderboardEntry[]> {
+): Promise<LeaderboardPage<FarmerLeaderboardEntry>> {
   return getTopFarmersByMetric(
     (personality) => normalizeStoredStats(personality.stats).socialScore,
+    offset,
     limit,
   );
 }
 
 export async function getTopFarmersByHeat(
+  offset = 0,
   limit = LEADERBOARD_LIMIT,
-): Promise<FarmerLeaderboardEntry[]> {
+): Promise<LeaderboardPage<FarmerLeaderboardEntry>> {
   return getTopFarmersByMetric(
     (personality) => normalizeStoredStats(personality.stats).controversy,
+    offset,
     limit,
   );
 }
