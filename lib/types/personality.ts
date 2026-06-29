@@ -87,4 +87,5 @@ export type Personality = {
   rankNpcActive?: boolean;
   xSync?: XSyncState;
   fixedSocialRank?: SocialRank;
+  deletedAt?: Date | null;
 };

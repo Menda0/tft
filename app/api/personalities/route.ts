@@ -1,10 +1,13 @@
 import {
+  countActivePersonalitiesByOwner,
   ensurePersonalityIndexes,
   findPersonalityByHandle,
   getPersonalitiesCollection,
   insertPersonality,
   normalizePersonality,
 } from "@/lib/personalities";
+import { mergeNotDeleted } from "@/lib/db/active-filters";
+import { MAX_PERSONALITIES_PER_USER } from "@/lib/personalities/limits";
 import { attachSocialRanksToPersonalities } from "@/lib/profile/social-rank";
 import { getAuthUser } from "@/lib/auth/server";
 import { authError } from "@/lib/auth/responses";
@@ -37,6 +40,15 @@ export async function POST(request: Request) {
 
     if (existingHandle) {
       return authError("Handle is already taken.", 409);
+    }
+
+    const ownedCount = await countActivePersonalitiesByOwner(authUser.id);
+
+    if (ownedCount >= MAX_PERSONALITIES_PER_USER) {
+      return authError(
+        `You can only create up to ${MAX_PERSONALITIES_PER_USER} personalities.`,
+        403,
+      );
     }
 
     const personality = {
@@ -76,7 +88,9 @@ export async function GET(request: Request) {
   try {
     const authUser = await getAuthUser(request);
     const collection = await getPersonalitiesCollection();
-    const filter = authUser ? { ownerId: authUser.id } : {};
+    const filter = authUser
+      ? mergeNotDeleted({ ownerId: authUser.id })
+      : mergeNotDeleted({});
     const personalities = await collection
       .find(filter)
       .sort({ createdAt: -1 })

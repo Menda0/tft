@@ -1,6 +1,7 @@
 import { Collection } from "mongodb";
 
 import { getDb } from "./mongodb";
+import { mergeNotDeleted } from "./db/active-filters";
 import {
   classifyPageKind,
   normalizeStoredPageKind,
@@ -59,6 +60,30 @@ function normalizeRelationships(
   }
 
   return relationships;
+}
+
+function normalizeDeletedAt(value: Date | string | null | undefined): Date | null {
+  if (value instanceof Date) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = new Date(value);
+
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+export function isPersonalityDeleted(personality: Personality): boolean {
+  return normalizeDeletedAt(personality.deletedAt) !== null;
+}
+
+export function isActivePlayerPersonality(personality: Personality): boolean {
+  return normalizeRole(personality.role) === "player" && !isPersonalityDeleted(personality);
 }
 
 function normalizeRole(role: PersonalityRole | string | undefined): PersonalityRole {
@@ -167,6 +192,7 @@ export function normalizePersonality(
         : undefined,
     xSync: normalizeXSync(personality.xSync),
     fixedSocialRank: normalizeFixedSocialRank(personality.fixedSocialRank),
+    deletedAt: normalizeDeletedAt(personality.deletedAt),
   };
 }
 
@@ -188,7 +214,11 @@ export async function findPersonalityByHandle(
   handle: string,
 ): Promise<Personality | null> {
   const collection = await getPersonalitiesCollection();
-  return collection.findOne({ handle });
+  const personality = await collection.findOne(
+    mergeNotDeleted({ handle }),
+  );
+
+  return personality ? normalizePersonality(personality) : null;
 }
 
 export async function findPublicPersonalityByHandle(
@@ -240,12 +270,58 @@ export async function getAllRankNpcs(): Promise<Personality[]> {
   return personalities.map(normalizePersonality);
 }
 
-const COMPETITIVE_FILTER = {
+const COMPETITIVE_FILTER = mergeNotDeleted({
   $or: [
     { role: { $exists: false } },
     { role: { $ne: "rank_npc" as const } },
   ],
-};
+});
+
+const PLAYER_PERSONALITY_FILTER = mergeNotDeleted({
+  $or: [
+    { role: { $exists: false } },
+    { role: "player" as const },
+  ],
+});
+
+export async function countActivePersonalitiesByOwner(
+  ownerId: string,
+): Promise<number> {
+  const collection = await getPersonalitiesCollection();
+  return collection.countDocuments(
+    mergeNotDeleted({
+      ownerId,
+      $or: [
+        { role: { $exists: false } },
+        { role: "player" as const },
+      ],
+    }),
+  );
+}
+
+export async function getActivePlayerPersonalities(): Promise<Personality[]> {
+  const collection = await getPersonalitiesCollection();
+  const personalities = await collection.find(PLAYER_PERSONALITY_FILTER).toArray();
+
+  return personalities.map(normalizePersonality);
+}
+
+export async function softDeletePersonalities(
+  personalityIds: string[],
+  deletedAt = new Date(),
+): Promise<number> {
+  if (personalityIds.length === 0) {
+    return 0;
+  }
+
+  const collection = await getPersonalitiesCollection();
+  const result = await collection.updateMany(
+    mergeNotDeleted({ id: { $in: personalityIds } }),
+    { $set: { deletedAt } },
+  );
+
+  return result.modifiedCount;
+}
 
 export async function getAllPersonalities(): Promise<Personality[]> {
   const collection = await getPersonalitiesCollection();
@@ -298,17 +374,28 @@ export async function getSocialScoreGlobalRank(
   }
 
   const normalized = normalizeStoredStats(personality.stats);
-  const higherCount = await collection.countDocuments({
-    ...COMPETITIVE_FILTER,
-    id: { $ne: personalityId },
-    $or: [
-      { "stats.socialScore": { $gt: normalized.socialScore } },
-      {
-        "stats.socialScore": normalized.socialScore,
-        id: { $lt: personalityId },
-      },
-    ],
-  });
+  const higherCount = await collection.countDocuments(
+    mergeNotDeleted({
+      id: { $ne: personalityId },
+      $and: [
+        {
+          $or: [
+            { role: { $exists: false } },
+            { role: { $ne: "rank_npc" as const } },
+          ],
+        },
+        {
+          $or: [
+            { "stats.socialScore": { $gt: normalized.socialScore } },
+            {
+              "stats.socialScore": normalized.socialScore,
+              id: { $lt: personalityId },
+            },
+          ],
+        },
+      ],
+    }),
+  );
 
   return higherCount + 1;
 }
@@ -442,5 +529,6 @@ export async function ensurePersonalityIndexes(): Promise<void> {
   await collection.createIndex({ "stats.controversy": -1 });
   await collection.createIndex({ role: 1 });
   await collection.createIndex({ "xSync.xHandle": 1 });
+  await collection.createIndex({ deletedAt: 1 });
   await migrateInvalidPersonalityArchetypes();
 }

@@ -1,4 +1,4 @@
-import { getAllPersonalities } from "@/lib/personalities";
+import { getAllPersonalities, isPersonalityDeleted, normalizePersonality } from "@/lib/personalities";
 import { getRecentPosts } from "@/lib/db/posts";
 import { getWorldState } from "@/lib/db/world";
 import type { Post } from "@/lib/types/post";
@@ -20,7 +20,9 @@ export async function loadSimulationWorld(): Promise<SimulationWorld> {
 
   return {
     state,
-    personalities,
+    personalities: personalities
+      .map(normalizePersonality)
+      .filter((personality) => !isPersonalityDeleted(personality)),
     posts,
   };
 }

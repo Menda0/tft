@@ -1,7 +1,9 @@
+import { mergeNotDeleted } from "@/lib/db/active-filters";
 import { findUserById } from "@/lib/db/users";
 import { avatarColorForHandle } from "@/lib/feed/format";
 import {
   getPersonalitiesCollection,
+  isPersonalityDeleted,
   normalizePersonality,
 } from "@/lib/personalities";
 import { isRankNpc } from "@/lib/personalities/rank-npc";
@@ -101,12 +103,14 @@ export async function getTopPersonalitiesByClout(
 ): Promise<PersonalityLeaderboardEntry[]> {
   const collection = await getPersonalitiesCollection();
   const personalities = await collection
-    .find({
-      $or: [
-        { role: { $exists: false } },
-        { role: { $ne: "rank_npc" as const } },
-      ],
-    })
+    .find(
+      mergeNotDeleted({
+        $or: [
+          { role: { $exists: false } },
+          { role: { $ne: "rank_npc" as const } },
+        ],
+      }),
+    )
     .toArray();
 
   return sortPersonalitiesByScore(
@@ -121,12 +125,14 @@ export async function getTopPersonalitiesByHeat(
 ): Promise<PersonalityLeaderboardEntry[]> {
   const collection = await getPersonalitiesCollection();
   const personalities = await collection
-    .find({
-      $or: [
-        { role: { $exists: false } },
-        { role: { $ne: "rank_npc" as const } },
-      ],
-    })
+    .find(
+      mergeNotDeleted({
+        $or: [
+          { role: { $exists: false } },
+          { role: { $ne: "rank_npc" as const } },
+        ],
+      }),
+    )
     .toArray();
 
   return sortPersonalitiesByScore(
@@ -148,7 +154,7 @@ async function getTopFarmersByMetric(
   for (const raw of personalities) {
     const personality = normalizePersonality(raw);
 
-    if (isRankNpc(personality) || !personality.ownerId) {
+    if (isRankNpc(personality) || !personality.ownerId || isPersonalityDeleted(personality)) {
       continue;
     }
 

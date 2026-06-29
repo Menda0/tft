@@ -33,6 +33,39 @@ export async function getReadPostIds(
   return new Set(reads.map((read) => read.postId));
 }
 
+export async function deletePostReadsForPersonalityIds(
+  personalityIds: string[],
+): Promise<number> {
+  if (personalityIds.length === 0) {
+    return 0;
+  }
+
+  const collection = await getPostReadsCollection();
+  const result = await collection.deleteMany({
+    personalityId: { $in: personalityIds },
+  });
+
+  return result.deletedCount;
+}
+
+export async function countPostReadsForPosts(
+  postIds: string[],
+): Promise<Map<string, number>> {
+  if (postIds.length === 0) {
+    return new Map();
+  }
+
+  const collection = await getPostReadsCollection();
+  const rows = await collection
+    .aggregate<{ _id: string; count: number }>([
+      { $match: { postId: { $in: postIds } } },
+      { $group: { _id: "$postId", count: { $sum: 1 } } },
+    ])
+    .toArray();
+
+  return new Map(rows.map((row) => [row._id, row.count]));
+}
+
 export async function recordPostRead(
   personalityId: string,
   postId: string,

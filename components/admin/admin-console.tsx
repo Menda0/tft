@@ -9,6 +9,7 @@ import {
   streamSimulationTickRequest,
   type StreamTickEvent,
 } from "@/lib/simulation/client";
+import { prunePlayerPersonalitiesRequest } from "@/lib/personalities/admin-client";
 import { pruneRankNpcPostsRequest, streamSeedRankNpcsAdminRequest } from "@/lib/rank-npcs/client";
 import type { TickLogLevel } from "@/lib/simulation/logger";
 
@@ -24,6 +25,7 @@ const HELP_TEXT = [
   "  trends  — refresh trending topics",
   "  seed npc — reconcile, sync, and seed parody NPCs (once per day)",
   "  prune npc — delete all mirrored parody NPC posts",
+  "  prune personalities — soft-delete all player personalities and their posts",
   "  clear   — clear the console",
   "  help    — show this message",
   "",
@@ -289,6 +291,34 @@ export function AdminConsole({ open, onClose }: AdminConsoleProps) {
     }
   }, [appendLine, running, token]);
 
+  const prunePersonalities = useCallback(async () => {
+    if (!token || running) {
+      return;
+    }
+
+    setRunning(true);
+    appendLine(
+      "system",
+      `[${formatTime()}] Soft-deleting all player personalities and related content...`,
+    );
+
+    try {
+      const result = await prunePlayerPersonalitiesRequest(token);
+
+      if (!result.ok) {
+        appendLine("error", result.error);
+        return;
+      }
+
+      appendLine(
+        "success",
+        `Pruned ${result.data.personalities} personalit(ies), ${result.data.posts} post(s), ${result.data.follows} follow(s), ${result.data.postReads} read(s).`,
+      );
+    } finally {
+      setRunning(false);
+    }
+  }, [appendLine, running, token]);
+
   const handleCommand = useCallback(
     async (raw: string) => {
       const command = raw.trim().toLowerCase();
@@ -329,9 +359,14 @@ export function AdminConsole({ open, onClose }: AdminConsoleProps) {
         return;
       }
 
+      if (command === "prune personalities") {
+        await prunePersonalities();
+        return;
+      }
+
       appendLine("error", `Unknown command: ${raw.trim()}. Type \`help\` for options.`);
     },
-    [appendLine, pruneNpcPosts, refreshTrends, runTick, seedNpcs],
+    [appendLine, pruneNpcPosts, prunePersonalities, refreshTrends, runTick, seedNpcs],
   );
 
   function handleSubmit(event: React.FormEvent) {

@@ -37,6 +37,7 @@ export type Post = {
   sourceImageUrls?: string[];
   mediaUrl?: string | null;
   mediaStatus?: PostMediaStatus;
+  deletedAt?: Date | null;
 };
 
 export function defaultPostStats(): PostStats {

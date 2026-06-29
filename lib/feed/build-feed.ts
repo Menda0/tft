@@ -5,6 +5,8 @@ import {
   getRepliesForPosts,
   getTopLevelPosts,
   getTrendingTopLevelPostsSince,
+  resolvePostStatsBatch,
+  syncPostStatsIfStale,
 } from "@/lib/db/posts";
 import { PAGE_SIZE } from "@/lib/pagination";
 import { avatarColorForHandle, formatRelativeTime } from "@/lib/feed/format";
@@ -13,6 +15,7 @@ import type {
   FeedReply,
   FeedThread,
   Post,
+  PostStats,
 } from "@/lib/types/post";
 
 function toFeedAuthor(author: Post["author"]): FeedAuthor {
@@ -38,13 +41,14 @@ function toFeedThread(
   post: Post,
   replies: Post[],
   now: number,
+  stats: PostStats,
 ): FeedThread {
   return {
     id: post.id,
     author: toFeedAuthor(post.author),
     content: post.content,
     timestamp: formatRelativeTime(post.createdAt, now),
-    stats: post.stats,
+    stats,
     mediaUrl: post.mediaUrl ?? null,
     mediaStatus: post.mediaStatus ?? "none",
     replies: replies.map((reply) => toFeedReply(reply, now)),
@@ -78,10 +82,11 @@ export async function buildThreadByPostId(
   );
   const hasMore = replies.length > replyLimit;
   const pageReplies = hasMore ? replies.slice(0, replyLimit) : replies;
+  const stats = await syncPostStatsIfStale(rootPost);
   const now = Date.now();
 
   return {
-    thread: toFeedThread(rootPost, pageReplies, now),
+    thread: toFeedThread(rootPost, pageReplies, now, stats),
     hasMore,
   };
 }
@@ -108,9 +113,15 @@ async function buildFeedThreadsFromPosts(
     repliesByPostId.set(reply.replyToPostId, bucket);
   }
 
+  const resolvedStats = await resolvePostStatsBatch(topLevelPosts);
   const now = Date.now();
   return topLevelPosts.map((post) =>
-    toFeedThread(post, repliesByPostId.get(post.id) ?? [], now),
+    toFeedThread(
+      post,
+      repliesByPostId.get(post.id) ?? [],
+      now,
+      resolvedStats.get(post.id) ?? post.stats,
+    ),
   );
 }
 

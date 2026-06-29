@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "seed:rank-npcs": "npx tsx scripts/seed-rank-npcs.ts",
-    "prune:rank-npc-posts": "npx tsx scripts/prune-rank-npc-posts.ts"
+    "seed:bootstrap-players": "npx tsx scripts/seed-bootstrap-players.ts",
+    "prune:rank-npc-posts": "npx tsx scripts/prune-rank-npc-posts.ts",
+    "prune:player-personalities": "npx tsx scripts/prune-player-personalities.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

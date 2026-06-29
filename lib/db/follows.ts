@@ -89,3 +89,21 @@ export async function getFollowersForPersonality(
     .limit(limit)
     .toArray();
 }
+
+export async function deleteFollowsForPersonalityIds(
+  personalityIds: string[],
+): Promise<number> {
+  if (personalityIds.length === 0) {
+    return 0;
+  }
+
+  const collection = await getFollowsCollection();
+  const result = await collection.deleteMany({
+    $or: [
+      { followerId: { $in: personalityIds } },
+      { followingId: { $in: personalityIds } },
+    ],
+  });
+
+  return result.deletedCount;
+}

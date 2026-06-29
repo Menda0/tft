@@ -3,7 +3,15 @@ import { randomUUID } from "crypto";
 import { Collection } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
-import { defaultPostStats, type Post, type PostAuthor, type PostMediaStatus } from "@/lib/types/post";
+import { mergeNotDeletedPost } from "@/lib/db/active-filters";
+import { countPostReadsForPosts } from "@/lib/db/post-reads";
+import {
+  defaultPostStats,
+  type Post,
+  type PostAuthor,
+  type PostMediaStatus,
+  type PostStats,
+} from "@/lib/types/post";
 
 const COLLECTION = "posts";
 
@@ -33,6 +41,212 @@ export async function ensurePostIndexes(): Promise<void> {
     { unique: true, sparse: true },
   );
   await collection.createIndex({ mediaStatus: 1 });
+  await collection.createIndex({ deletedAt: 1 });
+}
+
+export async function softDeletePostsByPersonalityIds(
+  personalityIds: string[],
+  deletedAt = new Date(),
+): Promise<number> {
+  if (personalityIds.length === 0) {
+    return 0;
+  }
+
+  const collection = await getPostsCollection();
+  const authoredPosts = await collection
+    .find(
+      mergeNotDeletedPost({
+        "author.personalityId": { $in: personalityIds },
+      }),
+      { projection: { id: 1 } },
+    )
+    .toArray();
+  const authoredPostIds = authoredPosts.map((post) => post.id);
+
+  let deletedCount = 0;
+
+  const authoredResult = await collection.updateMany(
+    mergeNotDeletedPost({
+      "author.personalityId": { $in: personalityIds },
+    }),
+    { $set: { deletedAt } },
+  );
+  deletedCount += authoredResult.modifiedCount;
+
+  if (authoredPostIds.length > 0) {
+    deletedCount += await softDeletePostThreads(authoredPostIds, deletedAt);
+  }
+
+  await recalculateEngagementStatsForActivePosts({ resetLikes: true });
+
+  return deletedCount;
+}
+
+async function softDeletePostThreads(
+  rootPostIds: string[],
+  deletedAt: Date,
+): Promise<number> {
+  const collection = await getPostsCollection();
+  let deletedCount = 0;
+  let frontier = rootPostIds;
+
+  while (frontier.length > 0) {
+    const children = await collection
+      .find(
+        mergeNotDeletedPost({
+          $or: [
+            { replyToPostId: { $in: frontier } },
+            { repostOfPostId: { $in: frontier } },
+          ],
+        }),
+        { projection: { id: 1 } },
+      )
+      .toArray();
+
+    if (children.length === 0) {
+      break;
+    }
+
+    const childIds = children.map((post) => post.id);
+    await collection.updateMany({ id: { $in: childIds } }, { $set: { deletedAt } });
+    deletedCount += childIds.length;
+    frontier = childIds;
+  }
+
+  return deletedCount;
+}
+
+function resolveStoredLikes(
+  storedLikes: number,
+  replies: number,
+  reposts: number,
+  views: number,
+  resetLikes = false,
+): number {
+  if (resetLikes) {
+    return 0;
+  }
+
+  if (replies === 0 && reposts === 0 && views === 0 && storedLikes > 0) {
+    return 0;
+  }
+
+  return storedLikes;
+}
+
+function postStatsEqual(left: PostStats, right: PostStats): boolean {
+  return (
+    left.replies === right.replies &&
+    left.reposts === right.reposts &&
+    left.likes === right.likes &&
+    left.views === right.views
+  );
+}
+
+export async function resolvePostStatsBatch(
+  posts: Array<Pick<Post, "id" | "stats">>,
+): Promise<Map<string, PostStats>> {
+  const ids = posts.map((post) => post.id);
+
+  if (ids.length === 0) {
+    return new Map();
+  }
+
+  const collection = await getPostsCollection();
+  const [replyRows, repostRows, viewCounts] = await Promise.all([
+    collection
+      .aggregate<{ _id: string; count: number }>([
+        { $match: mergeNotDeletedPost({ replyToPostId: { $in: ids } }) },
+        { $group: { _id: "$replyToPostId", count: { $sum: 1 } } },
+      ])
+      .toArray(),
+    collection
+      .aggregate<{ _id: string; count: number }>([
+        { $match: mergeNotDeletedPost({ repostOfPostId: { $in: ids } }) },
+        { $group: { _id: "$repostOfPostId", count: { $sum: 1 } } },
+      ])
+      .toArray(),
+    countPostReadsForPosts(ids),
+  ]);
+
+  const replyCounts = new Map(replyRows.map((row) => [row._id, row.count]));
+  const repostCounts = new Map(repostRows.map((row) => [row._id, row.count]));
+
+  return new Map(
+    posts.map((post) => {
+      const replies = replyCounts.get(post.id) ?? 0;
+      const reposts = repostCounts.get(post.id) ?? 0;
+      const views = viewCounts.get(post.id) ?? 0;
+
+      return [
+        post.id,
+        {
+          replies,
+          reposts,
+          likes: resolveStoredLikes(post.stats.likes, replies, reposts, views),
+          views,
+        },
+      ];
+    }),
+  );
+}
+
+export async function syncPostStatsIfStale(
+  post: Pick<Post, "id" | "stats">,
+  options?: { resetLikes?: boolean },
+): Promise<PostStats> {
+  const resolved = (await resolvePostStatsBatch([post])).get(post.id)!;
+  const stats = options?.resetLikes
+    ? {
+        ...resolved,
+        likes: resolveStoredLikes(
+          post.stats.likes,
+          resolved.replies,
+          resolved.reposts,
+          resolved.views,
+          true,
+        ),
+      }
+    : resolved;
+
+  if (!postStatsEqual(post.stats, stats)) {
+    await updatePost(post.id, { stats });
+  }
+
+  return stats;
+}
+
+export async function recalculateEngagementStatsForActivePosts(options?: {
+  resetLikes?: boolean;
+}): Promise<number> {
+  const collection = await getPostsCollection();
+  const activePosts = await collection
+    .find(mergeNotDeletedPost({}), { projection: { id: 1, stats: 1 } })
+    .toArray();
+
+  const resolvedById = await resolvePostStatsBatch(activePosts);
+  let updated = 0;
+
+  for (const post of activePosts) {
+    const resolved = resolvedById.get(post.id)!;
+    const stats = {
+      ...resolved,
+      likes: resolveStoredLikes(
+        post.stats.likes,
+        resolved.replies,
+        resolved.reposts,
+        resolved.views,
+        options?.resetLikes,
+      ),
+    };
+
+    if (!postStatsEqual(post.stats, stats)) {
+      await collection.updateOne({ id: post.id }, { $set: { stats } });
+      updated += 1;
+    }
+  }
+
+  return updated;
 }
 
 function isOriginalTopLevelPost(post: Pick<Post, "replyToPostId" | "repostOfPostId">): boolean {
@@ -45,12 +259,14 @@ export async function countOriginalPostsSince(
 ): Promise<number> {
   const collection = await getPostsCollection();
 
-  return collection.countDocuments({
-    "author.personalityId": personalityId,
-    replyToPostId: null,
-    repostOfPostId: null,
-    createdAt: { $gte: since },
-  });
+  return collection.countDocuments(
+    mergeNotDeletedPost({
+      "author.personalityId": personalityId,
+      replyToPostId: null,
+      repostOfPostId: null,
+      createdAt: { $gte: since },
+    }),
+  );
 }
 
 export async function getOriginalPostTopicsSince(
@@ -60,13 +276,13 @@ export async function getOriginalPostTopicsSince(
   const collection = await getPostsCollection();
   const posts = await collection
     .find(
-      {
+      mergeNotDeletedPost({
         "author.personalityId": personalityId,
         replyToPostId: null,
         repostOfPostId: null,
         createdAt: { $gte: since },
         topic: { $ne: null },
-      },
+      }),
       { projection: { topic: 1 } },
     )
     .sort({ createdAt: -1 })
@@ -171,11 +387,13 @@ export async function getTopLevelOriginalPostsSince(
 ): Promise<Post[]> {
   const collection = await getPostsCollection();
   return collection
-    .find({
-      replyToPostId: null,
-      repostOfPostId: null,
-      createdAt: { $gte: since },
-    })
+    .find(
+      mergeNotDeletedPost({
+        replyToPostId: null,
+        repostOfPostId: null,
+        createdAt: { $gte: since },
+      }),
+    )
     .sort({ createdAt: -1 })
     .limit(limit)
     .toArray();
@@ -183,7 +401,11 @@ export async function getTopLevelOriginalPostsSince(
 
 export async function getRecentPosts(limit = 100): Promise<Post[]> {
   const collection = await getPostsCollection();
-  return collection.find().sort({ createdAt: -1 }).limit(limit).toArray();
+  return collection
+    .find(mergeNotDeletedPost({}))
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .toArray();
 }
 
 export async function getTopLevelPosts(
@@ -192,7 +414,7 @@ export async function getTopLevelPosts(
 ): Promise<Post[]> {
   const collection = await getPostsCollection();
   return collection
-    .find({ replyToPostId: null })
+    .find(mergeNotDeletedPost({ replyToPostId: null }))
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
@@ -209,10 +431,10 @@ export async function getTrendingTopLevelPostsSince(
   return collection
     .aggregate<Post>([
       {
-        $match: {
+        $match: mergeNotDeletedPost({
           replyToPostId: null,
           createdAt: { $gte: since },
-        },
+        }),
       },
       {
         $addFields: {
@@ -241,7 +463,7 @@ export async function getRepliesForPost(
 ): Promise<Post[]> {
   const collection = await getPostsCollection();
   return collection
-    .find({ replyToPostId: postId })
+    .find(mergeNotDeletedPost({ replyToPostId: postId }))
     .sort({ createdAt: 1 })
     .skip(skip)
     .limit(limit)
@@ -255,14 +477,16 @@ export async function getRepliesForPosts(postIds: string[]): Promise<Post[]> {
 
   const collection = await getPostsCollection();
   return collection
-    .find({ replyToPostId: { $in: postIds } })
+    .find(mergeNotDeletedPost({ replyToPostId: { $in: postIds } }))
     .sort({ createdAt: 1 })
     .toArray();
 }
 
 export async function getPostById(id: string): Promise<Post | null> {
   const collection = await getPostsCollection();
-  return collection.findOne({ id });
+  const post = await collection.findOne(mergeNotDeletedPost({ id }));
+
+  return post;
 }
 
 export async function getPostsByIds(ids: string[]): Promise<Post[]> {
@@ -271,7 +495,9 @@ export async function getPostsByIds(ids: string[]): Promise<Post[]> {
   }
 
   const collection = await getPostsCollection();
-  return collection.find({ id: { $in: ids } }).toArray();
+  return collection
+    .find(mergeNotDeletedPost({ id: { $in: ids } }))
+    .toArray();
 }
 
 export async function getOriginalPostsByPersonality(
@@ -281,11 +507,13 @@ export async function getOriginalPostsByPersonality(
 ): Promise<Post[]> {
   const collection = await getPostsCollection();
   return collection
-    .find({
-      "author.personalityId": personalityId,
-      replyToPostId: null,
-      repostOfPostId: null,
-    })
+    .find(
+      mergeNotDeletedPost({
+        "author.personalityId": personalityId,
+        replyToPostId: null,
+        repostOfPostId: null,
+      }),
+    )
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
@@ -299,10 +527,12 @@ export async function getRepliesByPersonality(
 ): Promise<Post[]> {
   const collection = await getPostsCollection();
   return collection
-    .find({
-      "author.personalityId": personalityId,
-      replyToPostId: { $ne: null },
-    })
+    .find(
+      mergeNotDeletedPost({
+        "author.personalityId": personalityId,
+        replyToPostId: { $ne: null },
+      }),
+    )
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
@@ -316,10 +546,12 @@ export async function getRepostsByPersonality(
 ): Promise<Post[]> {
   const collection = await getPostsCollection();
   return collection
-    .find({
-      "author.personalityId": personalityId,
-      repostOfPostId: { $ne: null },
-    })
+    .find(
+      mergeNotDeletedPost({
+        "author.personalityId": personalityId,
+        repostOfPostId: { $ne: null },
+      }),
+    )
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
@@ -337,6 +569,9 @@ export async function aggregateSocialScoreByPersonality(): Promise<
       reposts: number;
       replies: number;
     }>([
+      {
+        $match: mergeNotDeletedPost({}),
+      },
       {
         $group: {
           _id: "$author.personalityId",
@@ -366,10 +601,9 @@ export async function incrementPostStat(
   amount = 1,
 ): Promise<void> {
   const collection = await getPostsCollection();
-  await collection.updateOne(
-    { id },
-    { $inc: { [`stats.${field}`]: amount } },
-  );
+  await collection.updateOne(mergeNotDeletedPost({ id }), {
+    $inc: { [`stats.${field}`]: amount },
+  });
 }
 
 export async function updatePost(
