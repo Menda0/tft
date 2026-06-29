@@ -1,9 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { useAuth } from "@/components/auth/auth-provider";
 import { PersonalityAvatar } from "@/components/personalities/personality-avatar";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { deletePersonalityRequest } from "@/lib/personalities/client";
 import {
   fetchProfileCharacterMemories,
   fetchProfileCharacterRelationships,
@@ -50,6 +62,8 @@ const RELATIONSHIP_FIELDS: {
 type ProfileCharacterSheetProps = {
   handle: string;
   character: ProfileCharacterSheet;
+  personalityId: string;
+  isOwner: boolean;
 };
 
 function StatCard({
@@ -198,7 +212,11 @@ function SectionPagination({
 export function ProfileCharacterSheetView({
   handle,
   character,
+  personalityId,
+  isOwner,
 }: ProfileCharacterSheetProps) {
+  const router = useRouter();
+  const { token } = useAuth();
   const [memories, setMemories] = useState<MemoryItem[]>([]);
   const [relationships, setRelationships] = useState<ProfileRelationship[]>([]);
   const [memoriesPage, setMemoriesPage] = useState(0);
@@ -211,6 +229,9 @@ export function ProfileCharacterSheetView({
   const [relationshipsError, setRelationshipsError] = useState<string | null>(
     null,
   );
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     setMemoriesPage(0);
@@ -293,6 +314,27 @@ export function ProfileCharacterSheetView({
   const showMemoriesPagination = memoriesPage > 0 || memoriesHasNext;
   const showRelationshipsPagination =
     relationshipsPage > 0 || relationshipsHasNext;
+
+  async function handleConfirmDelete() {
+    if (!token) {
+      setDeleteError("Log in to remove this bot.");
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    const result = await deletePersonalityRequest(token, personalityId);
+    setIsDeleting(false);
+
+    if (!result.ok) {
+      setDeleteError(result.error);
+      return;
+    }
+
+    setDeleteDialogOpen(false);
+    router.push("/personalities");
+  }
 
   return (
     <div className="space-y-6 px-4 py-4">
@@ -463,6 +505,71 @@ export function ProfileCharacterSheetView({
           />
         ) : null}
       </section>
+
+      {isOwner ? (
+        <section>
+          <SectionTitle>REMOVE BOT</SectionTitle>
+          <p className="mt-3 text-sm leading-relaxed text-[#83769a]">
+            Remove this bot from the game. Posts, views, and likes stay in the
+            app, but the bot will no longer act in future ticks.
+          </p>
+          {deleteError ? (
+            <p className="mt-3 text-sm text-[#ff004d]">{deleteError}</p>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              setDeleteError(null);
+              setDeleteDialogOpen(true);
+            }}
+            className="mt-4 w-full pixel-border-thin bg-[#7e2553] px-3 py-2 text-[10px] text-[#fff1e8] pixel-heading hover:bg-[#ff004d]"
+          >
+            DELETE BOT
+          </button>
+        </section>
+      ) : null}
+
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) {
+            setDeleteDialogOpen(false);
+          }
+        }}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className="gap-0 rounded-none border-[3px] border-[#fff1e8] bg-[#1d2b53] p-0 text-[#fff1e8] ring-0 sm:max-w-md pixel-shadow"
+        >
+          <DialogHeader className="gap-3 border-b-[3px] border-[#fff1e8] bg-[#29366f] px-4 py-4">
+            <DialogTitle className="pixel-heading text-[11px] text-[#ff004d] uppercase">
+              Remove Bot
+            </DialogTitle>
+            <DialogDescription className="text-sm text-[#c2c3c7]">
+              Remove @{handle} from the game? Their posts, views, and likes will
+              stay in the app, but this bot will no longer act in future ticks.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mx-0 mb-0 gap-2 rounded-none border-0 border-t-[3px] border-[#fff1e8] bg-[#29366f] px-4 py-4 sm:justify-end">
+            <Button
+              type="button"
+              disabled={isDeleting}
+              onClick={() => setDeleteDialogOpen(false)}
+              className="rounded-none border-2 border-[#fff1e8] bg-[#29366f] text-[#fff1e8] hover:bg-[#1d2b53]"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={isDeleting}
+              onClick={() => void handleConfirmDelete()}
+              className="rounded-none border-2 border-[#fff1e8] bg-[#ff004d] text-[#fff1e8] hover:bg-[#7e2553]"
+            >
+              {isDeleting ? "Removing..." : "Remove bot"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

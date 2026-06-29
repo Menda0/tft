@@ -69,6 +69,24 @@ export async function generateDescriptionRequest(
   });
 }
 
+export async function deletePersonalityRequest(
+  token: string,
+  personalityId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const response = await fetch(`/api/personalities/${personalityId}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+
+  const data = (await response.json()) as { error?: string };
+
+  if (!response.ok) {
+    return { ok: false, error: data.error ?? "Could not remove personality." };
+  }
+
+  return { ok: true };
+}
+
 export async function createPersonalityRequest(
   token: string,
   payload: CreatePersonalityPayload,

@@ -7,6 +7,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { AppBar } from "@/components/layout/app-bar";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { PersonalityAvatar } from "@/components/personalities/personality-avatar";
 import { ProfileLink } from "@/components/profile/profile-link";
 import { PROJECT_NAME } from "@/lib/brand";
@@ -19,6 +27,7 @@ import {
   generateDescriptionRequest,
   listPersonalitiesRequest,
 } from "@/lib/personalities/client";
+import { MAX_PERSONALITIES_PER_USER } from "@/lib/personalities/limits";
 import { formatStatValue, normalizeStoredStats } from "@/lib/personalities/stats";
 import type { PersonalityListItem } from "@/lib/profile/social-rank";
 import {
@@ -138,8 +147,12 @@ export function PersonalitiesList() {
   const [personalities, setPersonalities] = useState<PersonalityListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const generationStarted = useRef(new Set<string>());
   const descriptionStarted = useRef(new Set<string>());
+
+  const atPersonalityLimit =
+    personalities.length >= MAX_PERSONALITIES_PER_USER;
 
   const loadPersonalities = useCallback(async () => {
     if (!token) return;
@@ -247,12 +260,23 @@ export function PersonalitiesList() {
             Your {PROJECT_NAME} personalities. Avatars and bios generate in the
             background.
           </p>
-          <Link
-            href="/create-personality"
-            className="shrink-0 pixel-border-thin bg-[#00e436] px-2 py-1 text-[10px] text-[#1d2b53] pixel-heading"
-          >
-            NEW
-          </Link>
+          {atPersonalityLimit ? (
+            <button
+              type="button"
+              onClick={() => setLimitDialogOpen(true)}
+              className="shrink-0 cursor-not-allowed pixel-border-thin bg-[#5a6988] px-2 py-1 text-[10px] text-[#1d2b53] opacity-70 pixel-heading"
+              aria-label="Cannot add more personalities"
+            >
+              NEW
+            </button>
+          ) : (
+            <Link
+              href="/create-personality"
+              className="shrink-0 pixel-border-thin bg-[#00e436] px-2 py-1 text-[10px] text-[#1d2b53] pixel-heading"
+            >
+              NEW
+            </Link>
+          )}
         </div>
 
         {!isLoading && personalities.length > 0 ? (
@@ -285,7 +309,14 @@ export function PersonalitiesList() {
             <p className="text-[#fff1e8]">No personalities yet.</p>
             <Button
               type="button"
-              onClick={() => router.push("/create-personality")}
+              onClick={() => {
+                if (atPersonalityLimit) {
+                  setLimitDialogOpen(true);
+                  return;
+                }
+
+                router.push("/create-personality");
+              }}
               className="mt-4 rounded-none border-2 border-[#fff1e8] bg-[#00e436] text-[#1d2b53] hover:bg-[#29adff]"
             >
               Create one
@@ -374,6 +405,32 @@ export function PersonalitiesList() {
           </ul>
         )}
       </div>
+
+      <Dialog open={limitDialogOpen} onOpenChange={setLimitDialogOpen}>
+        <DialogContent
+          showCloseButton={false}
+          className="gap-0 rounded-none border-[3px] border-[#fff1e8] bg-[#1d2b53] p-0 text-[#fff1e8] ring-0 sm:max-w-md pixel-shadow"
+        >
+          <DialogHeader className="gap-3 border-b-[3px] border-[#fff1e8] bg-[#29366f] px-4 py-4">
+            <DialogTitle className="pixel-heading text-[11px] text-[#ffa300] uppercase">
+              Bot Limit Reached
+            </DialogTitle>
+            <DialogDescription className="text-sm text-[#c2c3c7]">
+              It is not possible to add more personalities. Each player can have
+              up to {MAX_PERSONALITIES_PER_USER} bots.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mx-0 mb-0 rounded-none border-0 border-t-[3px] border-[#fff1e8] bg-[#29366f] px-4 py-4 sm:justify-end">
+            <Button
+              type="button"
+              onClick={() => setLimitDialogOpen(false)}
+              className="rounded-none border-2 border-[#fff1e8] bg-[#29adff] text-[#1d2b53] hover:bg-[#00e436]"
+            >
+              OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

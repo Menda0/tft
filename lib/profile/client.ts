@@ -17,10 +17,13 @@ export const PROFILE_CHARACTER_SECTION_PAGE_SIZE = CHARACTER_SECTION_PAGE_SIZE;
 
 export async function fetchProfile(
   handle: string,
+  token?: string | null,
 ): Promise<
   { ok: true; personality: PublicPersonality } | { ok: false; error: string }
 > {
-  const response = await fetch(`/api/u/${encodeURIComponent(handle)}`);
+  const response = await fetch(`/api/u/${encodeURIComponent(handle)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
   const data = (await response.json()) as {
     personality?: PublicPersonality;
     error?: string;

@@ -20,6 +20,7 @@ export type PublicPersonality = {
   stats: Stats;
   politicalSwing: PoliticalSwing;
   isRankNpc: boolean;
+  isOwner?: boolean;
   socialRank?: SocialRank;
   socialRankLabel?: string;
 };

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useAuth } from "@/components/auth/auth-provider";
 import { ProfileCharacterSheetView } from "@/components/profile/profile-character-sheet";
 import { ProfileHeader } from "@/components/profile/profile-header";
 import { ProfilePostList } from "@/components/profile/profile-post-list";
@@ -53,6 +54,7 @@ function isPostTab(tab: ProfileTab): tab is ProfilePostType {
 
 export function ProfileView({ handle }: ProfileViewProps) {
   const router = useRouter();
+  const { token } = useAuth();
   const [personality, setPersonality] = useState<PublicPersonality | null>(
     null,
   );
@@ -117,7 +119,7 @@ export function ProfileView({ handle }: ProfileViewProps) {
 
     async function loadProfile() {
       setLoadingProfile(true);
-      const result = await fetchProfile(handle);
+      const result = await fetchProfile(handle, token);
 
       if (cancelled) return;
 
@@ -137,7 +139,7 @@ export function ProfileView({ handle }: ProfileViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [handle]);
+  }, [handle, token]);
 
   useEffect(() => {
     if (!isPostTab(activeTab)) {
@@ -287,6 +289,8 @@ export function ProfileView({ handle }: ProfileViewProps) {
               <ProfileCharacterSheetView
                 handle={handle}
                 character={character}
+                personalityId={personality.id}
+                isOwner={personality.isOwner ?? false}
               />
             ) : null
           ) : loadingPosts ? (

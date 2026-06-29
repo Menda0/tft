@@ -221,10 +221,19 @@ export async function findPersonalityByHandle(
   return personality ? normalizePersonality(personality) : null;
 }
 
+export async function findPersonalityByHandleIncludingDeleted(
+  handle: string,
+): Promise<Personality | null> {
+  const collection = await getPersonalitiesCollection();
+  const personality = await collection.findOne({ handle });
+
+  return personality ? normalizePersonality(personality) : null;
+}
+
 export async function findPublicPersonalityByHandle(
   handle: string,
 ): Promise<Personality | null> {
-  const personality = await findPersonalityByHandle(handle);
+  const personality = await findPersonalityByHandleIncludingDeleted(handle);
 
   if (!personality) {
     return null;

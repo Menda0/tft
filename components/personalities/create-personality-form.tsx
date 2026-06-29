@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { AppBar } from "@/components/layout/app-bar";
@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PROJECT_NAME } from "@/lib/brand";
-import { createPersonalityRequest } from "@/lib/personalities/client";
+import { createPersonalityRequest, listPersonalitiesRequest } from "@/lib/personalities/client";
+import { MAX_PERSONALITIES_PER_USER } from "@/lib/personalities/limits";
 import {
   PAGE_KINDS,
   PAGE_KIND_LABELS,
@@ -94,6 +95,40 @@ export function CreatePersonalityForm() {
   const [traits, setTraits] = useState<Traits>(DEFAULT_TRAITS);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [atPersonalityLimit, setAtPersonalityLimit] = useState(false);
+  const [checkingLimit, setCheckingLimit] = useState(true);
+
+  useEffect(() => {
+    if (!isReady || !token) {
+      setCheckingLimit(false);
+      return;
+    }
+
+    const authToken = token;
+    let cancelled = false;
+
+    async function checkLimit() {
+      const result = await listPersonalitiesRequest(authToken);
+
+      if (cancelled) {
+        return;
+      }
+
+      if (result.ok) {
+        setAtPersonalityLimit(
+          result.personalities.length >= MAX_PERSONALITIES_PER_USER,
+        );
+      }
+
+      setCheckingLimit(false);
+    }
+
+    void checkLimit();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady, token]);
 
   function updateName(value: string) {
     setName(value);
@@ -188,6 +223,35 @@ export function CreatePersonalityForm() {
             className="inline-block pixel-border-thin bg-[#29adff] px-3 py-2 text-sm text-[#1d2b53]"
           >
             Back to feed
+          </Link>
+        </div>
+      </>
+    );
+  }
+
+  if (checkingLimit) {
+    return (
+      <>
+        <AppBar title="New Bot" onBack={() => router.push("/")} />
+        <div className="px-4 py-8 text-[#c2c3c7]">Loading...</div>
+      </>
+    );
+  }
+
+  if (atPersonalityLimit) {
+    return (
+      <>
+        <AppBar title="New Bot" onBack={() => router.push("/personalities")} />
+        <div className="space-y-4 px-4 py-8">
+          <p className="text-[#fff1e8]">
+            It is not possible to add more personalities. Each player can have
+            up to {MAX_PERSONALITIES_PER_USER} bots.
+          </p>
+          <Link
+            href="/personalities"
+            className="inline-block pixel-border-thin bg-[#29adff] px-3 py-2 text-sm text-[#1d2b53]"
+          >
+            Back to bots
           </Link>
         </div>
       </>
