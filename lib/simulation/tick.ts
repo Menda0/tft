@@ -4,8 +4,10 @@ import { chooseOptionalAction } from "./actions";
 import { createPost } from "./posts";
 import {
   evolvePersonality,
+  rankMilestonePatch,
   shouldAttemptEvolution,
 } from "./evolution";
+import { resolvePersonalitySocialRank } from "@/lib/profile/social-rank";
 import {
   noopSimulationLog,
   truncateForLog,
@@ -84,26 +86,39 @@ async function runEvolutionPass(
   log: SimulationLogFn,
 ): Promise<void> {
   for (const personality of world.personalities) {
-    if (!shouldAttemptEvolution()) {
+    if (shouldAttemptEvolution()) {
+      const patch = evolvePersonality(personality);
+
+      if (patch) {
+        const updated = await applyPersonalityUpdate(world, personality.id, patch);
+
+        if (updated) {
+          log(
+            "success",
+            `@${personality.handle} evolved: ${patch.memory?.map((memory) => memory.text).join(" ") ?? "traits or stats shifted"}`,
+          );
+        }
+      }
+    }
+
+    const current =
+      world.personalities.find((entry) => entry.id === personality.id) ??
+      personality;
+    const { rank } = await resolvePersonalitySocialRank(current);
+    const rankPatch = rankMilestonePatch(current, rank);
+
+    if (!rankPatch) {
       continue;
     }
 
-    const patch = evolvePersonality(personality);
+    const updated = await applyPersonalityUpdate(world, personality.id, rankPatch);
 
-    if (!patch) {
-      continue;
+    if (updated) {
+      log(
+        "success",
+        `@${personality.handle} rank milestone: ${rankPatch.memory?.map((memory) => memory.text).join(" ") ?? rank}`,
+      );
     }
-
-    const updated = await applyPersonalityUpdate(world, personality.id, patch);
-
-    if (!updated) {
-      continue;
-    }
-
-    log(
-      "success",
-      `@${personality.handle} evolved: ${patch.memory?.map((memory) => memory.text).join(" ") ?? "traits or stats shifted"}`,
-    );
   }
 }
 

@@ -4,6 +4,7 @@ import type { Gender } from "@/lib/personalities/gender";
 import type { PoliticalSwing } from "@/lib/personalities/political-swing";
 import type { Pronouns } from "@/lib/personalities/pronouns";
 import type { Stats, Traits, MemoryItem } from "@/lib/types/personality";
+import type { SocialRank } from "@/lib/scoring/ranks";
 import type { PostStats } from "@/lib/types/post";
 
 export type PublicPersonality = {
@@ -18,6 +19,8 @@ export type PublicPersonality = {
   pronouns: Pronouns;
   stats: Stats;
   politicalSwing: PoliticalSwing;
+  socialRank?: SocialRank;
+  socialRankLabel?: string;
 };
 
 export type ProfileFollower = {
@@ -47,6 +50,8 @@ export type ProfileCharacterSheet = {
   stats: Stats;
   interests: string[];
   evolutions: MemoryItem[];
+  socialRank: SocialRank;
+  socialRankLabel: string;
 };
 
 export type ProfileParentPost = {

@@ -152,7 +152,7 @@ export function PersonalitiesList() {
     <>
       <AppBar title="Bots" onBack={() => router.push("/")} />
       <div className="space-y-4 px-4 py-4 pb-8">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-start justify-between gap-2">
           <p className="text-sm text-[#c2c3c7]">
             Your {PROJECT_NAME} personalities. Avatars and bios generate in the
             background.
@@ -164,6 +164,17 @@ export function PersonalitiesList() {
             NEW
           </Link>
         </div>
+
+        {!isLoading && personalities.length > 0 ? (
+          <div className="pixel-border-thin bg-[#1d2b53] px-3 py-2">
+            <p className="pixel-heading text-[8px] text-[#83769a]">FARM CLOUT</p>
+            <p className="text-lg font-bold text-[#ffa300]">
+              {personalities
+                .reduce((sum, personality) => sum + personality.stats.socialScore, 0)
+                .toLocaleString()}
+            </p>
+          </div>
+        ) : null}
 
         {error ? (
           <p className="pixel-border-thin bg-[#7e2553] px-3 py-2 text-sm text-[#fff1e8]">
@@ -229,6 +240,14 @@ export function PersonalitiesList() {
                       {formatArchetypeLabel(personality.archetype).toUpperCase()}
                     </p>
                   ) : null}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="pixel-border-thin bg-[#1d2b53] px-2 py-0.5 pixel-heading text-[8px] text-[#ffa300]">
+                      {personality.stats.socialScore.toLocaleString()} CLOUT
+                    </span>
+                    <span className="pixel-border-thin bg-[#1d2b53] px-2 py-0.5 pixel-heading text-[8px] text-[#ff004d]">
+                      {personality.stats.controversy.toLocaleString()} HEAT
+                    </span>
+                  </div>
                   {personality.description ? (
                     <p className="mt-2 text-xs leading-relaxed text-[#c2c3c7]">
                       {personality.description}

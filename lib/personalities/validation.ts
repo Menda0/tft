@@ -149,7 +149,7 @@ export function createPersonalityId(): string {
 export function defaultStats(): Personality["stats"] {
   return {
     followers: 0,
-    reputation: 50,
+    socialScore: 0,
     controversy: 0,
     creativity: 50,
   };

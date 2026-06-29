@@ -29,7 +29,7 @@ export type Traits = {
 
 export type Stats = {
   followers: number;
-  reputation: number;
+  socialScore: number;
   controversy: number;
   creativity: number;
 };

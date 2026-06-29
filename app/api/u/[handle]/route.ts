@@ -16,7 +16,7 @@ export async function GET(_request: Request, context: RouteContext) {
       return Response.json({ error: "Profile not found." }, { status: 404 });
     }
 
-    return Response.json({ personality: toPublicPersonality(personality) });
+    return Response.json({ personality: await toPublicPersonality(personality) });
   } catch (error) {
     console.error("Profile load failed:", error);
     return Response.json({ error: "Could not load profile." }, { status: 500 });

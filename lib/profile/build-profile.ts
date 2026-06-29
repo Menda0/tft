@@ -6,6 +6,7 @@ import {
 } from "@/lib/db/posts";
 import { formatRelativeTime } from "@/lib/feed/format";
 import { normalizePersonality } from "@/lib/personalities";
+import { resolvePersonalitySocialRank } from "@/lib/profile/social-rank";
 import type { Personality } from "@/lib/types/personality";
 import type { Post } from "@/lib/types/post";
 import type {
@@ -14,8 +15,11 @@ import type {
   PublicPersonality,
 } from "@/lib/types/profile";
 
-export function toPublicPersonality(personality: Personality): PublicPersonality {
+export async function toPublicPersonality(
+  personality: Personality,
+): Promise<PublicPersonality> {
   const normalized = normalizePersonality(personality);
+  const { rank, label } = await resolvePersonalitySocialRank(normalized);
 
   return {
     id: normalized.id,
@@ -29,6 +33,8 @@ export function toPublicPersonality(personality: Personality): PublicPersonality
     pronouns: normalized.pronouns,
     stats: normalized.stats,
     politicalSwing: normalized.politicalSwing,
+    socialRank: rank,
+    socialRankLabel: label,
   };
 }
 

@@ -61,9 +61,9 @@ export async function POST(request: Request) {
       relationships: {},
     };
 
-    await insertPersonality(personality);
+    await insertPersonality(normalizePersonality(personality));
 
-    return Response.json({ personality }, { status: 201 });
+    return Response.json({ personality: normalizePersonality(personality) }, { status: 201 });
   } catch (error) {
     console.error("Create personality failed:", error);
 

@@ -1,4 +1,5 @@
 import { getPersonalitiesByIds, normalizePersonality } from "@/lib/personalities";
+import { resolvePersonalitySocialRank } from "@/lib/profile/social-rank";
 import { filterEvolutionMemories } from "@/lib/simulation/memory";
 import type { MemoryItem, Personality } from "@/lib/types/personality";
 import type {
@@ -75,17 +76,20 @@ function paginateItems<T>(
   };
 }
 
-export function buildProfileCharacterSheet(
+export async function buildProfileCharacterSheet(
   personality: Personality,
-): ProfileCharacterSheet {
+): Promise<ProfileCharacterSheet> {
   const normalized = normalizePersonality(personality);
   const memories = normalized.memory ?? [];
+  const { rank, label } = await resolvePersonalitySocialRank(normalized);
 
   return {
     traits: normalized.traits,
     stats: normalized.stats,
     interests: normalized.interests,
     evolutions: sortMemoriesByImportance(filterEvolutionMemories(memories)),
+    socialRank: rank,
+    socialRankLabel: label,
   };
 }
 

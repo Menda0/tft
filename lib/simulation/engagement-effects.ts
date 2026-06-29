@@ -1,11 +1,10 @@
 import type { Post } from "@/lib/types/post";
 import type { MemoryItem, Personality } from "@/lib/types/personality";
 
-import {
-  recordFriendshipMemory,
-  recordRivalryMemory,
-  recordScandalMemory,
-} from "./memory";
+import { computeControversyDelta } from "@/lib/scoring/controversy";
+import { computeSocialScoreDelta } from "@/lib/scoring/social-score";
+
+import { hasMemory, recordFriendshipMemory, recordRivalryMemory, recordScandalMemory } from "./memory";
 import {
   applyPersonalityUpdate,
   applyRelationshipDelta,
@@ -18,6 +17,15 @@ function getPersonality(
   personalityId: string,
 ): Personality | null {
   return world.personalities.find((entry) => entry.id === personalityId) ?? null;
+}
+
+function socialDelta(
+  event: Parameters<typeof computeSocialScoreDelta>[0],
+  actor?: Personality,
+): { socialScore: number } {
+  return {
+    socialScore: computeSocialScoreDelta(event, { actor }),
+  };
 }
 
 async function updateActorTowardTarget(
@@ -136,7 +144,7 @@ export async function recordLikeEffects(
 ): Promise<void> {
   await applyRelationshipAndStats(world, actor.id, author.id, {
     relationshipDelta: { admiration: 0.5, familiarity: 0.5 },
-    targetStatsDelta: { reputation: 1 },
+    targetStatsDelta: socialDelta("like_received", actor),
   });
 }
 
@@ -147,7 +155,7 @@ export async function recordRepostEffects(
 ): Promise<void> {
   await applyRelationshipAndStats(world, actor.id, author.id, {
     relationshipDelta: { admiration: 1, familiarity: 1 },
-    targetStatsDelta: { reputation: 2 },
+    targetStatsDelta: socialDelta("repost_received", actor),
   });
 }
 
@@ -159,6 +167,7 @@ export async function recordFollowEffects(
 ): Promise<void> {
   await applyRelationshipAndStats(world, actor.id, author.id, {
     relationshipDelta: { trust: 1, admiration: 2, familiarity: 1 },
+    targetStatsDelta: socialDelta("follow_received", actor),
   });
 
   await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({
@@ -174,8 +183,8 @@ export async function recordAgreeReplyEffects(
 ): Promise<void> {
   await applyRelationshipAndStats(world, actor.id, author.id, {
     relationshipDelta: { trust: 1, admiration: 1, familiarity: 1 },
-    actorStatsDelta: { reputation: 1 },
-    targetStatsDelta: { reputation: 1 },
+    actorStatsDelta: socialDelta("agree_reply_written", actor),
+    targetStatsDelta: socialDelta("agree_reply_on_post", actor),
   });
 
   await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({
@@ -191,7 +200,10 @@ export async function recordUnfollowEffects(
 ): Promise<void> {
   await applyRelationshipAndStats(world, actor.id, author.id, {
     relationshipDelta: { trust: -2, admiration: -2, rivalry: 1, familiarity: -1 },
-    targetStatsDelta: { reputation: -1 },
+    targetStatsDelta: {
+      ...socialDelta("unfollow_after_conflict"),
+      controversy: computeControversyDelta("unfollow_after_conflict"),
+    },
   });
 
   await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({
@@ -205,10 +217,21 @@ export async function recordDisagreeReplyEffects(
   author: Personality,
   post: Post,
 ): Promise<void> {
+  const scandalKey = `@${actor.handle}`;
+  const scandalIsNew = !hasMemory(author, "scandal", scandalKey);
+  const targetControversy =
+    computeControversyDelta("disagree_reply_target") +
+    (scandalIsNew ? computeControversyDelta("scandal_memory") : 0);
+
   await applyRelationshipAndStats(world, actor.id, author.id, {
     relationshipDelta: { trust: -1, rivalry: 2, familiarity: 1 },
-    actorStatsDelta: { controversy: 2 },
-    targetStatsDelta: { controversy: 3, reputation: -1 },
+    actorStatsDelta: {
+      controversy: computeControversyDelta("disagree_reply_actor"),
+    },
+    targetStatsDelta: {
+      controversy: targetControversy,
+      ...socialDelta("disagree_reply_on_post"),
+    },
   });
 
   await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({

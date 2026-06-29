@@ -21,7 +21,7 @@ function clampRelationshipField(value: number): number {
 function clampStats(stats: Stats): Stats {
   return {
     followers: Math.max(0, Math.round(stats.followers)),
-    reputation: Math.min(100, Math.max(0, Math.round(stats.reputation))),
+    socialScore: Math.max(0, Math.round(stats.socialScore)),
     controversy: Math.max(0, Math.round(stats.controversy)),
     creativity: Math.min(100, Math.max(0, Math.round(stats.creativity))),
   };
@@ -72,7 +72,7 @@ export function applyRelationshipDelta(
 export function applyStatsDelta(stats: Stats, delta: Partial<Stats>): Stats {
   return clampStats({
     followers: stats.followers + (delta.followers ?? 0),
-    reputation: stats.reputation + (delta.reputation ?? 0),
+    socialScore: stats.socialScore + (delta.socialScore ?? 0),
     controversy: stats.controversy + (delta.controversy ?? 0),
     creativity: stats.creativity + (delta.creativity ?? 0),
   });

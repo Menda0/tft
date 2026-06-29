@@ -17,12 +17,14 @@ import {
   randomPoliticalSwing,
 } from "./personalities/political-swing";
 import { normalizeStoredTraits } from "./personalities/validation";
+import { defaultStats } from "./personalities/validation";
 import type {
   AvatarStatus,
   DescriptionStatus,
   MemoryItem,
   Personality,
   Relationship,
+  Stats,
 } from "./types/personality";
 
 const COLLECTION = "personalities";
@@ -53,6 +55,21 @@ function normalizeRelationships(
   }
 
   return relationships;
+}
+
+function normalizeStoredStats(stats: Stats | undefined): Stats {
+  const raw = stats ?? defaultStats();
+  const legacyReputation = (raw as Stats & { reputation?: number }).reputation;
+  const socialScore =
+    raw.socialScore ??
+    (legacyReputation !== undefined ? Math.round(legacyReputation * 10) : 0);
+
+  return {
+    followers: Math.max(0, Math.round(raw.followers ?? 0)),
+    socialScore: Math.max(0, Math.round(socialScore)),
+    controversy: Math.max(0, Math.round(raw.controversy ?? 0)),
+    creativity: Math.min(100, Math.max(0, Math.round(raw.creativity ?? 50))),
+  };
 }
 
 export function normalizePersonality(
@@ -103,6 +120,7 @@ export function normalizePersonality(
       personality.beliefs && typeof personality.beliefs === "object"
         ? personality.beliefs
         : {},
+    stats: normalizeStoredStats(personality.stats),
   };
 }
 
@@ -130,6 +148,39 @@ export async function findPersonalityByHandle(
 export async function getAllPersonalities(): Promise<Personality[]> {
   const collection = await getPersonalitiesCollection();
   return collection.find().toArray();
+}
+
+export async function getPersonalityCount(): Promise<number> {
+  const collection = await getPersonalitiesCollection();
+  return collection.countDocuments();
+}
+
+export async function getSocialScoreGlobalRank(
+  personalityId: string,
+): Promise<number> {
+  const collection = await getPersonalitiesCollection();
+  const personality = await collection.findOne(
+    { id: personalityId },
+    { projection: { stats: 1 } },
+  );
+
+  if (!personality) {
+    return 1;
+  }
+
+  const normalized = normalizeStoredStats(personality.stats);
+  const higherCount = await collection.countDocuments({
+    id: { $ne: personalityId },
+    $or: [
+      { "stats.socialScore": { $gt: normalized.socialScore } },
+      {
+        "stats.socialScore": normalized.socialScore,
+        id: { $lt: personalityId },
+      },
+    ],
+  });
+
+  return higherCount + 1;
 }
 
 export async function getPersonalitiesByIds(
@@ -257,5 +308,6 @@ export async function ensurePersonalityIndexes(): Promise<void> {
   await collection.createIndex({ handle: 1 }, { unique: true });
   await collection.createIndex({ archetype: 1 });
   await collection.createIndex({ ownerId: 1 });
+  await collection.createIndex({ "stats.socialScore": -1 });
   await migrateInvalidPersonalityArchetypes();
 }

@@ -247,6 +247,40 @@ export async function getRepostsByPersonality(
     .toArray();
 }
 
+export async function aggregateSocialScoreByPersonality(): Promise<
+  Map<string, { likes: number; reposts: number; replies: number }>
+> {
+  const collection = await getPostsCollection();
+  const rows = await collection
+    .aggregate<{
+      _id: string;
+      likes: number;
+      reposts: number;
+      replies: number;
+    }>([
+      {
+        $group: {
+          _id: "$author.personalityId",
+          likes: { $sum: "$stats.likes" },
+          reposts: { $sum: "$stats.reposts" },
+          replies: { $sum: "$stats.replies" },
+        },
+      },
+    ])
+    .toArray();
+
+  return new Map(
+    rows.map((row) => [
+      row._id,
+      {
+        likes: row.likes,
+        reposts: row.reposts,
+        replies: row.replies,
+      },
+    ]),
+  );
+}
+
 export async function incrementPostStat(
   id: string,
   field: "replies" | "reposts" | "likes" | "views",

@@ -1,4 +1,5 @@
 import type { MemoryItem, Personality } from "@/lib/types/personality";
+import type { SocialRank } from "@/lib/scoring/ranks";
 
 import { addMemory, hasMemory } from "./memory";
 import { clampTraits } from "./personality-state";
@@ -36,7 +37,7 @@ export function evolvePersonality(personality: Personality): EvolutionPatch | nu
     stats.followers > CELEBRITY_FOLLOWERS_THRESHOLD &&
     !hasMemory(personality, "milestone", "minor celebrity")
   ) {
-    stats.reputation = Math.min(100, stats.reputation + 5);
+    stats.socialScore += 500;
     newMemories.push({
       type: "milestone",
       text: `${personality.name} became a minor celebrity.`,
@@ -54,6 +55,37 @@ export function evolvePersonality(personality: Personality): EvolutionPatch | nu
     stats,
     memory: newMemories,
   };
+}
+
+export function rankMilestonePatch(
+  personality: Personality,
+  rank: SocialRank,
+): EvolutionPatch | null {
+  if (rank === "influencer" && !hasMemory(personality, "milestone", "influencer")) {
+    return {
+      memory: [
+        {
+          type: "milestone",
+          text: `${personality.name} broke through as a timeline influencer.`,
+          importance: 8,
+        },
+      ],
+    };
+  }
+
+  if (rank === "icon" && !hasMemory(personality, "milestone", "icon")) {
+    return {
+      memory: [
+        {
+          type: "milestone",
+          text: `${personality.name} reached icon status on the timeline.`,
+          importance: 10,
+        },
+      ],
+    };
+  }
+
+  return null;
 }
 
 export function shouldAttemptEvolution(): boolean {

@@ -52,13 +52,38 @@ type ProfileCharacterSheetProps = {
   character: ProfileCharacterSheet;
 };
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({
+  label,
+  value,
+  hero = false,
+  subtitle,
+}: {
+  label: string;
+  value: number;
+  hero?: boolean;
+  subtitle?: string;
+}) {
   return (
-    <div className="border-2 border-foreground bg-[#1d2b53] p-3">
+    <div
+      className={cn(
+        "border-2 border-foreground bg-[#1d2b53] p-3",
+        hero && "col-span-1",
+      )}
+    >
       <p className="pixel-heading text-[8px] text-[#83769a]">{label}</p>
-      <p className="mt-1 text-lg font-bold text-[#ffa300]">
+      <p
+        className={cn(
+          "mt-1 font-bold text-[#ffa300]",
+          hero ? "text-2xl" : "text-lg",
+        )}
+      >
         {value.toLocaleString()}
       </p>
+      {subtitle ? (
+        <p className="mt-1 pixel-heading text-[8px] text-[#29adff]">
+          {subtitle}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -274,9 +299,18 @@ export function ProfileCharacterSheetView({
       <section>
         <SectionTitle>STATS</SectionTitle>
         <div className="mt-3 grid grid-cols-2 gap-3">
+          <StatCard
+            label="SOCIAL SCORE"
+            value={character.stats.socialScore}
+            hero
+            subtitle={character.socialRankLabel.toUpperCase()}
+          />
+          <StatCard
+            label="CONTROVERSY"
+            value={character.stats.controversy}
+            hero
+          />
           <StatCard label="FOLLOWERS" value={character.stats.followers} />
-          <StatCard label="REPUTATION" value={character.stats.reputation} />
-          <StatCard label="CONTROVERSY" value={character.stats.controversy} />
           <StatCard label="CREATIVITY" value={character.stats.creativity} />
         </div>
       </section>

@@ -61,10 +61,24 @@ export function ProfileHeader({ personality }: ProfileHeaderProps) {
         </p>
       ) : null}
 
-      <FollowersCount
-        handle={personality.handle}
-        count={personality.stats.followers}
-      />
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+        <FollowersCount
+          handle={personality.handle}
+          count={personality.stats.followers}
+        />
+        <span className="text-[#83769a]">·</span>
+        <span className="text-[#ffa300]">
+          {personality.stats.socialScore.toLocaleString()} clout
+        </span>
+        {personality.socialRankLabel ? (
+          <>
+            <span className="text-[#83769a]">·</span>
+            <span className="pixel-heading text-[8px] text-[#29adff]">
+              {personality.socialRankLabel.toUpperCase()}
+            </span>
+          </>
+        ) : null}
+      </div>
     </header>
   );
 }

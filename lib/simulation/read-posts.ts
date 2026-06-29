@@ -30,20 +30,25 @@ const READ_POST_COUNT = 5;
 const FOLLOWED_AUTHOR_WEIGHT = 3;
 const DEFAULT_AUTHOR_WEIGHT = 1;
 
-function engagementReadWeight(post: Post): number {
+function engagementReadWeight(post: Post, authorSocialScore = 0): number {
   const { replies, views, reposts, likes } = post.stats;
   const engagementScore =
     replies * 4 + likes * 2 + reposts * 3 + views * 0.05;
+  const fameBoost = 1 + Math.log1p(authorSocialScore / 500);
 
-  return 1 + Math.log1p(engagementScore);
+  return (1 + Math.log1p(engagementScore)) * fameBoost;
 }
 
-function getPostReadWeight(post: Post, followingIds: Set<string>): number {
+function getPostReadWeight(
+  post: Post,
+  followingIds: Set<string>,
+  authorSocialScore = 0,
+): number {
   const followWeight = followingIds.has(post.author.personalityId)
     ? FOLLOWED_AUTHOR_WEIGHT
     : DEFAULT_AUTHOR_WEIGHT;
 
-  return followWeight * engagementReadWeight(post);
+  return followWeight * engagementReadWeight(post, authorSocialScore);
 }
 
 function findAuthor(
@@ -61,6 +66,7 @@ async function pickPostsToRead(
   personality: Personality,
   followingIds: Set<string>,
   readPostIds: Set<string>,
+  world: SimulationWorld,
 ): Promise<Post[]> {
   const since = startOfRollingWindow();
   const candidates = await getTopLevelOriginalPostsSince(since);
@@ -73,7 +79,14 @@ async function pickPostsToRead(
   return weightedSampleWithoutReplacement(
     eligible,
     READ_POST_COUNT,
-    (post) => getPostReadWeight(post, followingIds),
+    (post) => {
+      const author = findAuthor(world, post.author.personalityId);
+      return getPostReadWeight(
+        post,
+        followingIds,
+        author?.stats.socialScore ?? 0,
+      );
+    },
   );
 }
 
@@ -87,7 +100,7 @@ export async function readPostsAndEngage(
     getFollowingIds(personality.id),
     getReadPostIds(personality.id),
   ]);
-  const posts = await pickPostsToRead(personality, followingIds, readPostIds);
+  const posts = await pickPostsToRead(personality, followingIds, readPostIds, world);
 
   if (posts.length === 0) {
     log("warn", `${handle} has no unread posts in the last 24 hours.`);

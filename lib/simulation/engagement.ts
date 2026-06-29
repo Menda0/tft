@@ -204,7 +204,8 @@ export function decideEngagement(context: EngagementContext): EngagementDecision
     (1 - alignment) * 0.28 +
     traits.aggression * 0.015 +
     traits.troll * 0.015 +
-    traits.negacionist * 0.01;
+    traits.negacionist * 0.01 +
+    (author && author.stats.controversy > 30 ? 0.04 : 0);
   const followProbability =
     0.04 + alignment * 0.3 + traits.negacionist * 0.02;
 
