@@ -6,6 +6,7 @@ import {
 } from "@/lib/db/posts";
 import { formatRelativeTime } from "@/lib/feed/format";
 import { normalizePersonality } from "@/lib/personalities";
+import { isRankNpc } from "@/lib/personalities/rank-npc";
 import { resolvePersonalitySocialRank } from "@/lib/profile/social-rank";
 import type { Personality } from "@/lib/types/personality";
 import type { Post } from "@/lib/types/post";
@@ -33,6 +34,7 @@ export async function toPublicPersonality(
     pronouns: normalized.pronouns,
     stats: normalized.stats,
     politicalSwing: normalized.politicalSwing,
+    isRankNpc: isRankNpc(normalized),
     socialRank: rank,
     socialRankLabel: label,
   };

@@ -19,6 +19,7 @@ export type PublicPersonality = {
   pronouns: Pronouns;
   stats: Stats;
   politicalSwing: PoliticalSwing;
+  isRankNpc: boolean;
   socialRank?: SocialRank;
   socialRankLabel?: string;
 };

@@ -22,12 +22,20 @@ import type {
 } from "@/lib/types/profile";
 import { cn } from "@/lib/utils";
 
-const TABS: { id: ProfileTab; label: string }[] = [
+const BASE_TABS: { id: ProfileTab; label: string }[] = [
   { id: "posts", label: "Posts" },
   { id: "replies", label: "Replies" },
   { id: "reposts", label: "Reposts" },
   { id: "character", label: "Character" },
 ];
+
+function getProfileTabs(isRankNpcProfile: boolean) {
+  if (isRankNpcProfile) {
+    return BASE_TABS.filter((tab) => tab.id !== "character");
+  }
+
+  return BASE_TABS;
+}
 
 const EMPTY_MESSAGES: Record<ProfilePostType, string> = {
   posts: "No posts yet.",
@@ -97,6 +105,12 @@ export function ProfileView({ handle }: ProfileViewProps) {
     setError(null);
     setLoadingMore(false);
   }, [activeTab, handle, hasMore, loadingMore]);
+
+  useEffect(() => {
+    if (personality?.isRankNpc && activeTab === "character") {
+      setActiveTab("posts");
+    }
+  }, [activeTab, personality?.isRankNpc]);
 
   useEffect(() => {
     let cancelled = false;
@@ -191,7 +205,7 @@ export function ProfileView({ handle }: ProfileViewProps) {
   }, [activeTab, hasMore, loadMore, loadingMore, loadingPosts, items.length]);
 
   useEffect(() => {
-    if (activeTab !== "character") {
+    if (activeTab !== "character" || personality?.isRankNpc) {
       return;
     }
 
@@ -219,7 +233,9 @@ export function ProfileView({ handle }: ProfileViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [handle, activeTab]);
+  }, [handle, activeTab, personality?.isRankNpc]);
+
+  const tabs = getProfileTabs(personality?.isRankNpc ?? false);
 
   return (
     <>
@@ -243,7 +259,7 @@ export function ProfileView({ handle }: ProfileViewProps) {
           <Separator className="h-[2px] bg-foreground" />
 
           <div className="flex border-b-[2px] border-foreground">
-            {TABS.map((tab) => (
+            {tabs.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
