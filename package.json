@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:rank-npcs": "npx tsx scripts/seed-rank-npcs.ts"
+    "seed:rank-npcs": "npx tsx scripts/seed-rank-npcs.ts",
+    "prune:rank-npc-posts": "npx tsx scripts/prune-rank-npc-posts.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

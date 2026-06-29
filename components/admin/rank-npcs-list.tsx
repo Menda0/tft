@@ -8,7 +8,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { AppBar } from "@/components/layout/app-bar";
 import { PersonalityAvatar } from "@/components/personalities/personality-avatar";
 import { ProfileLink } from "@/components/profile/profile-link";
-import { listRankNpcsAdminRequest } from "@/lib/rank-npcs/client";
+import { listRankNpcsAdminRequest, pruneRankNpcPostsRequest } from "@/lib/rank-npcs/client";
 import type { RankNpcAdminItem } from "@/lib/rank-npcs/admin";
 import type { SocialRank } from "@/lib/scoring/ranks";
 import { formatSocialRank } from "@/lib/scoring/ranks";
@@ -116,6 +116,8 @@ export function RankNpcsAdminList() {
   const [items, setItems] = useState<RankNpcAdminItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pruning, setPruning] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const loadItems = useCallback(async () => {
     if (!token) {
@@ -137,6 +139,38 @@ export function RankNpcsAdminList() {
     setItems(result.data);
     setLoading(false);
   }, [token]);
+
+  const handlePrunePosts = useCallback(async () => {
+    if (!token || pruning) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Delete all mirrored parody NPC posts and reset X sync cursors? This cannot be undone.",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setPruning(true);
+    setActionMessage(null);
+    setError(null);
+
+    const result = await pruneRankNpcPostsRequest(token);
+
+    if (!result.ok) {
+      setError(result.error);
+      setPruning(false);
+      return;
+    }
+
+    setActionMessage(
+      `Pruned ${result.data.deletedPosts} post(s), ${result.data.deletedReplies} repl(ies), reset ${result.data.resetNpcs} NPC sync state.`,
+    );
+    setPruning(false);
+    await loadItems();
+  }, [loadItems, pruning, token]);
 
   useEffect(() => {
     if (!isReady) {
@@ -174,14 +208,24 @@ export function RankNpcsAdminList() {
               {activeCount} active · {items.length} total parody NPCs
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void loadItems()}
-            disabled={loading}
-            className="pixel-border-thin bg-[#1d2b53] px-3 py-2 text-[10px] text-[#fff1e8] pixel-heading disabled:opacity-60"
-          >
-            REFRESH
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void loadItems()}
+              disabled={loading || pruning}
+              className="pixel-border-thin bg-[#1d2b53] px-3 py-2 text-[10px] text-[#fff1e8] pixel-heading disabled:opacity-60"
+            >
+              REFRESH
+            </button>
+            <button
+              type="button"
+              onClick={() => void handlePrunePosts()}
+              disabled={loading || pruning}
+              className="pixel-border-thin bg-[#7e2553] px-3 py-2 text-[10px] text-[#fff1e8] pixel-heading disabled:opacity-60"
+            >
+              {pruning ? "PRUNING..." : "PRUNE ALL POSTS"}
+            </button>
+          </div>
         </div>
 
         <p className="mb-4 text-xs text-[#83769a]">
@@ -191,6 +235,12 @@ export function RankNpcsAdminList() {
           <code className="text-[#ffa300]">TWITTERAPI_IO_API_KEY</code> from
           your environment.
         </p>
+
+        {actionMessage ? (
+          <p className="mb-4 pixel-border bg-[#1d2b53] px-3 py-2 text-sm text-[#00e436]">
+            {actionMessage}
+          </p>
+        ) : null}
 
         {error ? (
           <p className="pixel-border bg-[#7e2553] px-3 py-2 text-sm text-[#fff1e8]">

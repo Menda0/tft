@@ -110,6 +110,51 @@ export async function countMirroredPostsByPersonality(
   });
 }
 
+export async function getMirroredPostIdsByPersonalityIds(
+  personalityIds: string[],
+): Promise<string[]> {
+  if (personalityIds.length === 0) {
+    return [];
+  }
+
+  const collection = await getPostsCollection();
+  const posts = await collection
+    .find({
+      "author.personalityId": { $in: personalityIds },
+      source: "mirrored",
+    })
+    .project({ id: 1 })
+    .toArray();
+
+  return posts.map((post) => post.id);
+}
+
+export async function deleteRepliesToPosts(postIds: string[]): Promise<number> {
+  if (postIds.length === 0) {
+    return 0;
+  }
+
+  const collection = await getPostsCollection();
+  const result = await collection.deleteMany({
+    replyToPostId: { $in: postIds },
+  });
+
+  return result.deletedCount;
+}
+
+export async function deletePostsByIds(postIds: string[]): Promise<number> {
+  if (postIds.length === 0) {
+    return 0;
+  }
+
+  const collection = await getPostsCollection();
+  const result = await collection.deleteMany({
+    id: { $in: postIds },
+  });
+
+  return result.deletedCount;
+}
+
 export async function deletePostsByPersonality(
   personalityId: string,
 ): Promise<number> {

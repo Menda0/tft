@@ -9,6 +9,7 @@ import {
   streamSimulationTickRequest,
   type StreamTickEvent,
 } from "@/lib/simulation/client";
+import { pruneRankNpcPostsRequest, streamSeedRankNpcsAdminRequest } from "@/lib/rank-npcs/client";
 import type { TickLogLevel } from "@/lib/simulation/logger";
 
 type ConsoleLine = {
@@ -21,6 +22,8 @@ const HELP_TEXT = [
   "Available commands:",
   "  tick    — run a simulation tick",
   "  trends  — refresh trending topics",
+  "  seed npc — reconcile, sync, and seed parody NPCs",
+  "  prune npc — delete all mirrored parody NPC posts",
   "  clear   — clear the console",
   "  help    — show this message",
   "",
@@ -195,6 +198,97 @@ export function AdminConsole({ open, onClose }: AdminConsoleProps) {
     }
   }, [appendLine, running, token]);
 
+  const seedNpcs = useCallback(async () => {
+    if (!token || running) {
+      return;
+    }
+
+    const controller = new AbortController();
+    tickAbortRef.current = controller;
+
+    setRunning(true);
+    appendLine(
+      "system",
+      `[${formatTime()}] Seeding parody NPCs (same as npm run seed:rank-npcs)...`,
+    );
+
+    try {
+      let sawDone = false;
+
+      const result = await streamSeedRankNpcsAdminRequest(
+        token,
+        (event) => {
+          if (event.type === "log") {
+            appendLine(
+              "info",
+              `[${formatTime(new Date(event.at))}] ${event.message}`,
+            );
+            return;
+          }
+
+          if (event.type === "cancelled") {
+            appendLine("warn", event.message);
+            return;
+          }
+
+          if (event.type === "error") {
+            appendLine("error", event.message);
+            return;
+          }
+
+          if (event.type === "done") {
+            sawDone = true;
+            const { reconcile, sync, assets } = event;
+
+            appendLine(
+              "success",
+              `Seed complete: ${reconcile.created.length} created, ${reconcile.updated.length} updated, ${sync.newPosts} new post(s), ${assets.descriptions} bio(s), ${assets.avatarsQueued} avatar(s).`,
+            );
+
+            if (sync.errors.length > 0) {
+              appendLine("warn", `${sync.errors.length} X sync error(s).`);
+            }
+          }
+        },
+        controller.signal,
+      );
+
+      if (!result.ok && result.cancelled) {
+        appendLine("warn", "Seed cancelled.");
+      } else if (!result.ok && !sawDone) {
+        appendLine("error", result.error);
+      }
+    } finally {
+      tickAbortRef.current = null;
+      setRunning(false);
+    }
+  }, [appendLine, running, token]);
+
+  const pruneNpcPosts = useCallback(async () => {
+    if (!token || running) {
+      return;
+    }
+
+    setRunning(true);
+    appendLine("system", `[${formatTime()}] Pruning mirrored parody NPC posts...`);
+
+    try {
+      const result = await pruneRankNpcPostsRequest(token);
+
+      if (!result.ok) {
+        appendLine("error", result.error);
+        return;
+      }
+
+      appendLine(
+        "success",
+        `Pruned ${result.data.deletedPosts} post(s), ${result.data.deletedReplies} repl(ies), reset ${result.data.resetNpcs} NPC sync state.`,
+      );
+    } finally {
+      setRunning(false);
+    }
+  }, [appendLine, running, token]);
+
   const handleCommand = useCallback(
     async (raw: string) => {
       const command = raw.trim().toLowerCase();
@@ -225,9 +319,19 @@ export function AdminConsole({ open, onClose }: AdminConsoleProps) {
         return;
       }
 
+      if (command === "seed npc") {
+        await seedNpcs();
+        return;
+      }
+
+      if (command === "prune npc") {
+        await pruneNpcPosts();
+        return;
+      }
+
       appendLine("error", `Unknown command: ${raw.trim()}. Type \`help\` for options.`);
     },
-    [appendLine, refreshTrends, runTick],
+    [appendLine, pruneNpcPosts, refreshTrends, runTick, seedNpcs],
   );
 
   function handleSubmit(event: React.FormEvent) {
