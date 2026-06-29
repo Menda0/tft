@@ -3,7 +3,11 @@ export type PostStats = {
   reposts: number;
   likes: number;
   views: number;
+  agreeReplies: number;
+  disagreeReplies: number;
 };
+
+export type ReplyTone = "agree" | "disagree";
 
 export type PostSource = "simulated" | "mirrored";
 
@@ -32,6 +36,7 @@ export type Post = {
   stats: PostStats;
   replyToPostId: string | null;
   repostOfPostId: string | null;
+  replyTone?: ReplyTone | null;
   source?: PostSource;
   externalId?: string | null;
   sourceImageUrls?: string[];
@@ -46,6 +51,8 @@ export function defaultPostStats(): PostStats {
     reposts: 0,
     likes: 0,
     views: 0,
+    agreeReplies: 0,
+    disagreeReplies: 0,
   };
 }
 

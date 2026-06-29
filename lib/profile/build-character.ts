@@ -1,5 +1,7 @@
 import { getPersonalitiesByIds, normalizePersonality } from "@/lib/personalities";
+import { normalizeStoredStats, normalizeStoredStatsRaw } from "@/lib/personalities/stats";
 import { resolvePersonalitySocialRank } from "@/lib/profile/social-rank";
+import { getCloutBreakdown } from "@/lib/scoring/social-score";
 import { filterEvolutionMemories } from "@/lib/simulation/memory";
 import type { MemoryItem, Personality } from "@/lib/types/personality";
 import type {
@@ -81,11 +83,14 @@ export async function buildProfileCharacterSheet(
 ): Promise<ProfileCharacterSheet> {
   const normalized = normalizePersonality(personality);
   const memories = normalized.memory ?? [];
+  const rawStats = normalizeStoredStatsRaw(normalized.stats);
+  const displayStats = normalizeStoredStats(normalized.stats);
   const { rank, label } = await resolvePersonalitySocialRank(normalized);
 
   return {
     traits: normalized.traits,
-    stats: normalized.stats,
+    stats: displayStats,
+    cloutBreakdown: getCloutBreakdown(rawStats.socialScore, rawStats.controversy),
     interests: normalized.interests,
     evolutions: sortMemoriesByImportance(filterEvolutionMemories(memories)),
     socialRank: rank,

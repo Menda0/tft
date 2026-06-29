@@ -140,7 +140,9 @@ function postStatsEqual(left: PostStats, right: PostStats): boolean {
     left.replies === right.replies &&
     left.reposts === right.reposts &&
     left.likes === right.likes &&
-    left.views === right.views
+    left.views === right.views &&
+    left.agreeReplies === right.agreeReplies &&
+    left.disagreeReplies === right.disagreeReplies
   );
 }
 
@@ -156,9 +158,29 @@ export async function resolvePostStatsBatch(
   const collection = await getPostsCollection();
   const [replyRows, repostRows, viewCounts] = await Promise.all([
     collection
-      .aggregate<{ _id: string; count: number }>([
+      .aggregate<{
+        _id: string;
+        count: number;
+        agreeReplies: number;
+        disagreeReplies: number;
+      }>([
         { $match: mergeNotDeletedPost({ replyToPostId: { $in: ids } }) },
-        { $group: { _id: "$replyToPostId", count: { $sum: 1 } } },
+        {
+          $group: {
+            _id: "$replyToPostId",
+            count: { $sum: 1 },
+            agreeReplies: {
+              $sum: {
+                $cond: [{ $eq: ["$replyTone", "disagree"] }, 0, 1],
+              },
+            },
+            disagreeReplies: {
+              $sum: {
+                $cond: [{ $eq: ["$replyTone", "disagree"] }, 1, 0],
+              },
+            },
+          },
+        },
       ])
       .toArray(),
     collection
@@ -171,6 +193,12 @@ export async function resolvePostStatsBatch(
   ]);
 
   const replyCounts = new Map(replyRows.map((row) => [row._id, row.count]));
+  const agreeReplyCounts = new Map(
+    replyRows.map((row) => [row._id, row.agreeReplies]),
+  );
+  const disagreeReplyCounts = new Map(
+    replyRows.map((row) => [row._id, row.disagreeReplies]),
+  );
   const repostCounts = new Map(repostRows.map((row) => [row._id, row.count]));
 
   return new Map(
@@ -186,6 +214,8 @@ export async function resolvePostStatsBatch(
           reposts,
           likes: resolveStoredLikes(post.stats.likes, replies, reposts, views),
           views,
+          agreeReplies: agreeReplyCounts.get(post.id) ?? 0,
+          disagreeReplies: disagreeReplyCounts.get(post.id) ?? 0,
         },
       ];
     }),
@@ -566,8 +596,90 @@ export async function getRepostsByPersonality(
     .toArray();
 }
 
+export type PersonalityEngagementTotals = {
+  likes: number;
+  reposts: number;
+  replies: number;
+  views: number;
+  agreeReplies: number;
+  disagreeReplies: number;
+};
+
+function engagementTotalsFromRow(row: {
+  likes: number;
+  reposts: number;
+  replies: number;
+  views: number;
+  agreeReplies: number;
+  disagreeReplies: number;
+}): PersonalityEngagementTotals {
+  return {
+    likes: row.likes,
+    reposts: row.reposts,
+    replies: row.replies,
+    views: row.views,
+    agreeReplies: row.agreeReplies,
+    disagreeReplies: row.disagreeReplies,
+  };
+}
+
+const ENGAGEMENT_GROUP_STAGE = {
+  $group: {
+    _id: "$author.personalityId",
+    likes: { $sum: "$stats.likes" },
+    reposts: { $sum: "$stats.reposts" },
+    replies: { $sum: "$stats.replies" },
+    views: { $sum: "$stats.views" },
+    agreeReplies: {
+      $sum: { $ifNull: ["$stats.agreeReplies", 0] },
+    },
+    disagreeReplies: {
+      $sum: { $ifNull: ["$stats.disagreeReplies", 0] },
+    },
+  },
+} as const;
+
+export async function aggregateSocialScoreForPersonality(
+  personalityId: string,
+): Promise<PersonalityEngagementTotals> {
+  const collection = await getPostsCollection();
+  const rows = await collection
+    .aggregate<{
+      _id: string;
+      likes: number;
+      reposts: number;
+      replies: number;
+      views: number;
+      agreeReplies: number;
+      disagreeReplies: number;
+    }>([
+      {
+        $match: mergeNotDeletedPost({
+          "author.personalityId": personalityId,
+        }),
+      },
+      ENGAGEMENT_GROUP_STAGE,
+    ])
+    .toArray();
+
+  const row = rows[0];
+
+  if (!row) {
+    return {
+      likes: 0,
+      reposts: 0,
+      replies: 0,
+      views: 0,
+      agreeReplies: 0,
+      disagreeReplies: 0,
+    };
+  }
+
+  return engagementTotalsFromRow(row);
+}
+
 export async function aggregateSocialScoreByPersonality(): Promise<
-  Map<string, { likes: number; reposts: number; replies: number }>
+  Map<string, PersonalityEngagementTotals>
 > {
   const collection = await getPostsCollection();
   const rows = await collection
@@ -576,36 +688,31 @@ export async function aggregateSocialScoreByPersonality(): Promise<
       likes: number;
       reposts: number;
       replies: number;
+      views: number;
+      agreeReplies: number;
+      disagreeReplies: number;
     }>([
       {
         $match: mergeNotDeletedPost({}),
       },
-      {
-        $group: {
-          _id: "$author.personalityId",
-          likes: { $sum: "$stats.likes" },
-          reposts: { $sum: "$stats.reposts" },
-          replies: { $sum: "$stats.replies" },
-        },
-      },
+      ENGAGEMENT_GROUP_STAGE,
     ])
     .toArray();
 
   return new Map(
-    rows.map((row) => [
-      row._id,
-      {
-        likes: row.likes,
-        reposts: row.reposts,
-        replies: row.replies,
-      },
-    ]),
+    rows.map((row) => [row._id, engagementTotalsFromRow(row)]),
   );
 }
 
 export async function incrementPostStat(
   id: string,
-  field: "replies" | "reposts" | "likes" | "views",
+  field:
+    | "replies"
+    | "reposts"
+    | "likes"
+    | "views"
+    | "agreeReplies"
+    | "disagreeReplies",
   amount = 1,
 ): Promise<void> {
   const collection = await getPostsCollection();

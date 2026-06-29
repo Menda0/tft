@@ -50,6 +50,12 @@ export type ProfileRelationship = {
 export type ProfileCharacterSheet = {
   traits: Traits;
   stats: Stats;
+  cloutBreakdown: {
+    gross: number;
+    heat: number;
+    penalty: number;
+    net: number;
+  };
   interests: string[];
   evolutions: MemoryItem[];
   socialRank: SocialRank;

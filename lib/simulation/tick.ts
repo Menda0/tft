@@ -22,6 +22,7 @@ import { refreshTrendingTopics } from "./trending-state";
 import type { SimulationWorld } from "./world";
 import { runWithConcurrency, shuffle } from "./utils";
 import { isRankNpc } from "@/lib/personalities/rank-npc";
+import { decayControversy } from "@/lib/scoring/controversy";
 import type { Personality } from "@/lib/types/personality";
 
 export type { SimulationLogFn, TickLogEntry, TickLogLevel } from "./logger";
@@ -80,6 +81,40 @@ async function simulatePersonality(
 
   if (optional === "lurk") {
     log("info", `${handle} is lurking.`);
+  }
+}
+
+async function runHeatDecayPass(
+  world: SimulationWorld,
+  log: SimulationLogFn,
+): Promise<void> {
+  for (const personality of world.personalities) {
+    if (isRankNpc(personality)) {
+      continue;
+    }
+
+    const current =
+      world.personalities.find((entry) => entry.id === personality.id) ??
+      personality;
+    const nextHeat = decayControversy(current.stats.controversy);
+
+    if (nextHeat === current.stats.controversy) {
+      continue;
+    }
+
+    const updated = await applyPersonalityUpdate(world, personality.id, {
+      stats: {
+        ...current.stats,
+        controversy: nextHeat,
+      },
+    });
+
+    if (updated) {
+      log(
+        "info",
+        `@${personality.handle} heat decayed ${current.stats.controversy} → ${nextHeat}`,
+      );
+    }
   }
 }
 
@@ -165,6 +200,10 @@ export async function simulationTick(
   throwIfCancelled(signal);
 
   await rankNpcEngagementPass(world, log, signal);
+
+  throwIfCancelled(signal);
+
+  await runHeatDecayPass(world, log);
 
   throwIfCancelled(signal);
 

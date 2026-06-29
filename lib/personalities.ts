@@ -18,7 +18,7 @@ import {
   randomPoliticalSwing,
 } from "./personalities/political-swing";
 import { normalizeStoredTraits } from "./personalities/validation";
-import { normalizeStoredStats } from "./personalities/stats";
+import { normalizeStoredStats, normalizeStoredStatsRaw } from "./personalities/stats";
 import { isRankNpc } from "./personalities/rank-npc";
 import type {
   AvatarStatus,
@@ -184,7 +184,7 @@ export function normalizePersonality(
       personality.beliefs && typeof personality.beliefs === "object"
         ? personality.beliefs
         : {},
-    stats: normalizeStoredStats(personality.stats),
+    stats: normalizeStoredStatsRaw(personality.stats),
     role: normalizeRole(personality.role),
     rankNpcActive:
       personality.role === "rank_npc"
@@ -372,41 +372,14 @@ export async function getGlobalSocialScoreLeaderboard(): Promise<
 export async function getSocialScoreGlobalRank(
   personalityId: string,
 ): Promise<number> {
-  const collection = await getPersonalitiesCollection();
-  const personality = await collection.findOne(
-    { id: personalityId },
-    { projection: { stats: 1 } },
-  );
+  const leaderboard = await getGlobalSocialScoreLeaderboard();
+  const index = leaderboard.findIndex((entry) => entry.id === personalityId);
 
-  if (!personality) {
-    return 1;
+  if (index === -1) {
+    return leaderboard.length + 1;
   }
 
-  const normalized = normalizeStoredStats(personality.stats);
-  const higherCount = await collection.countDocuments(
-    mergeNotDeleted({
-      id: { $ne: personalityId },
-      $and: [
-        {
-          $or: [
-            { role: { $exists: false } },
-            { role: { $ne: "rank_npc" as const } },
-          ],
-        },
-        {
-          $or: [
-            { "stats.socialScore": { $gt: normalized.socialScore } },
-            {
-              "stats.socialScore": normalized.socialScore,
-              id: { $lt: personalityId },
-            },
-          ],
-        },
-      ],
-    }),
-  );
-
-  return higherCount + 1;
+  return index + 1;
 }
 
 export async function getPersonalitiesByIds(
@@ -483,6 +456,28 @@ export async function updatePersonality(
   const result = await collection.findOneAndUpdate(
     { id },
     { $set: updates },
+    { returnDocument: "after" },
+  );
+  return result ? normalizePersonality(result) : null;
+}
+
+export async function updatePersonalityStats(
+  id: string,
+  patch: Partial<Stats>,
+): Promise<Personality | null> {
+  if (Object.keys(patch).length === 0) {
+    return getPersonalityById(id).then((personality) =>
+      personality ? normalizePersonality(personality) : null,
+    );
+  }
+
+  const collection = await getPersonalitiesCollection();
+  const setFields = Object.fromEntries(
+    Object.entries(patch).map(([key, value]) => [`stats.${key}`, value]),
+  );
+  const result = await collection.findOneAndUpdate(
+    { id },
+    { $set: setFields },
     { returnDocument: "after" },
   );
   return result ? normalizePersonality(result) : null;

@@ -342,18 +342,32 @@ export function ProfileCharacterSheetView({
         <SectionTitle>STATS</SectionTitle>
         <div className="mt-3 grid grid-cols-2 gap-3">
           <StatCard
-            label="SOCIAL SCORE"
+            label="CLOUT"
             value={character.stats.socialScore}
             hero
             subtitle={character.socialRankLabel.toUpperCase()}
           />
           <StatCard
-            label="CONTROVERSY"
+            label="HEAT"
             value={character.stats.controversy}
             hero
           />
           <StatCard label="FOLLOWERS" value={character.stats.followers} />
           <StatCard label="CREATIVITY" value={character.stats.creativity} />
+        </div>
+        <div className="mt-3 space-y-1 border-2 border-foreground bg-[#1d2b53] px-3 py-2 text-xs text-[#83769a]">
+          <p>
+            Gross clout:{" "}
+            <span className="font-bold text-[#ffa300]">
+              {character.cloutBreakdown.gross.toLocaleString()}
+            </span>
+          </p>
+          <p>
+            Heat tax:{" "}
+            <span className="font-bold text-[#ff004d]">
+              −{character.cloutBreakdown.penalty.toLocaleString()}
+            </span>
+          </p>
         </div>
       </section>
 

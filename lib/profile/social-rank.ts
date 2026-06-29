@@ -4,6 +4,7 @@ import {
   getSocialScoreGlobalRank,
   normalizePersonality,
 } from "@/lib/personalities";
+import { normalizeStoredStats } from "@/lib/personalities/stats";
 import { isActiveRankNpc } from "@/lib/personalities/rank-npc";
 import {
   formatSocialRank,
@@ -60,7 +61,7 @@ export async function resolvePersonalitySocialRank(
   ]);
 
   return buildRankFromContext(
-    normalized.stats.socialScore,
+    normalizeStoredStats(normalized.stats).socialScore,
     globalRank,
     totalPersonalities,
   );
@@ -87,7 +88,7 @@ export async function resolveSocialRanksForPersonalities(
     ranks.set(
       normalized.id,
       buildRankFromContext(
-        normalized.stats.socialScore,
+        normalizeStoredStats(normalized.stats).socialScore,
         globalRank,
         totalPersonalities,
       ),

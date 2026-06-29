@@ -6,7 +6,8 @@ import { formatGenderLabel } from "@/lib/personalities/gender";
 import { formatPronounLabel } from "@/lib/personalities/pronouns";
 import type { AvatarStatus } from "@/lib/types/personality";
 import { formatPoliticalSwingCategory, formatPoliticalSwingLabel } from "@/lib/personalities/political-swing";
-import { formatStatValue, normalizeStoredStats } from "@/lib/personalities/stats";
+import { formatStatValue, normalizeStoredStats, normalizeStoredStatsRaw } from "@/lib/personalities/stats";
+import { getCloutBreakdown } from "@/lib/scoring/social-score";
 import type { PublicPersonality } from "@/lib/types/profile";
 
 type ProfileHeaderProps = {
@@ -26,13 +27,15 @@ function ProfileStat({
   label,
   value,
   valueClassName,
+  title,
 }: {
   label: string;
   value: string;
   valueClassName: string;
+  title?: string;
 }) {
   return (
-    <div className="flex min-w-0 flex-col items-center gap-1 px-1">
+    <div className="flex min-w-0 flex-col items-center gap-1 px-1" title={title}>
       <p className="pixel-heading text-[8px] text-[#83769a]">{label}</p>
       <p className={`truncate text-sm font-bold leading-none ${valueClassName}`}>{value}</p>
     </div>
@@ -40,7 +43,10 @@ function ProfileStat({
 }
 
 export function ProfileHeader({ personality }: ProfileHeaderProps) {
+  const rawStats = normalizeStoredStatsRaw(personality.stats);
   const stats = normalizeStoredStats(personality.stats);
+  const clout = getCloutBreakdown(rawStats.socialScore, rawStats.controversy);
+  const cloutTooltip = `Gross ${formatStatValue(clout.gross)} − heat tax ${formatStatValue(clout.penalty)}`;
 
   return (
     <header className="px-4 py-4">
@@ -99,6 +105,7 @@ export function ProfileHeader({ personality }: ProfileHeaderProps) {
           label="CLOUT"
           value={formatStatValue(stats.socialScore)}
           valueClassName="text-[#ffa300]"
+          title={cloutTooltip}
         />
         <ProfileStat
           label="HEAT"

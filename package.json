@@ -10,6 +10,8 @@
     "seed:rank-npcs": "npx tsx scripts/seed-rank-npcs.ts",
     "seed:bootstrap-players": "npx tsx scripts/seed-bootstrap-players.ts",
     "backfill:personality-activity": "npx tsx scripts/backfill-personality-activity.ts",
+    "backfill:social-scores": "npx tsx scripts/backfill-social-scores.ts",
+    "test": "npx tsx --test lib/**/*.test.ts",
     "prune:rank-npc-posts": "npx tsx scripts/prune-rank-npc-posts.ts",
     "prune:player-personalities": "npx tsx scripts/prune-player-personalities.ts"
   },

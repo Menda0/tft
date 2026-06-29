@@ -1,4 +1,5 @@
 import { defaultStats } from "@/lib/personalities/validation";
+import { computeNetClout } from "@/lib/scoring/social-score";
 import type { Stats } from "@/lib/types/personality";
 
 type StoredStats = Stats & { reputation?: number | null };
@@ -12,24 +13,38 @@ function toFiniteNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-export function normalizeStoredStats(stats: Stats | undefined): Stats {
+function parseGrossSocialScore(raw: StoredStats): number {
+  if (raw.socialScore != null) {
+    return toFiniteNumber(raw.socialScore);
+  }
+
+  if (raw.reputation != null) {
+    return Math.round(toFiniteNumber(raw.reputation) * 10);
+  }
+
+  return 0;
+}
+
+export function normalizeStoredStatsRaw(stats: Stats | undefined): Stats {
   const raw = (stats ?? defaultStats()) as StoredStats;
-  const legacyReputation = raw.reputation;
-  const socialScore =
-    raw.socialScore != null
-      ? toFiniteNumber(raw.socialScore)
-      : legacyReputation != null
-        ? Math.round(toFiniteNumber(legacyReputation) * 10)
-        : 0;
 
   return {
     followers: Math.max(0, Math.round(toFiniteNumber(raw.followers))),
-    socialScore: Math.max(0, Math.round(socialScore)),
+    socialScore: Math.max(0, Math.round(parseGrossSocialScore(raw))),
     controversy: Math.max(0, Math.round(toFiniteNumber(raw.controversy))),
     creativity: Math.min(
       100,
       Math.max(0, Math.round(toFiniteNumber(raw.creativity, 50))),
     ),
+  };
+}
+
+export function normalizeStoredStats(stats: Stats | undefined): Stats {
+  const raw = normalizeStoredStatsRaw(stats);
+
+  return {
+    ...raw,
+    socialScore: computeNetClout(raw.socialScore, raw.controversy),
   };
 }
 

@@ -6,7 +6,7 @@ import {
   toPostAuthor,
 } from "@/lib/db/posts";
 import { deleteFollow, hasFollow, insertFollow } from "@/lib/db/follows";
-import { updatePersonality } from "@/lib/personalities";
+import { updatePersonality, updatePersonalityStats } from "@/lib/personalities";
 import { isRankNpc } from "@/lib/personalities/rank-npc";
 import {
   recordAuthoredPostActivity,
@@ -15,7 +15,8 @@ import {
   recordFollowActivityPair,
 } from "@/lib/personality-activity/record";
 import { generateLLMPost, generateLLMReply } from "@/lib/openai/post";
-import type { Post } from "@/lib/types/post";
+import { refreshGrossCloutInWorld } from "@/lib/scoring/refresh-gross-clout";
+import { defaultPostStats, type Post } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
 import type { ResponseTone } from "./engagement";
@@ -44,11 +45,18 @@ function authorFromPersonality(personality: Personality) {
 function syncPostStat(
   world: SimulationWorld,
   postId: string,
-  field: "replies" | "reposts" | "likes" | "views",
+  field:
+    | "replies"
+    | "reposts"
+    | "likes"
+    | "views"
+    | "agreeReplies"
+    | "disagreeReplies",
 ): void {
   const cached = world.posts.find((post) => post.id === postId);
 
   if (cached) {
+    cached.stats = { ...defaultPostStats(), ...cached.stats };
     cached.stats[field] += 1;
   }
 }
@@ -124,6 +132,7 @@ export async function likePost(
 ): Promise<void> {
   await incrementPostStat(target.id, "likes");
   syncPostStat(world, target.id, "likes");
+  await refreshGrossCloutInWorld(world, target.author.personalityId);
 }
 
 export async function repostSpecificPost(
@@ -145,6 +154,7 @@ export async function repostSpecificPost(
   syncPostStat(world, target.id, "reposts");
   world.posts.unshift(repost);
   void recordAuthoredRepostActivity(personality.id, repost, target);
+  await refreshGrossCloutInWorld(world, target.author.personalityId);
   return repost;
 }
 
@@ -155,6 +165,7 @@ export async function replyToSpecificPost(
   options?: { tone?: ResponseTone; content?: string },
 ): Promise<Post | null> {
   try {
+    const tone = options?.tone ?? "agree";
     const content =
       options?.content ??
       (await generateLLMReply(personality, target, options));
@@ -166,12 +177,23 @@ export async function replyToSpecificPost(
       tickNumber: world.state.tickNumber + 1,
       replyToPostId: target.id,
       repostOfPostId: null,
+      replyTone: tone,
     });
 
     await incrementPostStat(target.id, "replies");
     syncPostStat(world, target.id, "replies");
+    await incrementPostStat(
+      target.id,
+      tone === "disagree" ? "disagreeReplies" : "agreeReplies",
+    );
+    syncPostStat(
+      world,
+      target.id,
+      tone === "disagree" ? "disagreeReplies" : "agreeReplies",
+    );
     world.posts.unshift(reply);
     void recordAuthoredReplyActivity(personality.id, reply, target);
+    await refreshGrossCloutInWorld(world, target.author.personalityId);
     return reply;
   } catch (error) {
     console.error(`replyToSpecificPost failed for ${personality.handle}:`, error);
@@ -201,13 +223,9 @@ export async function followAuthor(
   const nextFollowers = target.stats.followers + 1;
 
   if (!isRankNpc(target)) {
-    await updatePersonality(target.id, {
-      stats: {
-        ...target.stats,
-        followers: nextFollowers,
-      },
-    });
+    await updatePersonalityStats(target.id, { followers: nextFollowers });
     target.stats.followers = nextFollowers;
+    await refreshGrossCloutInWorld(world, target.id);
   }
 
   void recordFollowActivityPair(personality.id, target.id, follow.createdAt);
@@ -237,13 +255,9 @@ export async function unfollowAuthor(
   const nextFollowers = Math.max(0, target.stats.followers - 1);
 
   if (!isRankNpc(target)) {
-    await updatePersonality(target.id, {
-      stats: {
-        ...target.stats,
-        followers: nextFollowers,
-      },
-    });
+    await updatePersonalityStats(target.id, { followers: nextFollowers });
     target.stats.followers = nextFollowers;
+    await refreshGrossCloutInWorld(world, target.id);
   }
 
   return target;
@@ -255,4 +269,5 @@ export async function recordPostView(
 ): Promise<void> {
   await incrementPostStat(target.id, "views");
   syncPostStat(world, target.id, "views");
+  await refreshGrossCloutInWorld(world, target.author.personalityId);
 }

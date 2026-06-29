@@ -28,7 +28,12 @@ import {
   listPersonalitiesRequest,
 } from "@/lib/personalities/client";
 import { MAX_PERSONALITIES_PER_USER } from "@/lib/personalities/limits";
-import { formatStatValue, normalizeStoredStats } from "@/lib/personalities/stats";
+import {
+  formatStatValue,
+  normalizeStoredStats,
+  normalizeStoredStatsRaw,
+} from "@/lib/personalities/stats";
+import { getCloutBreakdown } from "@/lib/scoring/social-score";
 import type { PersonalityListItem } from "@/lib/profile/social-rank";
 import {
   formatSocialRank,
@@ -65,7 +70,10 @@ function needsDescriptionGeneration(personality: PersonalityListItem): boolean {
 }
 
 function PersonalityCardStats({ personality }: { personality: PersonalityListItem }) {
+  const rawStats = normalizeStoredStatsRaw(personality.stats);
   const stats = normalizeStoredStats(personality.stats);
+  const clout = getCloutBreakdown(rawStats.socialScore, rawStats.controversy);
+  const cloutTooltip = `Gross ${formatStatValue(clout.gross)} − heat tax ${formatStatValue(clout.penalty)}`;
 
   return (
     <div className="mt-2 grid grid-cols-4 items-end justify-items-center gap-1 border-t border-[#1d2b53] pt-2">
@@ -75,7 +83,10 @@ function PersonalityCardStats({ personality }: { personality: PersonalityListIte
           {formatStatValue(stats.followers)}
         </p>
       </div>
-      <div className="flex min-w-0 flex-col items-center gap-0.5 px-0.5">
+      <div
+        className="flex min-w-0 flex-col items-center gap-0.5 px-0.5"
+        title={cloutTooltip}
+      >
         <p className="pixel-heading text-[7px] text-[#83769a]">CLOUT</p>
         <p className="text-xs font-bold text-[#ffa300]">
           {formatStatValue(stats.socialScore)}

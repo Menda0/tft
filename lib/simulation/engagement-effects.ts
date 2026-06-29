@@ -1,8 +1,8 @@
+import { refreshGrossCloutInWorld } from "@/lib/scoring/refresh-gross-clout";
 import type { Post } from "@/lib/types/post";
 import type { MemoryItem, Personality } from "@/lib/types/personality";
 
 import { computeControversyDelta } from "@/lib/scoring/controversy";
-import { computeSocialScoreDelta } from "@/lib/scoring/social-score";
 
 import { hasMemory, recordFriendshipMemory, recordRivalryMemory, recordScandalMemory } from "./memory";
 import {
@@ -19,13 +19,11 @@ function getPersonality(
   return world.personalities.find((entry) => entry.id === personalityId) ?? null;
 }
 
-function socialDelta(
-  event: Parameters<typeof computeSocialScoreDelta>[0],
-  actor?: Personality,
-): { socialScore: number } {
-  return {
-    socialScore: computeSocialScoreDelta(event, { actor }),
-  };
+async function refreshTargetClout(
+  world: SimulationWorld,
+  targetId: string,
+): Promise<void> {
+  await refreshGrossCloutInWorld(world, targetId);
 }
 
 async function updateActorTowardTarget(
@@ -38,6 +36,7 @@ async function updateActorTowardTarget(
     targetStatsDelta?: Parameters<typeof applyStatsDelta>[1];
     actorMemory?: Personality["memory"];
     targetMemory?: Personality["memory"];
+    refreshTargetClout?: boolean;
   },
 ): Promise<void> {
   const actor = getPersonality(world, actorId);
@@ -95,6 +94,10 @@ async function updateActorTowardTarget(
   if (Object.keys(targetPatch).length > 0) {
     await applyPersonalityUpdate(world, targetId, targetPatch);
   }
+
+  if (options.refreshTargetClout ?? true) {
+    await refreshTargetClout(world, targetId);
+  }
 }
 
 async function applyRelationshipAndStats(
@@ -105,6 +108,7 @@ async function applyRelationshipAndStats(
     relationshipDelta?: Parameters<typeof applyRelationshipDelta>[2];
     actorStatsDelta?: Parameters<typeof applyStatsDelta>[1];
     targetStatsDelta?: Parameters<typeof applyStatsDelta>[1];
+    refreshTargetClout?: boolean;
   },
 ): Promise<void> {
   await updateActorTowardTarget(world, actorId, targetId, options);
@@ -144,7 +148,7 @@ export async function recordLikeEffects(
 ): Promise<void> {
   await applyRelationshipAndStats(world, actor.id, author.id, {
     relationshipDelta: { admiration: 0.5, familiarity: 0.5 },
-    targetStatsDelta: socialDelta("like_received", actor),
+    refreshTargetClout: false,
   });
 }
 
@@ -155,7 +159,7 @@ export async function recordRepostEffects(
 ): Promise<void> {
   await applyRelationshipAndStats(world, actor.id, author.id, {
     relationshipDelta: { admiration: 1, familiarity: 1 },
-    targetStatsDelta: socialDelta("repost_received", actor),
+    refreshTargetClout: false,
   });
 }
 
@@ -167,7 +171,7 @@ export async function recordFollowEffects(
 ): Promise<void> {
   await applyRelationshipAndStats(world, actor.id, author.id, {
     relationshipDelta: { trust: 1, admiration: 2, familiarity: 1 },
-    targetStatsDelta: socialDelta("follow_received", actor),
+    refreshTargetClout: false,
   });
 
   await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({
@@ -183,8 +187,7 @@ export async function recordAgreeReplyEffects(
 ): Promise<void> {
   await applyRelationshipAndStats(world, actor.id, author.id, {
     relationshipDelta: { trust: 1, admiration: 1, familiarity: 1 },
-    actorStatsDelta: socialDelta("agree_reply_written", actor),
-    targetStatsDelta: socialDelta("agree_reply_on_post", actor),
+    refreshTargetClout: false,
   });
 
   await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({
@@ -201,7 +204,6 @@ export async function recordUnfollowEffects(
   await applyRelationshipAndStats(world, actor.id, author.id, {
     relationshipDelta: { trust: -2, admiration: -2, rivalry: 1, familiarity: -1 },
     targetStatsDelta: {
-      ...socialDelta("unfollow_after_conflict"),
       controversy: computeControversyDelta("unfollow_after_conflict"),
     },
   });
@@ -230,7 +232,6 @@ export async function recordDisagreeReplyEffects(
     },
     targetStatsDelta: {
       controversy: targetControversy,
-      ...socialDelta("disagree_reply_on_post"),
     },
   });
 
