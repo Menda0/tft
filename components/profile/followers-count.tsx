@@ -26,13 +26,19 @@ export function FollowersCount({
         onClick={() => setOpen(true)}
         className={
           className ??
-          "mt-3 text-left text-sm text-[#83769a] transition-colors hover:text-[#c2c3c7]"
+          "mt-3 bg-transparent p-0 text-left text-sm text-[#83769a] transition-colors hover:text-[#c2c3c7]"
         }
       >
-        <span className="font-bold text-[#fff1e8] hover:underline">
-          {count.toLocaleString()}
-        </span>
-        {showLabel ? " followers" : null}
+        {showLabel ? (
+          <>
+            <span className="font-bold text-[#fff1e8] hover:underline">
+              {count.toLocaleString()}
+            </span>
+            {" followers"}
+          </>
+        ) : (
+          count.toLocaleString()
+        )}
       </button>
 
       <FollowersDialog

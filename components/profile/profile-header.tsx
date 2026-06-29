@@ -88,7 +88,7 @@ export function ProfileHeader({ personality }: ProfileHeaderProps) {
             handle={personality.handle}
             count={stats.followers}
             showLabel={false}
-            className="text-sm text-[#83769a] transition-colors hover:text-[#c2c3c7]"
+            className="truncate bg-transparent p-0 text-sm font-bold leading-none text-[#fff1e8] transition-colors hover:text-[#c2c3c7] hover:underline"
           />
         </div>
         <ProfileStat
