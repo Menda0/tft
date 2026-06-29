@@ -17,7 +17,7 @@ import {
   randomPoliticalSwing,
 } from "./personalities/political-swing";
 import { normalizeStoredTraits } from "./personalities/validation";
-import { defaultStats } from "./personalities/validation";
+import { normalizeStoredStats } from "./personalities/stats";
 import type {
   AvatarStatus,
   DescriptionStatus,
@@ -55,21 +55,6 @@ function normalizeRelationships(
   }
 
   return relationships;
-}
-
-function normalizeStoredStats(stats: Stats | undefined): Stats {
-  const raw = stats ?? defaultStats();
-  const legacyReputation = (raw as Stats & { reputation?: number }).reputation;
-  const socialScore =
-    raw.socialScore ??
-    (legacyReputation !== undefined ? Math.round(legacyReputation * 10) : 0);
-
-  return {
-    followers: Math.max(0, Math.round(raw.followers ?? 0)),
-    socialScore: Math.max(0, Math.round(socialScore)),
-    controversy: Math.max(0, Math.round(raw.controversy ?? 0)),
-    creativity: Math.min(100, Math.max(0, Math.round(raw.creativity ?? 50))),
-  };
 }
 
 export function normalizePersonality(

@@ -19,6 +19,7 @@ import {
   generateDescriptionRequest,
   listPersonalitiesRequest,
 } from "@/lib/personalities/client";
+import { formatStatValue, normalizeStoredStats } from "@/lib/personalities/stats";
 import type { PersonalityListItem } from "@/lib/profile/social-rank";
 
 function needsAvatarGeneration(personality: PersonalityListItem): boolean {
@@ -49,6 +50,39 @@ function needsDescriptionGeneration(personality: PersonalityListItem): boolean {
   );
 }
 
+function PersonalityCardStats({ personality }: { personality: PersonalityListItem }) {
+  const stats = normalizeStoredStats(personality.stats);
+
+  return (
+    <div className="mt-2 grid grid-cols-4 items-start justify-items-center gap-1 border-t border-[#1d2b53] pt-2">
+      <div className="flex min-w-0 flex-col items-center gap-0.5 px-0.5">
+        <p className="pixel-heading text-[7px] text-[#83769a]">FOLLOWERS</p>
+        <p className="text-xs font-bold text-[#fff1e8]">
+          {formatStatValue(stats.followers)}
+        </p>
+      </div>
+      <div className="flex min-w-0 flex-col items-center gap-0.5 px-0.5">
+        <p className="pixel-heading text-[7px] text-[#83769a]">CLOUT</p>
+        <p className="text-xs font-bold text-[#ffa300]">
+          {formatStatValue(stats.socialScore)}
+        </p>
+      </div>
+      <div className="flex min-w-0 flex-col items-center gap-0.5 px-0.5">
+        <p className="pixel-heading text-[7px] text-[#83769a]">HEAT</p>
+        <p className="text-xs font-bold text-[#ff004d]">
+          {formatStatValue(stats.controversy)}
+        </p>
+      </div>
+      <div className="flex min-w-0 flex-col items-center gap-0.5 px-0.5">
+        <p className="pixel-heading text-[7px] text-[#83769a]">RANK</p>
+        <p className="pixel-heading text-[7px] font-bold text-[#29adff]">
+          {(personality.socialRankLabel ?? "Novice").toUpperCase()}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function PersonalitiesList() {
   const router = useRouter();
   const { user, token, isReady } = useAuth();
@@ -70,7 +104,13 @@ export function PersonalitiesList() {
     }
 
     setError(null);
-    setPersonalities(result.personalities);
+    setPersonalities(
+      result.personalities.map((personality) => ({
+        ...personality,
+        stats: normalizeStoredStats(personality.stats),
+        socialRankLabel: personality.socialRankLabel ?? "Novice",
+      })),
+    );
     setIsLoading(false);
   }, [token]);
 
@@ -170,7 +210,11 @@ export function PersonalitiesList() {
             <p className="pixel-heading text-[8px] text-[#83769a]">FARM CLOUT</p>
             <p className="text-lg font-bold text-[#ffa300]">
               {personalities
-                .reduce((sum, personality) => sum + personality.stats.socialScore, 0)
+                .reduce(
+                  (sum, personality) =>
+                    sum + normalizeStoredStats(personality.stats).socialScore,
+                  0,
+                )
                 .toLocaleString()}
             </p>
           </div>
@@ -240,22 +284,12 @@ export function PersonalitiesList() {
                       {formatArchetypeLabel(personality.archetype).toUpperCase()}
                     </p>
                   ) : null}
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <span className="pixel-border-thin bg-[#1d2b53] px-2 py-0.5 pixel-heading text-[8px] text-[#29adff]">
-                      {personality.socialRankLabel.toUpperCase()}
-                    </span>
-                    <span className="pixel-border-thin bg-[#1d2b53] px-2 py-0.5 pixel-heading text-[8px] text-[#ffa300]">
-                      {personality.stats.socialScore.toLocaleString()} CLOUT
-                    </span>
-                    <span className="pixel-border-thin bg-[#1d2b53] px-2 py-0.5 pixel-heading text-[8px] text-[#ff004d]">
-                      {personality.stats.controversy.toLocaleString()} HEAT
-                    </span>
-                  </div>
                   {personality.description ? (
                     <p className="mt-2 text-xs leading-relaxed text-[#c2c3c7]">
                       {personality.description}
                     </p>
                   ) : null}
+                  <PersonalityCardStats personality={personality} />
                   {isDescriptionInProgress(personality) ? (
                     <p className="mt-1 text-xs text-[#83769a]">
                       Writing profile bio...
