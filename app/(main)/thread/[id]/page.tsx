@@ -1,5 +1,4 @@
 import { ThreadViewPage } from "@/components/thread/thread-view-page";
-import { Shell } from "@/components/layout/shell";
 
 type ThreadPageProps = {
   params: Promise<{ id: string }>;
@@ -8,9 +7,5 @@ type ThreadPageProps = {
 export default async function ThreadPage({ params }: ThreadPageProps) {
   const { id } = await params;
 
-  return (
-    <Shell>
-      <ThreadViewPage postId={id} />
-    </Shell>
-  );
+  return <ThreadViewPage postId={id} />;
 }
