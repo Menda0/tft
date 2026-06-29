@@ -3,6 +3,7 @@ import {
   getPostById,
   getRepliesForPosts,
   getTopLevelPosts,
+  getTrendingTopLevelPostsSince,
 } from "@/lib/db/posts";
 import { avatarColorForHandle, formatRelativeTime } from "@/lib/feed/format";
 import type {
@@ -70,11 +71,11 @@ export async function buildThreadByPostId(
   return toFeedThread(rootPost, replies, now);
 }
 
-export async function buildFeedThreads(limit = 50): Promise<FeedThread[]> {
-  await ensurePostIndexes();
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
-  const topLevelPosts = await getTopLevelPosts(limit);
-
+async function buildFeedThreadsFromPosts(
+  topLevelPosts: Post[],
+): Promise<FeedThread[]> {
   if (topLevelPosts.length === 0) {
     return [];
   }
@@ -96,4 +97,21 @@ export async function buildFeedThreads(limit = 50): Promise<FeedThread[]> {
   return topLevelPosts.map((post) =>
     toFeedThread(post, repliesByPostId.get(post.id) ?? [], now),
   );
+}
+
+export async function buildFeedThreads(limit = 50): Promise<FeedThread[]> {
+  await ensurePostIndexes();
+
+  const topLevelPosts = await getTopLevelPosts(limit);
+  return buildFeedThreadsFromPosts(topLevelPosts);
+}
+
+export async function buildThreadingFeedThreads(
+  limit = 50,
+): Promise<FeedThread[]> {
+  await ensurePostIndexes();
+
+  const since = new Date(Date.now() - TWENTY_FOUR_HOURS_MS);
+  const topLevelPosts = await getTrendingTopLevelPostsSince(since, limit);
+  return buildFeedThreadsFromPosts(topLevelPosts);
 }

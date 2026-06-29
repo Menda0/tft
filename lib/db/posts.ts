@@ -116,6 +116,39 @@ export async function getTopLevelPosts(limit = 50): Promise<Post[]> {
     .toArray();
 }
 
+export async function getTrendingTopLevelPostsSince(
+  since: Date,
+  limit = 50,
+): Promise<Post[]> {
+  const collection = await getPostsCollection();
+
+  return collection
+    .aggregate<Post>([
+      {
+        $match: {
+          replyToPostId: null,
+          createdAt: { $gte: since },
+        },
+      },
+      {
+        $addFields: {
+          engagementScore: {
+            $add: [
+              { $multiply: ["$stats.replies", 4] },
+              { $multiply: ["$stats.reposts", 3] },
+              { $multiply: ["$stats.likes", 2] },
+              "$stats.views",
+            ],
+          },
+        },
+      },
+      { $sort: { engagementScore: -1, createdAt: -1 } },
+      { $limit: limit },
+      { $project: { engagementScore: 0 } },
+    ])
+    .toArray();
+}
+
 export async function getRepliesForPosts(postIds: string[]): Promise<Post[]> {
   if (postIds.length === 0) {
     return [];
