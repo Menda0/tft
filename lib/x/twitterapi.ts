@@ -134,6 +134,10 @@ async function xApiGet<T>(path: string, params?: URLSearchParams): Promise<T> {
   return payload;
 }
 
+export async function lookupXUserId(screenName: string): Promise<string> {
+  return lookupUserId(screenName);
+}
+
 async function lookupUserId(screenName: string): Promise<string> {
   const payload = await xApiGet<UserLookupResponse>(
     `/users/by/username/${encodeURIComponent(screenName)}`,
@@ -251,12 +255,53 @@ export function pickRandomImageUrl(urls: string[]): string | undefined {
 
 export async function fetchUserTweets(
   screenName: string,
-  options: { limit?: number; sinceId?: string | null } = {},
-): Promise<ScrapedTweet[]> {
-  const limit = Math.max(1, Math.min(options.limit ?? 20, 40));
+  options: {
+    limit?: number;
+    sinceId?: string | null;
+    userId?: string | null;
+  } = {},
+): Promise<{ tweets: ScrapedTweet[]; userId: string }> {
+  const limit = Math.max(1, Math.min(options.limit ?? 3, 3));
   const sinceId = options.sinceId ?? null;
-  const userId = await lookupUserId(screenName);
+  let userId = options.userId?.trim() || null;
+
+  if (!userId) {
+    userId = await lookupUserId(screenName);
+  }
+
   const tweets: ScrapedTweet[] = [];
+
+  if (limit <= 5) {
+    const payload = await fetchUserTweetsPage(userId, {
+      maxResults: 5,
+      sinceId,
+    });
+    const pageTweets = payload.data ?? [];
+    const mediaByKey = buildMediaUrlMap(payload.includes?.media);
+
+    for (const rawTweet of pageTweets) {
+      const tweet = parseTweet(rawTweet, mediaByKey);
+
+      if (!tweet) {
+        continue;
+      }
+
+      if (sinceId && tweet.id <= sinceId) {
+        continue;
+      }
+
+      tweets.push(tweet);
+
+      if (tweets.length >= limit) {
+        break;
+      }
+    }
+
+    tweets.sort((left, right) => right.id.localeCompare(left.id));
+
+    return { tweets: tweets.slice(0, limit), userId };
+  }
+
   let paginationToken: string | undefined;
 
   while (tweets.length < limit) {
@@ -296,5 +341,5 @@ export async function fetchUserTweets(
 
   tweets.sort((left, right) => right.id.localeCompare(left.id));
 
-  return tweets.slice(0, limit);
+  return { tweets: tweets.slice(0, limit), userId };
 }

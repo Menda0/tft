@@ -14,6 +14,8 @@ export function createDefaultWorldState(): WorldState {
     trendingTopics: [],
     trendingTopicsUpdatedAt: null,
     isRunning: false,
+    lastRankNpcSeedAt: null,
+    rankNpcSeedInProgress: false,
   };
 }
 
@@ -69,6 +71,36 @@ export async function tryAcquireWorldLock(): Promise<WorldState | null> {
 export async function releaseWorldLock(): Promise<void> {
   const collection = await getWorldStateCollection();
   await collection.updateOne({ id: GLOBAL_ID }, { $set: { isRunning: false } });
+}
+
+export async function tryAcquireRankNpcSeedLock(
+  cutoff: Date,
+): Promise<WorldState | null> {
+  const collection = await getWorldStateCollection();
+  const result = await collection.findOneAndUpdate(
+    {
+      id: GLOBAL_ID,
+      $and: [
+        {
+          $or: [
+            { rankNpcSeedInProgress: false },
+            { rankNpcSeedInProgress: { $exists: false } },
+          ],
+        },
+        {
+          $or: [
+            { lastRankNpcSeedAt: null },
+            { lastRankNpcSeedAt: { $exists: false } },
+            { lastRankNpcSeedAt: { $lte: cutoff } },
+          ],
+        },
+      ],
+    },
+    { $set: { rankNpcSeedInProgress: true } },
+    { upsert: true, returnDocument: "after" },
+  );
+
+  return result;
 }
 
 export async function updateTrendingTopicsInDb(

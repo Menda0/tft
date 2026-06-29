@@ -10,6 +10,8 @@ export type WorldState = {
   trendingTopics: TrendingTopic[];
   trendingTopicsUpdatedAt: Date | null;
   isRunning: boolean;
+  lastRankNpcSeedAt: Date | null;
+  rankNpcSeedInProgress: boolean;
 };
 
 export type ActionType = "post" | "lurk";

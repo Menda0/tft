@@ -56,6 +56,7 @@ export type PersonalityRole = "player" | "rank_npc";
 
 export type XSyncState = {
   xHandle: string;
+  xUserId: string | null;
   realName?: string;
   lastSyncedTweetId: string | null;
   lastSyncedAt: Date | null;

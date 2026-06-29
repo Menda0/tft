@@ -3,10 +3,6 @@
     {
       "path": "/api/cron/simulation",
       "schedule": "*/30 * * * *"
-    },
-    {
-      "path": "/api/cron/x-sync",
-      "schedule": "*/15 * * * *"
     }
   ]
 }

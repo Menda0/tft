@@ -1,10 +1,33 @@
 import { getAdminUser } from "@/lib/auth/server";
+import {
+  abortRankNpcSeed,
+  completeRankNpcSeed,
+  getRankNpcSeedStatus,
+  tryBeginRankNpcSeed,
+} from "@/lib/rank-npcs/seed-cooldown";
 import { seedRankNpcsFromConfig } from "@/lib/rank-npcs/seed";
 
 export const maxDuration = 300;
 
 function formatSse(data: unknown): Uint8Array {
   return new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+export async function GET(request: Request) {
+  const adminUser = await getAdminUser(request);
+
+  if (!adminUser) {
+    return Response.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const status = await getRankNpcSeedStatus();
+
+  return Response.json({
+    canRun: status.canRun,
+    inProgress: status.inProgress,
+    lastSeedAt: status.lastSeedAt?.toISOString() ?? null,
+    nextAvailableAt: status.nextAvailableAt?.toISOString() ?? null,
+  });
 }
 
 export async function POST(request: Request) {
@@ -14,8 +37,23 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized." }, { status: 401 });
   }
 
+  const begin = await tryBeginRankNpcSeed();
+
+  if (!begin.canRun) {
+    return Response.json(
+      {
+        error: begin.inProgress
+          ? "Rank NPC seed is already running."
+          : "Rank NPC seed already ran recently.",
+        nextAvailableAt: begin.nextAvailableAt?.toISOString() ?? null,
+      },
+      { status: 429 },
+    );
+  }
+
   const stream = new TransformStream<Uint8Array, Uint8Array>();
   const writer = stream.writable.getWriter();
+  let seedSucceeded = false;
 
   void (async () => {
     let streamClosed = false;
@@ -58,6 +96,8 @@ export async function POST(request: Request) {
         return;
       }
 
+      seedSucceeded = true;
+
       await writeEvent({
         type: "done",
         reconcile: result.reconcile,
@@ -91,6 +131,12 @@ export async function POST(request: Request) {
         message: "Rank NPC seed failed.",
       });
     } finally {
+      if (seedSucceeded) {
+        await completeRankNpcSeed();
+      } else {
+        await abortRankNpcSeed();
+      }
+
       streamClosed = true;
 
       try {

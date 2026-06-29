@@ -80,6 +80,10 @@ function normalizeXSync(
 
   return {
     xHandle,
+    xUserId:
+      typeof xSync.xUserId === "string" && xSync.xUserId.trim()
+        ? xSync.xUserId.trim()
+        : null,
     realName:
       typeof xSync.realName === "string" && xSync.realName.trim()
         ? xSync.realName.trim()

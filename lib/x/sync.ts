@@ -1,5 +1,4 @@
 import {
-  countMirroredPostsByPersonality,
   findPostByExternalId,
   insertPost,
   toPostAuthor,
@@ -68,10 +67,13 @@ function previewTweetText(text: string, maxLength = 72): string {
 function buildXSyncUpdate(
   personality: Personality,
   xHandle: string,
-  updates: Pick<XSyncState, "lastSyncedTweetId" | "lastSyncedAt">,
+  updates: Pick<XSyncState, "lastSyncedTweetId" | "lastSyncedAt"> & {
+    xUserId?: string | null;
+  },
 ): XSyncState {
   return {
     xHandle,
+    xUserId: updates.xUserId ?? personality.xSync?.xUserId ?? null,
     realName: personality.xSync?.realName,
     lastSyncedTweetId: updates.lastSyncedTweetId,
     lastSyncedAt: updates.lastSyncedAt,
@@ -169,20 +171,17 @@ export async function syncRankNpc(
   );
 
   try {
-    const mirroredCount = await countMirroredPostsByPersonality(normalized.id);
     const sinceId = normalized.xSync?.lastSyncedTweetId ?? null;
-    const limit =
-      mirroredCount === 0
-        ? Math.max(1, options.initialPostCount ?? 3)
-        : 20;
+    const limit = Math.max(1, Math.min(options.initialPostCount ?? 3, 3));
 
     log(
-      `@${xHandle}: fetching up to ${limit} tweet(s) (${mirroredCount} mirrored post(s) already stored${sinceId ? `, since ${sinceId}` : ""}).`,
+      `@${xHandle}: fetching up to ${limit} tweet(s)${sinceId ? ` since ${sinceId}` : ""}.`,
     );
 
-    const tweets = await fetchUserTweets(xHandle, {
+    const { tweets, userId } = await fetchUserTweets(xHandle, {
       limit,
-      sinceId: mirroredCount > 0 ? sinceId : null,
+      sinceId,
+      userId: normalized.xSync?.xUserId ?? null,
     });
 
     log(`@${xHandle}: fetched ${tweets.length} tweet(s) from the X API.`);
@@ -218,14 +217,16 @@ export async function syncRankNpc(
 
       await updatePersonality(normalized.id, {
         xSync: buildXSyncUpdate(normalized, xHandle, {
+          xUserId: userId,
           lastSyncedTweetId: latest.id,
           lastSyncedAt: new Date(),
         }),
       });
-    } else if (newestTweetId && newestTweetId !== sinceId) {
+    } else {
       await updatePersonality(normalized.id, {
         xSync: buildXSyncUpdate(normalized, xHandle, {
-          lastSyncedTweetId: newestTweetId,
+          xUserId: userId,
+          lastSyncedTweetId: sinceId,
           lastSyncedAt: new Date(),
         }),
       });

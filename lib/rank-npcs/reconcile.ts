@@ -67,6 +67,7 @@ function buildPersonalityFromEntry(
     fixedSocialRank: entry.fixedSocialRank,
     xSync: {
       xHandle: entry.xHandle,
+      xUserId: null,
       realName: entry.realName,
       lastSyncedTweetId: null,
       lastSyncedAt: null,
@@ -121,6 +122,7 @@ async function upsertRankNpc(
     },
     xSync: {
       xHandle: entry.xHandle,
+      xUserId: xHandleChanged ? null : (existing.xSync?.xUserId ?? null),
       realName: entry.realName,
       lastSyncedTweetId: xHandleChanged
         ? null

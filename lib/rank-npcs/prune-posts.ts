@@ -32,6 +32,7 @@ export async function pruneAllRankNpcPosts(): Promise<PruneRankNpcPostsResult> {
     await updatePersonality(normalized.id, {
       xSync: {
         xHandle,
+        xUserId: normalized.xSync?.xUserId ?? null,
         realName: normalized.xSync?.realName,
         lastSyncedTweetId: null,
         lastSyncedAt: null,

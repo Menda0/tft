@@ -22,7 +22,7 @@ const HELP_TEXT = [
   "Available commands:",
   "  tick    — run a simulation tick",
   "  trends  — refresh trending topics",
-  "  seed npc — reconcile, sync, and seed parody NPCs",
+  "  seed npc — reconcile, sync, and seed parody NPCs (once per day)",
   "  prune npc — delete all mirrored parody NPC posts",
   "  clear   — clear the console",
   "  help    — show this message",

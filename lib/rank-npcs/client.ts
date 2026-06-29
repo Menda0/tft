@@ -129,6 +129,36 @@ function parseSseChunk(buffer: string): {
   return { events, remainder };
 }
 
+export type RankNpcSeedStatusResponse = {
+  canRun: boolean;
+  inProgress: boolean;
+  lastSeedAt: string | null;
+  nextAvailableAt: string | null;
+};
+
+export async function getRankNpcSeedStatusRequest(
+  token: string,
+): Promise<
+  | { ok: true; data: RankNpcSeedStatusResponse }
+  | { ok: false; error: string }
+> {
+  const response = await fetch("/api/admin/rank-npcs/seed", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = (await response.json()) as RankNpcSeedStatusResponse & {
+    error?: string;
+  };
+
+  if (!response.ok) {
+    return { ok: false, error: data.error ?? "Request failed." };
+  }
+
+  return { ok: true, data };
+}
+
 export async function streamSeedRankNpcsAdminRequest(
   token: string,
   onEvent: (event: StreamSeedNpcEvent) => void,
@@ -149,7 +179,22 @@ export async function streamSeedRankNpcsAdminRequest(
     if (!response.ok) {
       const data = (await response.json().catch(() => ({}))) as {
         error?: string;
+        nextAvailableAt?: string | null;
       };
+
+      if (response.status === 429) {
+        const nextAvailableAt = data.nextAvailableAt
+          ? new Date(data.nextAvailableAt).toLocaleString()
+          : null;
+
+        return {
+          ok: false,
+          error: nextAvailableAt
+            ? `${data.error ?? "Rank NPC seed is on cooldown."} Next available at ${nextAvailableAt}.`
+            : (data.error ?? "Rank NPC seed is on cooldown."),
+        };
+      }
+
       return { ok: false, error: data.error ?? "Rank NPC seed failed." };
     }
 
