@@ -78,8 +78,8 @@ export function PhoneFrame({ children }: PhoneFrameProps) {
       </div>
 
       {/* Desktop: phone left, sidebar right */}
-      <div className="hidden min-h-dvh md:flex md:items-center md:justify-center md:bg-[#0f0f1a] md:p-8 md:[background-image:radial-gradient(#29366f_1px,transparent_1px),linear-gradient(#0f0f1a,#1d2b53)] md:[background-size:16px_16px,100%_100%]">
-        <div className="mx-auto grid w-full max-w-7xl min-w-0 grid-cols-[2fr_3fr] items-center gap-10">
+      <div className="hidden min-h-dvh md:flex md:items-start md:justify-center md:bg-[#0f0f1a] md:p-8 md:[background-image:radial-gradient(#29366f_1px,transparent_1px),linear-gradient(#0f0f1a,#1d2b53)] md:[background-size:16px_16px,100%_100%]">
+        <div className="mx-auto grid w-full max-w-7xl min-w-0 grid-cols-[2fr_3fr] items-start gap-10">
           <div className="flex min-w-0 justify-end">
             <div
               aria-label="Phone preview"

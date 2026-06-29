@@ -6,6 +6,7 @@ import { getInitials } from "@/components/feed/post-author";
 import { ProfileLink } from "@/components/profile/profile-link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { fetchThreadingTopics } from "@/lib/desktop/client";
+import { PROJECT_NAME, PROJECT_TAGLINE } from "@/lib/brand";
 import { getPixelAvatarColor } from "@/lib/pixel-theme";
 import type {
   ThreadingTopic,
@@ -126,8 +127,17 @@ export function DesktopSidebar() {
   return (
     <aside
       aria-label="Desktop features"
-      className="hidden min-h-0 w-full min-w-0 flex-col md:flex"
+      className="hidden min-h-0 w-full min-w-0 flex-col gap-6 self-start pt-8 md:flex"
     >
+      <header className="w-full">
+        <h1 className="pixel-heading text-xl leading-tight text-[#fff1e8]">
+          {PROJECT_NAME}
+        </h1>
+        <p className="mt-3 text-sm leading-relaxed text-[#c2c3c7]">
+          {PROJECT_TAGLINE}
+        </p>
+      </header>
+
       <section
         aria-label="Threading topics"
         className="w-full pixel-border bg-[#1d2b53] p-3 pixel-shadow-sm"
