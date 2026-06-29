@@ -1,13 +1,19 @@
+import type { MemoryItem } from "@/lib/types/personality";
 import type {
   ProfileCharacterSheet,
   ProfileFollower,
   ProfilePostItem,
   ProfilePostType,
+  ProfileRelationship,
   PublicPersonality,
 } from "@/lib/types/profile";
-import { PAGE_SIZE } from "@/lib/pagination";
+import {
+  CHARACTER_SECTION_PAGE_SIZE,
+  PAGE_SIZE,
+} from "@/lib/pagination";
 
 export const PROFILE_PAGE_SIZE = PAGE_SIZE;
+export const PROFILE_CHARACTER_SECTION_PAGE_SIZE = CHARACTER_SECTION_PAGE_SIZE;
 
 export async function fetchProfile(
   handle: string,
@@ -106,4 +112,62 @@ export async function fetchProfileCharacter(
   }
 
   return { ok: true, character: data.character };
+}
+
+export async function fetchProfileCharacterMemories(
+  handle: string,
+  options: { limit?: number; offset?: number } = {},
+): Promise<
+  | { ok: true; items: MemoryItem[]; hasMore: boolean }
+  | { ok: false; error: string }
+> {
+  const limit = options.limit ?? PROFILE_CHARACTER_SECTION_PAGE_SIZE;
+  const offset = options.offset ?? 0;
+  const response = await fetch(
+    `/api/u/${encodeURIComponent(handle)}/character/memories?limit=${limit}&offset=${offset}`,
+  );
+  const data = (await response.json()) as {
+    items?: MemoryItem[];
+    hasMore?: boolean;
+    error?: string;
+  };
+
+  if (!response.ok) {
+    return { ok: false, error: data.error ?? "Could not load memories." };
+  }
+
+  if (!data.items || typeof data.hasMore !== "boolean") {
+    return { ok: false, error: "Invalid server response." };
+  }
+
+  return { ok: true, items: data.items, hasMore: data.hasMore };
+}
+
+export async function fetchProfileCharacterRelationships(
+  handle: string,
+  options: { limit?: number; offset?: number } = {},
+): Promise<
+  | { ok: true; items: ProfileRelationship[]; hasMore: boolean }
+  | { ok: false; error: string }
+> {
+  const limit = options.limit ?? PROFILE_CHARACTER_SECTION_PAGE_SIZE;
+  const offset = options.offset ?? 0;
+  const response = await fetch(
+    `/api/u/${encodeURIComponent(handle)}/character/relationships?limit=${limit}&offset=${offset}`,
+  );
+  const data = (await response.json()) as {
+    items?: ProfileRelationship[];
+    hasMore?: boolean;
+    error?: string;
+  };
+
+  if (!response.ok) {
+    return { ok: false, error: data.error ?? "Could not load relationships." };
+  }
+
+  if (!data.items || typeof data.hasMore !== "boolean") {
+    return { ok: false, error: "Invalid server response." };
+  }
+
+  return { ok: true, items: data.items, hasMore: data.hasMore };
 }

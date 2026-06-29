@@ -268,7 +268,10 @@ export function ProfileView({ handle }: ProfileViewProps) {
             ) : error ? (
               <p className="px-4 py-6 text-sm text-[#ff004d]">{error}</p>
             ) : character ? (
-              <ProfileCharacterSheetView character={character} />
+              <ProfileCharacterSheetView
+                handle={handle}
+                character={character}
+              />
             ) : null
           ) : loadingPosts ? (
             <p className="px-4 py-6 text-sm text-[#83769a]">Loading posts...</p>

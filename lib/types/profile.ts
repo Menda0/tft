@@ -46,8 +46,6 @@ export type ProfileCharacterSheet = {
   traits: Traits;
   stats: Stats;
   interests: string[];
-  memories: MemoryItem[];
-  relationships: ProfileRelationship[];
   evolutions: MemoryItem[];
 };
 

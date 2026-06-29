@@ -1,7 +1,15 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import { PersonalityAvatar } from "@/components/personalities/personality-avatar";
-import type { MemoryType, Traits } from "@/lib/types/personality";
+import {
+  fetchProfileCharacterMemories,
+  fetchProfileCharacterRelationships,
+  PROFILE_CHARACTER_SECTION_PAGE_SIZE,
+} from "@/lib/profile/client";
+import type { MemoryItem, MemoryType, Traits } from "@/lib/types/personality";
 import type {
   ProfileCharacterSheet,
   ProfileRelationship,
@@ -40,6 +48,7 @@ const RELATIONSHIP_FIELDS: {
 ];
 
 type ProfileCharacterSheetProps = {
+  handle: string;
   character: ProfileCharacterSheet;
 };
 
@@ -111,9 +120,155 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
+function SectionPagination({
+  page,
+  hasPrevious,
+  hasNext,
+  loading,
+  onPrevious,
+  onNext,
+}: {
+  page: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  loading: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3">
+      <button
+        type="button"
+        onClick={onPrevious}
+        disabled={!hasPrevious || loading}
+        className={cn(
+          "pixel-heading border-2 border-foreground px-3 py-2 text-[8px] transition-colors",
+          hasPrevious && !loading
+            ? "bg-[#1d2b53] text-[#ffa300] hover:bg-[#29366f]"
+            : "cursor-not-allowed bg-[#1d2b53]/50 text-[#83769a]",
+        )}
+      >
+        PREVIOUS
+      </button>
+      <span className="pixel-heading text-[8px] text-[#83769a]">
+        PAGE {page + 1}
+      </span>
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={!hasNext || loading}
+        className={cn(
+          "pixel-heading border-2 border-foreground px-3 py-2 text-[8px] transition-colors",
+          hasNext && !loading
+            ? "bg-[#1d2b53] text-[#ffa300] hover:bg-[#29366f]"
+            : "cursor-not-allowed bg-[#1d2b53]/50 text-[#83769a]",
+        )}
+      >
+        NEXT
+      </button>
+    </div>
+  );
+}
+
 export function ProfileCharacterSheetView({
+  handle,
   character,
 }: ProfileCharacterSheetProps) {
+  const [memories, setMemories] = useState<MemoryItem[]>([]);
+  const [relationships, setRelationships] = useState<ProfileRelationship[]>([]);
+  const [memoriesPage, setMemoriesPage] = useState(0);
+  const [relationshipsPage, setRelationshipsPage] = useState(0);
+  const [memoriesHasNext, setMemoriesHasNext] = useState(false);
+  const [relationshipsHasNext, setRelationshipsHasNext] = useState(false);
+  const [loadingMemories, setLoadingMemories] = useState(true);
+  const [loadingRelationships, setLoadingRelationships] = useState(true);
+  const [memoriesError, setMemoriesError] = useState<string | null>(null);
+  const [relationshipsError, setRelationshipsError] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    setMemoriesPage(0);
+  }, [handle]);
+
+  useEffect(() => {
+    setRelationshipsPage(0);
+  }, [handle]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoadingMemories(true);
+      setMemoriesError(null);
+
+      const result = await fetchProfileCharacterMemories(handle, {
+        offset: memoriesPage * PROFILE_CHARACTER_SECTION_PAGE_SIZE,
+      });
+
+      if (cancelled) {
+        return;
+      }
+
+      if (!result.ok) {
+        setMemoriesError(result.error);
+        setMemories([]);
+        setMemoriesHasNext(false);
+        setLoadingMemories(false);
+        return;
+      }
+
+      setMemories(result.items);
+      setMemoriesHasNext(result.hasMore);
+      setLoadingMemories(false);
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [handle, memoriesPage]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoadingRelationships(true);
+      setRelationshipsError(null);
+
+      const result = await fetchProfileCharacterRelationships(handle, {
+        offset: relationshipsPage * PROFILE_CHARACTER_SECTION_PAGE_SIZE,
+      });
+
+      if (cancelled) {
+        return;
+      }
+
+      if (!result.ok) {
+        setRelationshipsError(result.error);
+        setRelationships([]);
+        setRelationshipsHasNext(false);
+        setLoadingRelationships(false);
+        return;
+      }
+
+      setRelationships(result.items);
+      setRelationshipsHasNext(result.hasMore);
+      setLoadingRelationships(false);
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [handle, relationshipsPage]);
+
+  const showMemoriesPagination = memoriesPage > 0 || memoriesHasNext;
+  const showRelationshipsPagination =
+    relationshipsPage > 0 || relationshipsHasNext;
+
   return (
     <div className="space-y-6 px-4 py-4">
       <section>
@@ -170,11 +325,15 @@ export function ProfileCharacterSheetView({
 
       <section>
         <SectionTitle>MEMORIES</SectionTitle>
-        {character.memories.length === 0 ? (
+        {loadingMemories ? (
+          <p className="mt-3 text-sm text-[#83769a]">Loading memories...</p>
+        ) : memoriesError ? (
+          <p className="mt-3 text-sm text-[#ff004d]">{memoriesError}</p>
+        ) : memories.length === 0 ? (
           <p className="mt-3 text-sm text-[#83769a]">No memories yet.</p>
         ) : (
           <ul className="mt-3 space-y-3">
-            {character.memories.map((memory, index) => (
+            {memories.map((memory, index) => (
               <li
                 key={`${memory.type}-${memory.text}-${index}`}
                 className="border-2 border-foreground bg-[#1d2b53] p-3"
@@ -192,15 +351,31 @@ export function ProfileCharacterSheetView({
             ))}
           </ul>
         )}
+        {showMemoriesPagination ? (
+          <SectionPagination
+            page={memoriesPage}
+            hasPrevious={memoriesPage > 0}
+            hasNext={memoriesHasNext}
+            loading={loadingMemories}
+            onPrevious={() => setMemoriesPage((page) => Math.max(0, page - 1))}
+            onNext={() => setMemoriesPage((page) => page + 1)}
+          />
+        ) : null}
       </section>
 
       <section>
         <SectionTitle>RELATIONSHIPS</SectionTitle>
-        {character.relationships.length === 0 ? (
+        {loadingRelationships ? (
+          <p className="mt-3 text-sm text-[#83769a]">
+            Loading relationships...
+          </p>
+        ) : relationshipsError ? (
+          <p className="mt-3 text-sm text-[#ff004d]">{relationshipsError}</p>
+        ) : relationships.length === 0 ? (
           <p className="mt-3 text-sm text-[#83769a]">No relationships yet.</p>
         ) : (
           <ul className="mt-3 space-y-3">
-            {character.relationships.map((relationship) => (
+            {relationships.map((relationship) => (
               <li
                 key={relationship.personalityId}
                 className="border-2 border-foreground bg-[#1d2b53] p-3"
@@ -241,6 +416,18 @@ export function ProfileCharacterSheetView({
             ))}
           </ul>
         )}
+        {showRelationshipsPagination ? (
+          <SectionPagination
+            page={relationshipsPage}
+            hasPrevious={relationshipsPage > 0}
+            hasNext={relationshipsHasNext}
+            loading={loadingRelationships}
+            onPrevious={() =>
+              setRelationshipsPage((page) => Math.max(0, page - 1))
+            }
+            onNext={() => setRelationshipsPage((page) => page + 1)}
+          />
+        ) : null}
       </section>
     </div>
   );
