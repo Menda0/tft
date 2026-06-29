@@ -4,9 +4,11 @@ import {
   updatePost,
 } from "@/lib/db/posts";
 import { storePostImage } from "@/lib/media/store-post-image";
-import { generatePostPixelImage } from "@/lib/openai/post-pixel-image";
+import {
+  generateMirroredPostPixelImage,
+  PostPixelImageSkippedError,
+} from "@/lib/openai/post-pixel-image";
 import { defaultRankNpcLog, type RankNpcLog } from "@/lib/rank-npcs/logger";
-import { pickRandomImageUrl } from "@/lib/x/twitterapi";
 import type { Post } from "@/lib/types/post";
 
 function getPostMediaConcurrency(): number {
@@ -18,6 +20,17 @@ function getPostMediaConcurrency(): number {
   }
 
   return 2;
+}
+
+function shuffleSourceImageUrls(urls: string[]): string[] {
+  const shuffled = [...urls];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+
+  return shuffled;
 }
 
 async function runWithConcurrency<T>(
@@ -44,6 +57,32 @@ async function runWithConcurrency<T>(
   );
 }
 
+async function generateMirroredPostPixelImageFromSources(input: {
+  sourceImageUrls: string[];
+  postContent: string;
+}): Promise<string> {
+  const candidates = shuffleSourceImageUrls(input.sourceImageUrls);
+  let lastSkipReason = "unsafe_content";
+
+  for (const sourceImageUrl of candidates) {
+    try {
+      return await generateMirroredPostPixelImage({
+        sourceImageUrl,
+        postContent: input.postContent,
+      });
+    } catch (error) {
+      if (error instanceof PostPixelImageSkippedError) {
+        lastSkipReason = error.reason;
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new PostPixelImageSkippedError(lastSkipReason);
+}
+
 export async function generateMirroredPostMedia(
   postId: string,
   log: RankNpcLog = defaultRankNpcLog,
@@ -54,9 +93,9 @@ export async function generateMirroredPostMedia(
     return false;
   }
 
-  const sourceImageUrl = pickRandomImageUrl(claimed.sourceImageUrls ?? []);
+  const sourceImageUrls = claimed.sourceImageUrls ?? [];
 
-  if (!sourceImageUrl) {
+  if (sourceImageUrls.length === 0) {
     await updatePost(postId, { mediaStatus: "none" });
     return false;
   }
@@ -66,8 +105,8 @@ export async function generateMirroredPostMedia(
   );
 
   try {
-    const imageDataUrl = await generatePostPixelImage({
-      sourceImageUrl,
+    const imageDataUrl = await generateMirroredPostPixelImageFromSources({
+      sourceImageUrls,
       postContent: claimed.content,
     });
     const mediaUrl = await storePostImage({
@@ -83,6 +122,14 @@ export async function generateMirroredPostMedia(
     log(`Post media ready for @${claimed.author.handle} (${postId}).`);
     return true;
   } catch (error) {
+    if (error instanceof PostPixelImageSkippedError) {
+      await updatePost(postId, { mediaStatus: "none" });
+      log(
+        `Skipped pixel art for @${claimed.author.handle} (${postId}): ${error.reason}.`,
+      );
+      return false;
+    }
+
     console.error(`Post media generation failed for ${postId}:`, error);
     await updatePost(postId, { mediaStatus: "failed" });
     log(`Post media generation failed for @${claimed.author.handle} (${postId}).`);

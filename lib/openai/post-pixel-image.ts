@@ -1,13 +1,27 @@
 import { PIXEL_ART_STYLE } from "@/lib/avatars/pixel-canvas";
-import { generateImageFromPrompt } from "@/lib/openai/avatar";
-import OpenAI, { toFile } from "openai";
+import {
+  moderatePostMediaInput,
+  type PostMediaModerationResult,
+} from "@/lib/openai/post-media-moderation";
+import OpenAI from "openai";
 
-const PIXEL_POST_PROMPT = [
-  "Convert this social media image into retro pixel art for a parody feed.",
-  "Keep the same scene, subjects, and composition recognizable.",
-  PIXEL_ART_STYLE,
-  "No photorealism, no text overlays, no watermarks, no borders.",
+const SAFE_PIXEL_ART_RULES = [
+  "Family-friendly, fully clothed, no nudity, no suggestive content.",
+  "No real-person likeness, no logos, no readable text.",
+  "Cartoon game sprite aesthetic only.",
 ].join(" ");
+
+const UNSAFE_DESCRIPTION = "UNSAFE";
+
+export class PostPixelImageSkippedError extends Error {
+  reason: string;
+
+  constructor(reason: string) {
+    super(`Post pixel art skipped: ${reason}`);
+    this.name = "PostPixelImageSkippedError";
+    this.reason = reason;
+  }
+}
 
 function getOpenAIClient(): OpenAI {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
@@ -24,6 +38,34 @@ function getConfiguredImageModel(): string {
   return configured?.split(",")[0]?.trim() || "gpt-image-1";
 }
 
+function getTextModel(): string {
+  return process.env.OPENAI_TEXT_MODEL?.trim() || "gpt-4.1-mini";
+}
+
+export function isModerationBlocked(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const record = error as {
+    code?: string;
+    error?: { code?: string };
+    message?: string;
+  };
+
+  if (
+    record.code === "moderation_blocked" ||
+    record.error?.code === "moderation_blocked"
+  ) {
+    return true;
+  }
+
+  const message =
+    error instanceof Error ? error.message : (record.message ?? "");
+
+  return message.includes("moderation_blocked");
+}
+
 async function downloadImageBuffer(url: string): Promise<Buffer> {
   const response = await fetch(url);
 
@@ -38,14 +80,12 @@ function toDataUrl(buffer: Buffer): string {
   return `data:image/png;base64,${buffer.toString("base64")}`;
 }
 
-async function describeImageForPixelArt(
+async function describeImageForSafePixelArt(
   openai: OpenAI,
   sourceDataUrl: string,
-  postContent: string,
 ): Promise<string> {
-  const textModel = process.env.OPENAI_TEXT_MODEL?.trim() || "gpt-4.1-mini";
   const response = await openai.chat.completions.create({
-    model: textModel,
+    model: getTextModel(),
     messages: [
       {
         role: "user",
@@ -57,14 +97,12 @@ async function describeImageForPixelArt(
           {
             type: "text",
             text: [
-              "Describe this social media image briefly so it can be recreated as retro pixel art.",
-              postContent
-                ? `The post text is: "${postContent.slice(0, 180)}"`
-                : "",
-              "Focus on visible subjects, setting, colors, and composition.",
-            ]
-              .filter(Boolean)
-              .join(" "),
+              "Describe this image briefly as a family-friendly retro pixel art scene.",
+              "Use generic terms for people (for example: a person in casual clothes).",
+              "Focus on setting, colors, composition, and mood.",
+              "Omit nudity, sexual content, violence, hate symbols, logos, and readable text.",
+              `If the image is not suitable for family-friendly pixel art, respond with exactly: ${UNSAFE_DESCRIPTION}`,
+            ].join(" "),
           },
         ],
       },
@@ -78,89 +116,86 @@ async function describeImageForPixelArt(
     throw new Error("Could not describe source image for pixel art.");
   }
 
+  if (description.toUpperCase() === UNSAFE_DESCRIPTION) {
+    throw new PostPixelImageSkippedError("source_image_unsafe");
+  }
+
   return description;
 }
 
-async function generateWithImageEdit(
-  openai: OpenAI,
-  sourceBuffer: Buffer,
-  postContent: string,
-): Promise<string> {
-  const model = getConfiguredImageModel();
-  const file = await toFile(sourceBuffer, "source.png", { type: "image/png" });
-  const prompt = postContent
-    ? `${PIXEL_POST_PROMPT} Post context: "${postContent.slice(0, 180)}".`
-    : PIXEL_POST_PROMPT;
-
-  const result = await openai.images.edit({
-    model,
-    image: file,
-    prompt,
-    size: "1024x1024",
-    output_format: "png",
-  });
-
-  const b64 = result.data?.[0]?.b64_json;
-  const url = result.data?.[0]?.url;
-
-  if (b64) {
-    return toDataUrl(Buffer.from(b64, "base64"));
-  }
-
-  if (url) {
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`Could not download generated image (${response.status}).`);
-    }
-
-    return toDataUrl(Buffer.from(await response.arrayBuffer()));
-  }
-
-  throw new Error("OpenAI image edit did not return image data.");
+function buildPixelArtPrompt(description: string): string {
+  return [
+    "Create exactly one family-friendly retro pixel art social media image.",
+    PIXEL_ART_STYLE,
+    SAFE_PIXEL_ART_RULES,
+    `Scene: ${description}`,
+    "No text overlays, no watermarks, no borders, no photorealism.",
+  ].join(" ");
 }
 
-export async function generatePostPixelImage(input: {
+async function generateFromSanitizedPrompt(
+  openai: OpenAI,
+  prompt: string,
+): Promise<string> {
+  const model = getConfiguredImageModel();
+
+  try {
+    const result = await openai.images.generate({
+      model,
+      prompt,
+      size: "1024x1024",
+      output_format: "png",
+      n: 1,
+    });
+
+    const b64 = result.data?.[0]?.b64_json;
+    const url = result.data?.[0]?.url;
+
+    if (b64) {
+      return toDataUrl(Buffer.from(b64, "base64"));
+    }
+
+    if (url) {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Could not download generated image (${response.status}).`);
+      }
+
+      return toDataUrl(Buffer.from(await response.arrayBuffer()));
+    }
+
+    throw new Error("OpenAI image generation did not return image data.");
+  } catch (error) {
+    if (isModerationBlocked(error)) {
+      throw new PostPixelImageSkippedError("image_generation_moderation_blocked");
+    }
+
+    throw error;
+  }
+}
+
+export async function generateMirroredPostPixelImage(input: {
   sourceImageUrl: string;
   postContent: string;
 }): Promise<string> {
   const sourceBuffer = await downloadImageBuffer(input.sourceImageUrl);
+  const sourceDataUrl = toDataUrl(sourceBuffer);
   const openai = getOpenAIClient();
 
-  try {
-    return await generateWithImageEdit(openai, sourceBuffer, input.postContent);
-  } catch (editError) {
-    console.warn(
-      "OpenAI image edit failed; falling back to describe + generate:",
-      editError,
-    );
+  const moderation = await moderatePostMediaInput({
+    content: input.postContent,
+    sourceDataUrl,
+  });
+
+  if (!moderation.safe) {
+    throw new PostPixelImageSkippedError(moderation.reason);
   }
 
-  const description = await describeImageForPixelArt(
-    openai,
-    toDataUrl(sourceBuffer),
-    input.postContent,
-  );
+  const description = await describeImageForSafePixelArt(openai, sourceDataUrl);
+  const prompt = buildPixelArtPrompt(description);
 
-  const prompt = [
-    "Create exactly one retro pixel art social media image.",
-    PIXEL_ART_STYLE,
-    `Scene: ${description}`,
-    postContentSnippet(input.postContent),
-    "No text overlays, no watermarks, no borders.",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  return generateImageFromPrompt(prompt);
+  return generateFromSanitizedPrompt(openai, prompt);
 }
 
-function postContentSnippet(postContent: string): string {
-  const normalized = postContent.replace(/\s+/g, " ").trim();
-
-  if (!normalized) {
-    return "";
-  }
-
-  return `Mood/context from post: "${normalized.slice(0, 180)}".`;
-}
+export type { PostMediaModerationResult };
