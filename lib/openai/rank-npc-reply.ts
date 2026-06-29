@@ -1,5 +1,6 @@
 import { PROJECT_NAME } from "@/lib/brand";
 import { getOpenAIClient, getTextModel } from "@/lib/openai/client";
+import { trackedChatCompletion } from "@/lib/openai/usage";
 import { PostGenerationError } from "@/lib/openai/post";
 import { getRankNpcRealName } from "@/lib/personalities/rank-npc";
 import type { Post } from "@/lib/types/post";
@@ -50,22 +51,30 @@ export async function generateRankNpcReply(
   const openai = getOpenAIClient();
   const model = getTextModel();
 
-  const response = await openai.chat.completions.create({
-    model,
-    temperature: 0.95,
-    max_tokens: 120,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You write short social media replies for knock-off celebrity parody accounts. Capture the real celebrity's voice faithfully.",
-      },
-      {
-        role: "user",
-        content: buildRankNpcReplyPrompt(npc, targetPost, tone),
-      },
-    ],
-  });
+  const response = await trackedChatCompletion(
+    openai,
+    {
+      model,
+      temperature: 0.95,
+      max_tokens: 120,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You write short social media replies for knock-off celebrity parody accounts. Capture the real celebrity's voice faithfully.",
+        },
+        {
+          role: "user",
+          content: buildRankNpcReplyPrompt(npc, targetPost, tone),
+        },
+      ],
+    },
+    {
+      operation: "rank_npc_reply",
+      personalityId: npc.id,
+      postId: targetPost.id,
+    },
+  );
 
   const content = response.choices[0]?.message?.content?.trim();
 

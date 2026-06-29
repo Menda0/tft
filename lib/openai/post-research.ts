@@ -1,4 +1,5 @@
 import { getOpenAIClient, getResearchModel } from "@/lib/openai/client";
+import { trackedResponsesCreate } from "@/lib/openai/usage";
 import { formatPersonalityVoiceLabel } from "@/lib/personalities/kind-archetypes";
 import type { Personality } from "@/lib/types/personality";
 
@@ -30,17 +31,21 @@ export async function researchTopicForPost(
   const openai = getOpenAIClient();
   const model = getResearchModel();
 
-  const response = await openai.responses.create({
-    model,
-    tool_choice: "required",
-    tools: [{ type: "web_search" }],
-    input: [
-      {
-        role: "user",
-        content: buildResearchPrompt(topic, personality),
-      },
-    ],
-  });
+  const response = await trackedResponsesCreate(
+    openai,
+    {
+      model,
+      tool_choice: "required",
+      tools: [{ type: "web_search" }],
+      input: [
+        {
+          role: "user",
+          content: buildResearchPrompt(topic, personality),
+        },
+      ],
+    },
+    { operation: "post_research", personalityId: personality.id },
+  );
 
   const text = response.output_text?.trim();
 

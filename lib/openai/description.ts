@@ -10,6 +10,7 @@ import { isDoorGender, type Gender } from "@/lib/personalities/gender";
 import { PRONOUN_LABELS, type Pronouns } from "@/lib/personalities/pronouns";
 import { formatPoliticalSwingDescription } from "@/lib/personalities/political-swing";
 import { getOpenAIClient, getTextModel } from "@/lib/openai/client";
+import { trackedChatCompletion } from "@/lib/openai/usage";
 import type { PoliticalSwing } from "@/lib/personalities/political-swing";
 import type { Traits } from "@/lib/types/personality";
 
@@ -106,22 +107,26 @@ export async function generateProfileDescription(input: {
   const openai = getOpenAIClient();
   const model = getTextModel();
 
-  const response = await openai.chat.completions.create({
-    model,
-    temperature: 0.9,
-    max_tokens: 120,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You write punchy social media bios for fictional internet personalities.",
-      },
-      {
-        role: "user",
-        content: buildDescriptionPrompt(input),
-      },
-    ],
-  });
+  const response = await trackedChatCompletion(
+    openai,
+    {
+      model,
+      temperature: 0.9,
+      max_tokens: 120,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You write punchy social media bios for fictional internet personalities.",
+        },
+        {
+          role: "user",
+          content: buildDescriptionPrompt(input),
+        },
+      ],
+    },
+    { operation: "bio" },
+  );
 
   const content = response.choices[0]?.message?.content?.trim();
 

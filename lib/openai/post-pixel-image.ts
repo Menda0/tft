@@ -3,6 +3,10 @@ import {
   moderatePostMediaInput,
   type PostMediaModerationResult,
 } from "@/lib/openai/post-media-moderation";
+import {
+  trackedChatCompletion,
+  trackedImageGenerate,
+} from "@/lib/openai/usage";
 import OpenAI from "openai";
 
 const SAFE_PIXEL_ART_RULES = [
@@ -84,31 +88,35 @@ async function describeImageForSafePixelArt(
   openai: OpenAI,
   sourceDataUrl: string,
 ): Promise<string> {
-  const response = await openai.chat.completions.create({
-    model: getTextModel(),
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "image_url",
-            image_url: { url: sourceDataUrl },
-          },
-          {
-            type: "text",
-            text: [
-              "Describe this image briefly as a family-friendly retro pixel art scene.",
-              "Use generic terms for people (for example: a person in casual clothes).",
-              "Focus on setting, colors, composition, and mood.",
-              "Omit nudity, sexual content, violence, hate symbols, logos, and readable text.",
-              `If the image is not suitable for family-friendly pixel art, respond with exactly: ${UNSAFE_DESCRIPTION}`,
-            ].join(" "),
-          },
-        ],
-      },
-    ],
-    max_tokens: 180,
-  });
+  const response = await trackedChatCompletion(
+    openai,
+    {
+      model: getTextModel(),
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: sourceDataUrl },
+            },
+            {
+              type: "text",
+              text: [
+                "Describe this image briefly as a family-friendly retro pixel art scene.",
+                "Use generic terms for people (for example: a person in casual clothes).",
+                "Focus on setting, colors, composition, and mood.",
+                "Omit nudity, sexual content, violence, hate symbols, logos, and readable text.",
+                `If the image is not suitable for family-friendly pixel art, respond with exactly: ${UNSAFE_DESCRIPTION}`,
+              ].join(" "),
+            },
+          ],
+        },
+      ],
+      max_tokens: 180,
+    },
+    { operation: "post_media_describe" },
+  );
 
   const description = response.choices[0]?.message?.content?.trim();
 
@@ -140,13 +148,17 @@ async function generateFromSanitizedPrompt(
   const model = getConfiguredImageModel();
 
   try {
-    const result = await openai.images.generate({
-      model,
-      prompt,
-      size: "1024x1024",
-      output_format: "png",
-      n: 1,
-    });
+    const result = await trackedImageGenerate(
+      openai,
+      {
+        model,
+        prompt,
+        size: "1024x1024",
+        output_format: "png",
+        n: 1,
+      },
+      { operation: "post_media_image" },
+    );
 
     const b64 = result.data?.[0]?.b64_json;
     const url = result.data?.[0]?.url;

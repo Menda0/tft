@@ -4,6 +4,7 @@ import {
   releaseWorldLock,
   tryAcquireWorldLock,
 } from "@/lib/db/world";
+import { ensureAiUsageIndexes } from "@/lib/db/ai-usage";
 import { ensureFollowIndexes } from "@/lib/db/follows";
 import { ensurePersonalityActivityIndexes } from "@/lib/db/personality-activity";
 import { ensurePostReadIndexes } from "@/lib/db/post-reads";
@@ -49,6 +50,7 @@ export async function runSimulationTick(
     ensurePostReadIndexes(),
     ensurePersonalityActivityIndexes(),
     ensurePersonalityIndexes(),
+    ensureAiUsageIndexes(),
   ]);
 
   await getWorldState();

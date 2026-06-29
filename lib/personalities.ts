@@ -342,6 +342,11 @@ export async function getPersonalityCount(): Promise<number> {
   return collection.countDocuments();
 }
 
+export async function getActivePersonalityCount(): Promise<number> {
+  const collection = await getPersonalitiesCollection();
+  return collection.countDocuments(mergeNotDeleted({}));
+}
+
 export async function getCompetitivePersonalityCount(): Promise<number> {
   const collection = await getPersonalitiesCollection();
   return collection.countDocuments(COMPETITIVE_FILTER);

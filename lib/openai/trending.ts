@@ -1,4 +1,5 @@
 import { getOpenAIClient, getTrendingModel } from "@/lib/openai/client";
+import { trackedResponsesCreate } from "@/lib/openai/usage";
 
 const TRENDING_TOPIC_COUNT = 4;
 
@@ -83,17 +84,21 @@ export async function fetchTrendingTopics(): Promise<string[]> {
   const openai = getOpenAIClient();
   const model = getTrendingModel();
 
-  const response = await openai.responses.create({
-    model,
-    tool_choice: "required",
-    tools: [{ type: "web_search" }],
-    input: [
-      {
-        role: "user",
-        content: buildTrendingTopicsPrompt(),
-      },
-    ],
-  });
+  const response = await trackedResponsesCreate(
+    openai,
+    {
+      model,
+      tool_choice: "required",
+      tools: [{ type: "web_search" }],
+      input: [
+        {
+          role: "user",
+          content: buildTrendingTopicsPrompt(),
+        },
+      ],
+    },
+    { operation: "trending" },
+  );
 
   const text = response.output_text?.trim();
 

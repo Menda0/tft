@@ -84,5 +84,8 @@ export async function generateRankNpcPixelAvatar(
   personality: Personality,
 ): Promise<string> {
   const prompt = buildRankNpcAvatarPrompt(personality);
-  return generateImageFromPrompt(prompt);
+  return generateImageFromPrompt(prompt, undefined, {
+    operation: "rank_npc_avatar",
+    personalityId: personality.id,
+  });
 }

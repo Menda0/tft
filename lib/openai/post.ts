@@ -1,5 +1,6 @@
 import { PROJECT_NAME } from "@/lib/brand";
 import { getOpenAIClient, getTextModel } from "@/lib/openai/client";
+import { trackedChatCompletion } from "@/lib/openai/usage";
 import { researchTopicForPost } from "@/lib/openai/post-research";
 import { formatPersonalityVoiceLabel } from "@/lib/personalities/kind-archetypes";
 import { formatPoliticalSwingDescription } from "@/lib/personalities/political-swing";
@@ -124,19 +125,29 @@ function buildReplyPrompt(
   ].join("\n");
 }
 
-async function generateText(prompt: string, system: string): Promise<string> {
+async function generateText(
+  prompt: string,
+  system: string,
+  operation: "post" | "reply",
+  personalityId?: string,
+  postId?: string,
+): Promise<string> {
   const openai = getOpenAIClient();
   const model = getTextModel();
 
-  const response = await openai.chat.completions.create({
-    model,
-    temperature: 0.9,
-    max_tokens: 120,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: prompt },
-    ],
-  });
+  const response = await trackedChatCompletion(
+    openai,
+    {
+      model,
+      temperature: 0.9,
+      max_tokens: 120,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: prompt },
+      ],
+    },
+    { operation, personalityId, postId },
+  );
 
   const content = response.choices[0]?.message?.content?.trim();
 
@@ -175,6 +186,8 @@ export async function generateLLMPost(
   return generateText(
     buildPostPrompt(personality, topic, researchNotes),
     "You write short, specific social media posts for fictional internet personalities.",
+    "post",
+    personality.id,
   );
 }
 
@@ -186,5 +199,8 @@ export async function generateLLMReply(
   return generateText(
     buildReplyPrompt(personality, targetPost, options?.tone),
     "You write short social media replies for fictional internet personalities.",
+    "reply",
+    personality.id,
+    targetPost.id,
   );
 }

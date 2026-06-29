@@ -1,5 +1,7 @@
 import OpenAI from "openai";
 
+import { trackedChatCompletion, trackedModeration } from "@/lib/openai/usage";
+
 export type PostMediaModerationResult =
   | { safe: true }
   | { safe: false; reason: string };
@@ -28,10 +30,14 @@ export async function moderatePostMediaText(
   }
 
   const openai = getOpenAIClient();
-  const result = await openai.moderations.create({
-    model: "omni-moderation-latest",
-    input: normalized,
-  });
+  const result = await trackedModeration(
+    openai,
+    {
+      model: "omni-moderation-latest",
+      input: normalized,
+    },
+    { operation: "moderation_text" },
+  );
 
   const moderation = result.results[0];
 
@@ -53,25 +59,29 @@ export async function moderatePostMediaImage(
   sourceDataUrl: string,
 ): Promise<PostMediaModerationResult> {
   const openai = getOpenAIClient();
-  const response = await openai.chat.completions.create({
-    model: getTextModel(),
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "image_url",
-            image_url: { url: sourceDataUrl },
-          },
-          {
-            type: "text",
-            text: IMAGE_SAFETY_PROMPT,
-          },
-        ],
-      },
-    ],
-    max_tokens: 10,
-  });
+  const response = await trackedChatCompletion(
+    openai,
+    {
+      model: getTextModel(),
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: sourceDataUrl },
+            },
+            {
+              type: "text",
+              text: IMAGE_SAFETY_PROMPT,
+            },
+          ],
+        },
+      ],
+      max_tokens: 10,
+    },
+    { operation: "moderation_image" },
+  );
 
   const answer = response.choices[0]?.message?.content?.trim().toUpperCase() ?? "";
 

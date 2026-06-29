@@ -1,5 +1,8 @@
 import OpenAI from "openai";
 
+import type { AiOperation } from "@/lib/types/ai-usage";
+import { trackedImageGenerate } from "@/lib/openai/usage";
+
 import {
   buildAvatarPrompt,
   profileKindUsesIdentity,
@@ -94,25 +97,36 @@ async function downloadImageAsDataUrl(url: string): Promise<string> {
   return toDataUrl(buffer.toString("base64"));
 }
 
+type ImageGenerationTracking = {
+  operation?: AiOperation;
+  personalityId?: string;
+};
+
 async function generateWithGptImageModel(
   openai: OpenAI,
   model: string,
   prompt: string,
+  tracking: ImageGenerationTracking = {},
 ): Promise<string> {
   const qualities = ["high", "medium", "low"] as const;
   let lastError: Error | null = null;
+  const operation = tracking.operation ?? "avatar";
 
   for (const quality of qualities) {
     try {
-      const result = await openai.images.generate({
-        model,
-        prompt,
-        size: "1024x1024",
-        quality,
-        output_format: "png",
-        background: "opaque",
-        n: 1,
-      });
+      const result = await trackedImageGenerate(
+        openai,
+        {
+          model,
+          prompt,
+          size: "1024x1024",
+          quality,
+          output_format: "png",
+          background: "opaque",
+          n: 1,
+        },
+        { operation, personalityId: tracking.personalityId },
+      );
 
       const b64 = result.data?.[0]?.b64_json;
       const url = result.data?.[0]?.url;
@@ -139,13 +153,20 @@ async function generateWithLegacyImageModel(
   openai: OpenAI,
   model: string,
   prompt: string,
+  tracking: ImageGenerationTracking = {},
 ): Promise<string> {
-  const result = await openai.images.generate({
-    model,
-    prompt,
-    size: model === "dall-e-2" ? "512x512" : "1024x1024",
-    n: 1,
-  });
+  const operation = tracking.operation ?? "avatar";
+
+  const result = await trackedImageGenerate(
+    openai,
+    {
+      model,
+      prompt,
+      size: model === "dall-e-2" ? "512x512" : "1024x1024",
+      n: 1,
+    },
+    { operation, personalityId: tracking.personalityId },
+  );
 
   const b64 = result.data?.[0]?.b64_json;
   const url = result.data?.[0]?.url;
@@ -165,12 +186,13 @@ async function generateWithImageModel(
   openai: OpenAI,
   model: string,
   prompt: string,
+  tracking: ImageGenerationTracking = {},
 ): Promise<string> {
   if (isGptImageModel(model)) {
-    return generateWithGptImageModel(openai, model, prompt);
+    return generateWithGptImageModel(openai, model, prompt, tracking);
   }
 
-  return generateWithLegacyImageModel(openai, model, prompt);
+  return generateWithLegacyImageModel(openai, model, prompt, tracking);
 }
 
 async function resolveImageModels(openai: OpenAI): Promise<string[]> {
@@ -231,6 +253,7 @@ function formatOpenAIError(error: unknown): string {
 async function generateImageFromPrompt(
   prompt: string,
   proceduralFallback?: () => string,
+  tracking: ImageGenerationTracking = {},
 ): Promise<string> {
   const openai = getOpenAIClient();
   const models = await resolveImageModels(openai);
@@ -238,7 +261,7 @@ async function generateImageFromPrompt(
 
   for (const model of models) {
     try {
-      return await generateWithImageModel(openai, model, prompt);
+      return await generateWithImageModel(openai, model, prompt, tracking);
     } catch (error) {
       const message = formatOpenAIError(error);
       errors.push(`${model}: ${message}`);

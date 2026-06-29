@@ -80,3 +80,8 @@ export function toPublicUser(user: UserDocument): PublicUser {
     role: roleForUsername(user.username),
   };
 }
+
+export async function getUserCount(): Promise<number> {
+  const collection = await getUsersCollection();
+  return collection.countDocuments();
+}

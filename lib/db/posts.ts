@@ -300,6 +300,58 @@ export async function countOriginalPostsSince(
   );
 }
 
+export async function countAllOriginalPostsSince(since: Date): Promise<number> {
+  const collection = await getPostsCollection();
+  return collection.countDocuments(
+    mergeNotDeletedPost({
+      replyToPostId: null,
+      repostOfPostId: null,
+      createdAt: { $gte: since },
+    }),
+  );
+}
+
+export async function countAllRepliesSince(since: Date): Promise<number> {
+  const collection = await getPostsCollection();
+  return collection.countDocuments(
+    mergeNotDeletedPost({
+      replyToPostId: { $ne: null },
+      createdAt: { $gte: since },
+    }),
+  );
+}
+
+export async function countAllRepostsSince(since: Date): Promise<number> {
+  const collection = await getPostsCollection();
+  return collection.countDocuments(
+    mergeNotDeletedPost({
+      repostOfPostId: { $ne: null },
+      createdAt: { $gte: since },
+    }),
+  );
+}
+
+export async function sumLikesOnPostsCreatedSince(since: Date): Promise<number> {
+  const collection = await getPostsCollection();
+  const rows = await collection
+    .aggregate<{ total: number }>([
+      {
+        $match: mergeNotDeletedPost({
+          createdAt: { $gte: since },
+        }),
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$stats.likes" },
+        },
+      },
+    ])
+    .toArray();
+
+  return rows[0]?.total ?? 0;
+}
+
 export async function getOriginalPostTopicsSince(
   personalityId: string,
   since: Date,

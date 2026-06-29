@@ -20,6 +20,7 @@ export async function ensurePostReadIndexes(): Promise<void> {
     { unique: true },
   );
   await collection.createIndex({ personalityId: 1, readAt: -1 });
+  await collection.createIndex({ readAt: -1 });
 }
 
 export async function getReadPostIds(
@@ -91,4 +92,9 @@ export async function recordPostRead(
 
     throw error;
   }
+}
+
+export async function countPostReadsSince(since: Date): Promise<number> {
+  const collection = await getPostReadsCollection();
+  return collection.countDocuments({ readAt: { $gte: since } });
 }
