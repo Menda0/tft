@@ -7,7 +7,7 @@ import { PROJECT_NAME, PROJECT_TAGLINE } from "@/lib/brand";
 import { ARCHETYPE_LABELS, type Archetype } from "@/lib/personalities/archetypes";
 import { isDoorGender, type Gender } from "@/lib/personalities/gender";
 import { PRONOUN_LABELS, type Pronouns } from "@/lib/personalities/pronouns";
-import { formatPoliticalSwingLabel } from "@/lib/personalities/political-swing";
+import { formatPoliticalSwingDescription } from "@/lib/personalities/political-swing";
 import { getOpenAIClient, getTextModel } from "@/lib/openai/client";
 import type { PoliticalSwing } from "@/lib/personalities/political-swing";
 import type { Traits } from "@/lib/types/personality";
@@ -69,7 +69,7 @@ function buildDescriptionPrompt(input: {
     `Profile kind: ${kindLabel}`,
     identityLines,
     `Archetype: ${archetypeLabel}`,
-    `Political swing: ${formatPoliticalSwingLabel(input.politicalSwing)}.`,
+    `Political swing: ${formatPoliticalSwingDescription(input.politicalSwing)}.`,
     `Traits: ${traitSummary(input.traits)}`,
     `Interests: ${interests}`,
     "Rules:",

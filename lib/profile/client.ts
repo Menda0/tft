@@ -1,4 +1,5 @@
 import type {
+  ProfileFollower,
   ProfilePostItem,
   ProfilePostType,
   PublicPersonality,
@@ -45,4 +46,24 @@ export async function fetchProfilePosts(
   }
 
   return { ok: true, items: data.items ?? [] };
+}
+
+export async function fetchProfileFollowers(
+  handle: string,
+): Promise<
+  { ok: true; followers: ProfileFollower[] } | { ok: false; error: string }
+> {
+  const response = await fetch(
+    `/api/u/${encodeURIComponent(handle)}/followers`,
+  );
+  const data = (await response.json()) as {
+    followers?: ProfileFollower[];
+    error?: string;
+  };
+
+  if (!response.ok) {
+    return { ok: false, error: data.error ?? "Could not load followers." };
+  }
+
+  return { ok: true, followers: data.followers ?? [] };
 }

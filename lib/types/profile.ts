@@ -20,6 +20,13 @@ export type PublicPersonality = {
   politicalSwing: PoliticalSwing;
 };
 
+export type ProfileFollower = {
+  id: string;
+  name: string;
+  handle: string;
+  avatarUrl: string | null;
+};
+
 export type ProfilePostType = "posts" | "replies" | "reposts";
 
 export type ProfileParentPost = {

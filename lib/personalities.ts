@@ -72,6 +72,17 @@ export async function getAllPersonalities(): Promise<Personality[]> {
   return collection.find().toArray();
 }
 
+export async function getPersonalitiesByIds(
+  ids: string[],
+): Promise<Personality[]> {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const collection = await getPersonalitiesCollection();
+  return collection.find({ id: { $in: ids } }).toArray();
+}
+
 export async function insertPersonality(
   personality: Personality,
 ): Promise<Personality> {

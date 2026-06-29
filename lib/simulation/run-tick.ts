@@ -4,6 +4,7 @@ import {
   releaseWorldLock,
   tryAcquireWorldLock,
 } from "@/lib/db/world";
+import { ensureFollowIndexes } from "@/lib/db/follows";
 import { ensurePostIndexes } from "@/lib/db/posts";
 import { ensurePersonalityIndexes } from "@/lib/personalities";
 import {
@@ -42,6 +43,7 @@ export async function runSimulationTick(
   await Promise.all([
     ensureWorldStateIndexes(),
     ensurePostIndexes(),
+    ensureFollowIndexes(),
     ensurePersonalityIndexes(),
   ]);
 

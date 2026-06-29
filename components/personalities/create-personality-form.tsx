@@ -38,7 +38,9 @@ import {
 import {
   POLITICAL_SWING_MAX,
   POLITICAL_SWING_MIN,
+  formatPoliticalSwingCategory,
   formatPoliticalSwingLabel,
+  getPoliticalPositionInfo,
   type PoliticalSwing,
 } from "@/lib/personalities/political-swing";
 import type { Traits } from "@/lib/types/personality";
@@ -322,15 +324,23 @@ export function CreatePersonalityForm() {
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm text-[#c2c3c7]">
-            <Label htmlFor="politicalSwing" className="text-xs text-[#ffa300]">
-              Political swing
-            </Label>
-            <span>{formatPoliticalSwingLabel(politicalSwing)}</span>
+          <Label htmlFor="politicalSwing" className="text-xs text-[#ffa300]">
+            Political swing
+          </Label>
+          <div className="pixel-border-thin bg-[#1d2b53] px-3 py-2">
+            <p className="text-sm font-bold text-[#ffa300]">
+              {formatPoliticalSwingLabel(politicalSwing)}
+            </p>
+            <p className="mt-1 text-xs text-[#c2c3c7]">
+              {formatPoliticalSwingCategory(politicalSwing)}
+            </p>
+            <p className="mt-1 text-[10px] leading-relaxed text-[#83769a]">
+              e.g. {getPoliticalPositionInfo(politicalSwing).examples}
+            </p>
           </div>
           <div className="flex items-center justify-between text-[10px] text-[#83769a]">
-            <span>Left ({POLITICAL_SWING_MIN})</span>
-            <span>Right ({POLITICAL_SWING_MAX})</span>
+            <span>Far Left</span>
+            <span>Far Right</span>
           </div>
           <input
             id="politicalSwing"

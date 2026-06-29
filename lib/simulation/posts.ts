@@ -5,6 +5,7 @@ import {
   insertPost,
   toPostAuthor,
 } from "@/lib/db/posts";
+import { hasFollow, insertFollow } from "@/lib/db/follows";
 import { updatePersonality } from "@/lib/personalities";
 import { generateLLMPost, generateLLMReply } from "@/lib/openai/post";
 import type { Post } from "@/lib/types/post";
@@ -193,6 +194,16 @@ export async function followSomeone(
   const target = pickRandomPersonality(world.personalities, personality.id);
 
   if (!target) {
+    return null;
+  }
+
+  if (await hasFollow(personality.id, target.id)) {
+    return null;
+  }
+
+  const follow = await insertFollow(personality.id, target.id);
+
+  if (!follow) {
     return null;
   }
 

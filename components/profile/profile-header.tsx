@@ -1,10 +1,11 @@
 import { PersonalityAvatar } from "@/components/personalities/personality-avatar";
+import { FollowersCount } from "@/components/profile/followers-count";
 import { profileKindUsesIdentity } from "@/lib/avatars/page-kind";
 import { formatArchetypeLabel } from "@/lib/personalities/archetypes";
 import { formatGenderLabel } from "@/lib/personalities/gender";
 import { formatPronounLabel } from "@/lib/personalities/pronouns";
 import type { AvatarStatus } from "@/lib/types/personality";
-import { formatPoliticalSwingLabel } from "@/lib/personalities/political-swing";
+import { formatPoliticalSwingCategory, formatPoliticalSwingLabel } from "@/lib/personalities/political-swing";
 import type { PublicPersonality } from "@/lib/types/profile";
 
 type ProfileHeaderProps = {
@@ -42,6 +43,9 @@ export function ProfileHeader({ personality }: ProfileHeaderProps) {
             {formatArchetypeLabel(personality.archetype).toUpperCase()} ·{" "}
             {formatPoliticalSwingLabel(personality.politicalSwing).toUpperCase()}
           </p>
+          <p className="mt-1 text-[10px] text-[#83769a]">
+            {formatPoliticalSwingCategory(personality.politicalSwing)}
+          </p>
         </div>
       </div>
 
@@ -51,12 +55,10 @@ export function ProfileHeader({ personality }: ProfileHeaderProps) {
         </p>
       ) : null}
 
-      <p className="mt-3 text-sm text-[#83769a]">
-        <span className="font-bold text-[#fff1e8]">
-          {personality.stats.followers.toLocaleString()}
-        </span>{" "}
-        followers
-      </p>
+      <FollowersCount
+        handle={personality.handle}
+        count={personality.stats.followers}
+      />
     </header>
   );
 }
