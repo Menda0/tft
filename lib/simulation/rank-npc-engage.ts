@@ -7,6 +7,7 @@ import {
   isRankNpc,
 } from "@/lib/personalities/rank-npc";
 import { generateRankNpcReply } from "@/lib/openai/rank-npc-reply";
+import { recordLikeReceivedActivity } from "@/lib/personality-activity/record";
 import { resolvePersonalitySocialRank } from "@/lib/profile/social-rank";
 import {
   recordRankNpcAgreeReplyEffects,
@@ -113,6 +114,7 @@ async function engageWithPost(
   if (action === "like") {
     await likePost(npc, post, world);
     await recordRankNpcLikeEffects(world, npc, author);
+    void recordLikeReceivedActivity(author.id, npc.id, post);
     log("success", `${npcLabel} liked @${author.handle}`);
     return;
   }

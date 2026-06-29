@@ -1,10 +1,11 @@
-import { getTopLevelOriginalPostsSince } from "@/lib/db/posts";
+import { getTopLevelOriginalPostsSince, getTopRepliesForPost } from "@/lib/db/posts";
 import { getReadPostIds, recordPostRead } from "@/lib/db/post-reads";
 import { getFollowingIds } from "@/lib/db/follows";
+import { recordLikeReceivedActivity } from "@/lib/personality-activity/record";
 import type { Post } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
-import { decideEngagement } from "./engagement";
+import { decideEngagement, decideReplyLike } from "./engagement";
 import {
   recordAgreeReplyEffects,
   recordDisagreeReplyEffects,
@@ -27,6 +28,7 @@ import type { SimulationWorld } from "./world";
 import { weightedSampleWithoutReplacement } from "./utils";
 
 const READ_POST_COUNT = 5;
+const REPLIES_TO_EVALUATE = 5;
 const FOLLOWED_AUTHOR_WEIGHT = 3;
 const DEFAULT_AUTHOR_WEIGHT = 1;
 
@@ -133,6 +135,7 @@ export async function readPostsAndEngage(
     if (decision.like && author) {
       await likePost(personality, post, world);
       await recordLikeEffects(world, personality, author);
+      void recordLikeReceivedActivity(author.id, personality.id, post);
       log("success", `${handle} liked @${post.author.handle}`);
     }
 
@@ -170,6 +173,36 @@ export async function readPostsAndEngage(
 
     if (decision.respond && decision.responseTone) {
       respondQueue.push({ post, tone: decision.responseTone });
+    }
+
+    const replies = await getTopRepliesForPost(post.id, REPLIES_TO_EVALUATE);
+
+    for (const reply of replies) {
+      const replyAuthor = findAuthor(world, reply.author.personalityId);
+
+      if (
+        !decideReplyLike({
+          reader: personality,
+          reply,
+          replyAuthor,
+          parentPost: post,
+          parentAuthor: author,
+          likedParent: decision.like,
+        })
+      ) {
+        continue;
+      }
+
+      if (!replyAuthor) {
+        continue;
+      }
+
+      await likePost(personality, reply, world);
+      await recordLikeEffects(world, personality, replyAuthor);
+      log(
+        "success",
+        `${handle} liked @${reply.author.handle}'s reply: ${truncateForLog(reply.content)}`,
+      );
     }
   }
 

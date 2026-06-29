@@ -10,6 +10,12 @@ type ReplyCardProps = {
   isLast?: boolean;
 };
 
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
 export function ReplyCard({ reply, isLast = false }: ReplyCardProps) {
   return (
     <article className="relative flex gap-3 px-4 py-3">
@@ -59,6 +65,12 @@ export function ReplyCard({ reply, isLast = false }: ReplyCardProps) {
         <p className="mt-0.5 text-base leading-relaxed whitespace-pre-wrap">
           {reply.content}
         </p>
+        <div className="mt-2">
+          <span className="inline-flex items-center gap-1.5 pixel-border-thin bg-[#29366f] px-2 py-1 text-xs text-[#c2c3c7]">
+            <span>♥</span>
+            <span className="tabular-nums">{formatCount(reply.likes)}</span>
+          </span>
+        </div>
       </div>
     </article>
   );

@@ -1,7 +1,10 @@
 import type {
   LeaderboardsPayload,
+  MySocialActivityPayload,
+  MySocialPayload,
   ThreadingTopicsPayload,
 } from "@/lib/types/desktop";
+import { PAGE_SIZE } from "@/lib/pagination";
 
 export async function fetchThreadingTopics(): Promise<
   | { ok: true; payload: ThreadingTopicsPayload }
@@ -64,6 +67,85 @@ export async function fetchLeaderboards(): Promise<
       farmersByClout: data.farmersByClout,
       personalitiesByHeat: data.personalitiesByHeat,
       farmersByHeat: data.farmersByHeat,
+      updatedAt: data.updatedAt ?? new Date().toISOString(),
+    },
+  };
+}
+
+export async function fetchMySocial(
+  token: string,
+): Promise<
+  | { ok: true; payload: MySocialPayload }
+  | { ok: false; error: string }
+> {
+  const response = await fetch("/api/desktop/my-social", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  const data = (await response.json()) as MySocialPayload & { error?: string };
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      error: data.error ?? "Could not load My Social.",
+    };
+  }
+
+  if (
+    !Array.isArray(data.leaderboard) ||
+    !Array.isArray(data.personalities)
+  ) {
+    return { ok: false, error: "Invalid server response." };
+  }
+
+  return {
+    ok: true,
+    payload: {
+      leaderboard: data.leaderboard,
+      personalities: data.personalities,
+      updatedAt: data.updatedAt ?? new Date().toISOString(),
+    },
+  };
+}
+
+export async function fetchMySocialActivity(
+  token: string,
+  options?: { offset?: number; limit?: number },
+): Promise<
+  | { ok: true; payload: MySocialActivityPayload }
+  | { ok: false; error: string }
+> {
+  const offset = options?.offset ?? 0;
+  const limit = options?.limit ?? PAGE_SIZE;
+  const response = await fetch(
+    `/api/desktop/my-social/activity?offset=${offset}&limit=${limit}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+  const data = (await response.json()) as MySocialActivityPayload & {
+    error?: string;
+  };
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      error: data.error ?? "Could not load activity.",
+    };
+  }
+
+  if (!Array.isArray(data.items) || typeof data.hasMore !== "boolean") {
+    return { ok: false, error: "Invalid server response." };
+  }
+
+  return {
+    ok: true,
+    payload: {
+      items: data.items,
+      hasMore: data.hasMore,
       updatedAt: data.updatedAt ?? new Date().toISOString(),
     },
   };

@@ -8,6 +8,12 @@ import {
 import { deleteFollow, hasFollow, insertFollow } from "@/lib/db/follows";
 import { updatePersonality } from "@/lib/personalities";
 import { isRankNpc } from "@/lib/personalities/rank-npc";
+import {
+  recordAuthoredPostActivity,
+  recordAuthoredReplyActivity,
+  recordAuthoredRepostActivity,
+  recordFollowActivityPair,
+} from "@/lib/personality-activity/record";
 import { generateLLMPost, generateLLMReply } from "@/lib/openai/post";
 import type { Post } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
@@ -103,6 +109,7 @@ export async function createPost(
     });
 
     world.posts.unshift(post);
+    void recordAuthoredPostActivity(personality.id, post);
     return { ok: true, post };
   } catch (error) {
     console.error(`createPost failed for ${personality.handle}:`, error);
@@ -137,6 +144,7 @@ export async function repostSpecificPost(
   await incrementPostStat(target.id, "reposts");
   syncPostStat(world, target.id, "reposts");
   world.posts.unshift(repost);
+  void recordAuthoredRepostActivity(personality.id, repost, target);
   return repost;
 }
 
@@ -163,6 +171,7 @@ export async function replyToSpecificPost(
     await incrementPostStat(target.id, "replies");
     syncPostStat(world, target.id, "replies");
     world.posts.unshift(reply);
+    void recordAuthoredReplyActivity(personality.id, reply, target);
     return reply;
   } catch (error) {
     console.error(`replyToSpecificPost failed for ${personality.handle}:`, error);
@@ -200,6 +209,8 @@ export async function followAuthor(
     });
     target.stats.followers = nextFollowers;
   }
+
+  void recordFollowActivityPair(personality.id, target.id, follow.createdAt);
 
   return target;
 }

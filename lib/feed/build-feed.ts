@@ -34,7 +34,20 @@ function toFeedReply(post: Post, now: number): FeedReply {
     author: toFeedAuthor(post.author),
     content: post.content,
     timestamp: formatRelativeTime(post.createdAt, now),
+    likes: post.stats.likes,
   };
+}
+
+function sortRepliesByLikes(replies: Post[]): Post[] {
+  return [...replies].sort((left, right) => {
+    const likeDelta = right.stats.likes - left.stats.likes;
+
+    if (likeDelta !== 0) {
+      return likeDelta;
+    }
+
+    return right.createdAt.getTime() - left.createdAt.getTime();
+  });
 }
 
 function toFeedThread(
@@ -118,7 +131,7 @@ async function buildFeedThreadsFromPosts(
   return topLevelPosts.map((post) =>
     toFeedThread(
       post,
-      repliesByPostId.get(post.id) ?? [],
+      sortRepliesByLikes(repliesByPostId.get(post.id) ?? []),
       now,
       resolvedStats.get(post.id) ?? post.stats,
     ),

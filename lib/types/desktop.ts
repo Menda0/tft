@@ -48,3 +48,70 @@ export type LeaderboardsPayload = {
   farmersByHeat: FarmerLeaderboardEntry[];
   updatedAt: string;
 };
+
+export type MySocialLeaderboardEntry = {
+  rank: number;
+  id: string;
+  name: string;
+  handle: string;
+  avatarUrl: string | null;
+  avatarColor: string;
+  clout: number;
+  socialRank: SocialRank;
+  socialRankLabel: string;
+};
+
+export type MySocialPersonalityEntry = {
+  id: string;
+  name: string;
+  handle: string;
+  avatarUrl: string | null;
+  avatarColor: string;
+  posts: number;
+  reposts: number;
+  replies: number;
+  likes: number;
+  views: number;
+  clout: number;
+  heat: number;
+  socialRank: SocialRank;
+  socialRankLabel: string;
+};
+
+export type MySocialActivityParticipant = {
+  id: string;
+  name: string;
+  handle: string;
+  avatarUrl: string | null;
+  avatarColor: string;
+};
+
+export type MySocialActivityItem = {
+  id: string;
+  personalityId: string;
+  personalityName: string;
+  personalityHandle: string;
+  type:
+    | "post"
+    | "reply"
+    | "repost"
+    | "follow"
+    | "follow_received"
+    | "like_received";
+  at: string;
+  actor: MySocialActivityParticipant | null;
+  target: MySocialActivityParticipant | null;
+  preview: string | null;
+};
+
+export type MySocialPayload = {
+  leaderboard: MySocialLeaderboardEntry[];
+  personalities: MySocialPersonalityEntry[];
+  updatedAt: string;
+};
+
+export type MySocialActivityPayload = {
+  items: MySocialActivityItem[];
+  hasMore: boolean;
+  updatedAt: string;
+};

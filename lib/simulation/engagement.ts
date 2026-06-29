@@ -255,3 +255,42 @@ export function decideEngagement(context: EngagementContext): EngagementDecision
     unfollow: roll(unfollowProbability),
   };
 }
+
+export type ReplyLikeContext = {
+  reader: Personality;
+  reply: Post;
+  replyAuthor: Personality | null;
+  parentPost?: Post;
+  parentAuthor?: Personality | null;
+  likedParent: boolean;
+};
+
+export function decideReplyLike(context: ReplyLikeContext): boolean {
+  const { reader, reply, replyAuthor, parentPost, parentAuthor, likedParent } =
+    context;
+
+  if (reply.author.personalityId === reader.id) {
+    return false;
+  }
+
+  const alignment = scorePostAlignment(reader, reply, replyAuthor);
+  const traits = reader.traits;
+  const socialScore = replyAuthor?.stats.socialScore ?? 0;
+
+  let probability =
+    0.06 +
+    alignment * 0.3 +
+    traits.humor * 0.02 +
+    Math.log1p(socialScore / 500) * 0.03 +
+    Math.log1p(reply.stats.likes) * 0.05;
+
+  if (
+    likedParent &&
+    parentPost &&
+    scorePostAlignment(reader, parentPost, parentAuthor ?? null) > 0.5
+  ) {
+    probability += 0.08;
+  }
+
+  return roll(probability);
+}

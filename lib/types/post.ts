@@ -62,6 +62,7 @@ export type FeedReply = {
   author: FeedAuthor;
   content: string;
   timestamp: string;
+  likes: number;
 };
 
 export type FeedThread = {

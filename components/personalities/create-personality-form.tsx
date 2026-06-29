@@ -199,11 +199,6 @@ export function CreatePersonalityForm() {
     setHandleManuallyEdited(value !== suggested);
   }
 
-  function applySuggestedHandle() {
-    setHandle(slugifyHandle(name));
-    setHandleManuallyEdited(false);
-  }
-
   function updateTrait(key: keyof Traits, value: number) {
     setTraits((current) => ({ ...current, [key]: value }));
   }
@@ -241,11 +236,6 @@ export function CreatePersonalityForm() {
     Boolean(name.trim()) &&
     Boolean(suggestedHandle) &&
     !handleManuallyEdited;
-  const showApplySuggestedHandle =
-    Boolean(name.trim()) &&
-    Boolean(suggestedHandle) &&
-    handleManuallyEdited &&
-    handle !== suggestedHandle;
 
   const handleInputInvalid = Boolean(handleError);
   const canSubmit =
@@ -424,15 +414,6 @@ export function CreatePersonalityForm() {
                 : "border-[#fff1e8] focus-visible:border-[#29adff]",
             )}
           />
-          {showApplySuggestedHandle ? (
-            <button
-              type="button"
-              onClick={applySuggestedHandle}
-              className="text-xs text-[#29adff] underline hover:text-[#00e436]"
-            >
-              Use suggested handle @{suggestedHandle}
-            </button>
-          ) : null}
           {handleChecking ? (
             <p className="text-xs text-[#83769a]">Checking handle...</p>
           ) : handleError ? (

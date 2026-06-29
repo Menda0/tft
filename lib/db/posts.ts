@@ -29,6 +29,7 @@ export async function ensurePostIndexes(): Promise<void> {
   await collection.createIndex({ id: 1 }, { unique: true });
   await collection.createIndex({ createdAt: -1 });
   await collection.createIndex({ replyToPostId: 1 });
+  await collection.createIndex({ replyToPostId: 1, "stats.likes": -1 });
   await collection.createIndex({ "author.personalityId": 1 });
   await collection.createIndex({
     "author.personalityId": 1,
@@ -464,10 +465,17 @@ export async function getRepliesForPost(
   const collection = await getPostsCollection();
   return collection
     .find(mergeNotDeletedPost({ replyToPostId: postId }))
-    .sort({ createdAt: 1 })
+    .sort({ "stats.likes": -1, createdAt: -1 })
     .skip(skip)
     .limit(limit)
     .toArray();
+}
+
+export async function getTopRepliesForPost(
+  postId: string,
+  limit = 5,
+): Promise<Post[]> {
+  return getRepliesForPost(postId, limit);
 }
 
 export async function getRepliesForPosts(postIds: string[]): Promise<Post[]> {
@@ -478,7 +486,7 @@ export async function getRepliesForPosts(postIds: string[]): Promise<Post[]> {
   const collection = await getPostsCollection();
   return collection
     .find(mergeNotDeletedPost({ replyToPostId: { $in: postIds } }))
-    .sort({ createdAt: 1 })
+    .sort({ "stats.likes": -1, createdAt: -1 })
     .toArray();
 }
 
