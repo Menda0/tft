@@ -32,9 +32,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${pixelBody.variable} ${pixelHeading.variable} dark h-full`}
+      className={`${pixelBody.variable} ${pixelHeading.variable} dark h-dvh overflow-hidden md:h-auto md:overflow-visible`}
     >
-      <body className="pixel-app min-h-dvh flex flex-col overscroll-none md:bg-[#0f0f1a]">
+      <body className="pixel-app flex h-dvh flex-col overflow-hidden overscroll-none md:h-auto md:min-h-dvh md:overflow-visible md:bg-[#0f0f1a]">
         {children}
       </body>
     </html>
