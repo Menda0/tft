@@ -30,3 +30,11 @@ export function getTextModel(): string {
 export function getTrendingModel(): string {
   return process.env.OPENAI_TRENDING_MODEL?.trim() || "gpt-4.1-mini";
 }
+
+export function getResearchModel(): string {
+  return (
+    process.env.OPENAI_RESEARCH_MODEL?.trim() ||
+    process.env.OPENAI_TRENDING_MODEL?.trim() ||
+    "gpt-4.1-mini"
+  );
+}

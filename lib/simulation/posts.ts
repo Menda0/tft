@@ -14,6 +14,7 @@ import {
   getDailyPostLimit,
   startOfRollingWindow,
 } from "./limits";
+import { truncateForLog, type SimulationLogFn } from "./logger";
 import { pickTopicForPersonality } from "./topics";
 import type { SimulationWorld } from "./world";
 import { getTopLevelPosts } from "./world";
@@ -75,6 +76,7 @@ export async function canPersonalityPostToday(
 export async function createPost(
   personality: Personality,
   world: SimulationWorld,
+  log?: SimulationLogFn,
 ): Promise<CreatePostResult> {
   const since = startOfRollingWindow();
   const postsToday = await countOriginalPostsSince(personality.id, since);
@@ -92,7 +94,22 @@ export async function createPost(
   }
 
   try {
-    const content = await generateLLMPost(personality, topic);
+    const content = await generateLLMPost(personality, topic, {
+      onStage: (stage) => {
+        if (!log) {
+          return;
+        }
+
+        if (stage === "research") {
+          log(
+            "info",
+            `@${personality.handle} researching: ${truncateForLog(topic, 100)}`,
+          );
+        } else {
+          log("info", `@${personality.handle} writing post...`);
+        }
+      },
+    });
     const post = await insertPost({
       author: authorFromPersonality(personality),
       content,

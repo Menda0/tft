@@ -49,8 +49,8 @@ async function executeAction(
 
   switch (action) {
     case "post": {
-      log("info", `${handle} chose POST — generating...`);
-      const result = await createPost(personality, world);
+      log("info", `${handle} chose POST`);
+      const result = await createPost(personality, world, log);
 
       if (!result.ok) {
         if (result.reason === "daily_limit") {

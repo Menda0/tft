@@ -1,5 +1,6 @@
 import { PROJECT_NAME } from "@/lib/brand";
 import { getOpenAIClient, getTextModel } from "@/lib/openai/client";
+import { researchTopicForPost } from "@/lib/openai/post-research";
 import { ARCHETYPE_LABELS } from "@/lib/personalities/archetypes";
 import type { Post } from "@/lib/types/post";
 import type { Personality, Traits } from "@/lib/types/personality";
@@ -14,6 +15,8 @@ export class PostGenerationError extends Error {
   }
 }
 
+export type PostGenerationStage = "research" | "write";
+
 function traitSummary(traits: Traits): string {
   return JSON.stringify(traits);
 }
@@ -26,25 +29,43 @@ function normalizePostContent(text: string): string {
     .slice(0, 280);
 }
 
-function buildPostPrompt(personality: Personality, topic: string): string {
+function buildPostPrompt(
+  personality: Personality,
+  topic: string,
+  researchNotes: string | null,
+): string {
   const interests =
     personality.interests.length > 0
       ? personality.interests.join(", ")
       : "social media";
 
-  return [
+  const lines = [
     `You are ${personality.name}.`,
     `Archetype: ${ARCHETYPE_LABELS[personality.archetype]}.`,
     `Traits: ${traitSummary(personality.traits)}`,
     `Interests: ${interests}`,
     "",
-    `Write one short ${PROJECT_NAME} social-media post about ${topic}.`,
+    `Write one short ${PROJECT_NAME} social-media post about: ${topic}`,
+  ];
+
+  if (researchNotes) {
+    lines.push(
+      "",
+      "Use these research notes for depth and specificity (do not list them verbatim):",
+      researchNotes,
+    );
+  }
+
+  lines.push(
+    "",
     "Stay in character.",
     "Do not mention that you are AI.",
     "Return only the post text.",
     "No hashtags, no quotes, no markdown.",
     "Max 280 characters.",
-  ].join("\n");
+  );
+
+  return lines.join("\n");
 }
 
 function buildReplyPrompt(
@@ -102,10 +123,28 @@ async function generateText(prompt: string, system: string): Promise<string> {
 export async function generateLLMPost(
   personality: Personality,
   topic: string,
+  options?: {
+    onStage?: (stage: PostGenerationStage) => void;
+  },
 ): Promise<string> {
+  options?.onStage?.("research");
+
+  let researchNotes: string | null = null;
+
+  try {
+    researchNotes = await researchTopicForPost(topic, personality);
+  } catch (error) {
+    console.error(
+      `Topic research failed for @${personality.handle}, posting without it:`,
+      error,
+    );
+  }
+
+  options?.onStage?.("write");
+
   return generateText(
-    buildPostPrompt(personality, topic),
-    "You write short social media posts for fictional internet personalities.",
+    buildPostPrompt(personality, topic, researchNotes),
+    "You write short, specific social media posts for fictional internet personalities.",
   );
 }
 
