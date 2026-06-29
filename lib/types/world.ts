@@ -12,6 +12,7 @@ export type WorldState = {
   isRunning: boolean;
   lastRankNpcSeedAt: Date | null;
   rankNpcSeedInProgress: boolean;
+  lastHeatDecayAt: Date | null;
 };
 
 export type ActionType = "post" | "lurk";

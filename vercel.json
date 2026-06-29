@@ -2,6 +2,10 @@
   "crons": [
     {
       "path": "/api/cron/simulation",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/heat-decay",
       "schedule": "*/30 * * * *"
     }
   ]

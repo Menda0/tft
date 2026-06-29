@@ -16,6 +16,7 @@ export function createDefaultWorldState(): WorldState {
     isRunning: false,
     lastRankNpcSeedAt: null,
     rankNpcSeedInProgress: false,
+    lastHeatDecayAt: null,
   };
 }
 

@@ -13,7 +13,7 @@ import {
   truncateForLog,
   type SimulationLogFn,
 } from "./logger";
-import { getDailyPostLimit } from "./limits";
+import { getDailyPostLimit, getSimulationPersonalitiesPerTick } from "./limits";
 import { throwIfCancelled } from "./cancel";
 import { applyPersonalityUpdate } from "./personality-state";
 import { rankNpcEngagementPass } from "./rank-npc-engage";
@@ -22,7 +22,6 @@ import { refreshTrendingTopics } from "./trending-state";
 import type { SimulationWorld } from "./world";
 import { runWithConcurrency, shuffle } from "./utils";
 import { isRankNpc } from "@/lib/personalities/rank-npc";
-import { decayControversy } from "@/lib/scoring/controversy";
 import type { Personality } from "@/lib/types/personality";
 
 export type { SimulationLogFn, TickLogEntry, TickLogLevel } from "./logger";
@@ -81,40 +80,6 @@ async function simulatePersonality(
 
   if (optional === "lurk") {
     log("info", `${handle} is lurking.`);
-  }
-}
-
-async function runHeatDecayPass(
-  world: SimulationWorld,
-  log: SimulationLogFn,
-): Promise<void> {
-  for (const personality of world.personalities) {
-    if (isRankNpc(personality)) {
-      continue;
-    }
-
-    const current =
-      world.personalities.find((entry) => entry.id === personality.id) ??
-      personality;
-    const nextHeat = decayControversy(current.stats.controversy);
-
-    if (nextHeat === current.stats.controversy) {
-      continue;
-    }
-
-    const updated = await applyPersonalityUpdate(world, personality.id, {
-      stats: {
-        ...current.stats,
-        controversy: nextHeat,
-      },
-    });
-
-    if (updated) {
-      log(
-        "info",
-        `@${personality.handle} heat decayed ${current.stats.controversy} → ${nextHeat}`,
-      );
-    }
   }
 }
 
@@ -178,15 +143,20 @@ export async function simulationTick(
 
   throwIfCancelled(signal);
 
-  if (world.personalities.length === 0) {
-    log("warn", "No personalities to simulate.");
-  }
-
-  const personalities = shuffle(
+  const eligible = shuffle(
     world.personalities.filter((personality) => !isRankNpc(personality)),
   );
 
-  log("info", `Simulating ${personalities.length} personalities (read + optional action)`);
+  if (eligible.length === 0) {
+    log("warn", "No personalities to simulate.");
+  }
+
+  const personalities = eligible.slice(0, getSimulationPersonalitiesPerTick());
+
+  log(
+    "info",
+    `Simulating ${personalities.length}/${eligible.length} personalities (read + optional action)`,
+  );
 
   await runWithConcurrency(
     personalities,
@@ -200,10 +170,6 @@ export async function simulationTick(
   throwIfCancelled(signal);
 
   await rankNpcEngagementPass(world, log, signal);
-
-  throwIfCancelled(signal);
-
-  await runHeatDecayPass(world, log);
 
   throwIfCancelled(signal);
 
@@ -233,7 +199,7 @@ export function getSimulationTickIntervalMs(): number {
     return parsed;
   }
 
-  return 30 * 60 * 1000;
+  return 15 * 60 * 1000;
 }
 
 export function shouldRunTick(lastTickAt: Date | null, now = Date.now()): boolean {
