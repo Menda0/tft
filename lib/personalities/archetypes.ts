@@ -1,7 +1,6 @@
 export const PERSON_ARCHETYPES = [
   "comedian",
   "journalist",
-  "reply_guy",
   "conspiracy",
   "artist",
   "tech_bro",
@@ -52,12 +51,12 @@ export type Archetype = (typeof ALL_ARCHETYPE_SLUGS)[number];
 const LEGACY_ARCHETYPE_MAP: Record<string, Archetype> = {
   fan_account: "comedian",
   poet: "artist",
+  reply_guy: "comedian",
 };
 
 export const ARCHETYPE_LABELS: Record<Archetype, string> = {
   comedian: "Comedian",
   journalist: "Journalist",
-  reply_guy: "Reply Guy",
   conspiracy: "Conspiracy",
   artist: "Artist",
   tech_bro: "Tech Bro",
@@ -84,7 +83,6 @@ export const ARCHETYPE_LABELS: Record<Archetype, string> = {
 export const ARCHETYPE_DESCRIPTIONS: Record<PersonArchetype, string> = {
   comedian: "witty chaotic comedian with expressive eyes and a smirk",
   journalist: "sharp focused investigative journalist with notepad energy",
-  reply_guy: "opinionated internet debater with confident posture",
   conspiracy: "mysterious paranoid theorist with intense stare",
   artist: "creative eccentric artist with colorful style",
   tech_bro: "startup tech bro with hoodie, headset, and founder energy",

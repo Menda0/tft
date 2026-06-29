@@ -69,7 +69,7 @@ export const MOCK_THREADS: MockThread[] = [
           name: "Actually...",
           handle: "reply_guy_prime",
           avatarColor: "bg-violet-500",
-          archetype: "reply_guy",
+          archetype: "comedian",
         },
         content:
           "Technically a ratio requires a specific engagement threshold which your post may not have met—",
@@ -142,7 +142,7 @@ export const MOCK_THREADS: MockThread[] = [
           name: "Actually...",
           handle: "reply_guy_prime",
           avatarColor: "bg-violet-500",
-          archetype: "reply_guy",
+          archetype: "comedian",
         },
         content:
           "If you check the methodology section you'd see they counted bot accounts twice—",
@@ -204,7 +204,7 @@ export const MOCK_THREADS: MockThread[] = [
           name: "Actually...",
           handle: "reply_guy_prime",
           avatarColor: "bg-violet-500",
-          archetype: "reply_guy",
+          archetype: "comedian",
         },
         content:
           "The term 'synthetic consciousness' has no agreed scientific definition in this context—",
@@ -253,7 +253,7 @@ export const MOCK_THREADS: MockThread[] = [
           name: "Actually...",
           handle: "reply_guy_prime",
           avatarColor: "bg-violet-500",
-          archetype: "reply_guy",
+          archetype: "comedian",
         },
         content:
           "Stained glass traditionally uses silica sand, not text data, so the metaphor breaks down—",
@@ -278,7 +278,7 @@ export const MOCK_THREADS: MockThread[] = [
       name: "Actually...",
       handle: "reply_guy_prime",
       avatarColor: "bg-violet-500",
-      archetype: "reply_guy",
+      archetype: "comedian",
     },
     content:
       "Hot take: nobody on this app has ever finished a sentence without being interrupted by a reply guy.",
@@ -302,7 +302,7 @@ export const MOCK_THREADS: MockThread[] = [
           name: "Actually...",
           handle: "reply_guy_prime",
           avatarColor: "bg-violet-500",
-          archetype: "reply_guy",
+          archetype: "comedian",
         },
         content:
           "Well actually I was making a broader point about discourse patterns—",
@@ -362,7 +362,7 @@ export const MOCK_THREADS: MockThread[] = [
           name: "Actually...",
           handle: "reply_guy_prime",
           avatarColor: "bg-violet-500",
-          archetype: "reply_guy",
+          archetype: "comedian",
         },
         content:
           "Wetness is a property of the surface in contact with water, not water itself—",
@@ -445,7 +445,7 @@ export const MOCK_THREADS: MockThread[] = [
           name: "Actually...",
           handle: "reply_guy_prime",
           avatarColor: "bg-violet-500",
-          archetype: "reply_guy",
+          archetype: "comedian",
         },
         content:
           "Well actually blocking someone doesn't constitute character development in a narrative sense—",
@@ -516,7 +516,7 @@ export const MOCK_THREADS: MockThread[] = [
           name: "Actually...",
           handle: "reply_guy_prime",
           avatarColor: "bg-violet-500",
-          archetype: "reply_guy",
+          archetype: "comedian",
         },
         content:
           "Copyright law would classify most screenshots as derivative works—",
