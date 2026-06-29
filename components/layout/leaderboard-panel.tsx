@@ -59,6 +59,22 @@ export type LeaderboardPanelProps =
   | PersonalityLeaderboardPanelProps
   | FarmerLeaderboardPanelProps;
 
+function positionRankColor(rank: number): string {
+  if (rank === 1) {
+    return "#ffa300";
+  }
+
+  if (rank === 2) {
+    return "#c2c3c7";
+  }
+
+  if (rank === 3) {
+    return "#b86f50";
+  }
+
+  return "#83769a";
+}
+
 function PersonalityRow({
   entry,
   scoreColor,
@@ -70,8 +86,11 @@ function PersonalityRow({
 }) {
   return (
     <li className="flex items-center gap-2 border-b-2 border-[#29366f] py-2 last:border-b-0">
-      <span className="w-5 shrink-0 text-center text-xs font-bold text-[#83769a]">
-        {entry.rank}
+      <span
+        className="w-6 shrink-0 text-center pixel-heading text-[9px]"
+        style={{ color: positionRankColor(entry.rank) }}
+      >
+        #{entry.rank}
       </span>
 
       <ProfileLink
@@ -103,8 +122,12 @@ function PersonalityRow({
         >
           {entry.name}
         </ProfileLink>
-        <p className="truncate text-[10px] text-[#83769a]">
-          @{entry.handle} · {entry.ownerUsername}
+        <p className="truncate text-[10px]">
+          <span className="font-bold text-[#29adff]">
+            {entry.socialRankLabel.toUpperCase()}
+          </span>
+          <span className="text-[#83769a]"> · @{entry.handle}</span>
+          <span className="text-[#c2c3c7]"> · {entry.ownerUsername}</span>
         </p>
       </div>
 

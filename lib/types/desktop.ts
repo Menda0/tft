@@ -1,3 +1,5 @@
+import type { SocialRank } from "@/lib/scoring/ranks";
+
 export type ThreadingTopicParticipant = {
   name: string;
   handle: string;
@@ -27,6 +29,8 @@ export type PersonalityLeaderboardEntry = {
   avatarUrl: string | null;
   avatarColor: string;
   score: number;
+  socialRank: SocialRank;
+  socialRankLabel: string;
 };
 
 export type FarmerLeaderboardEntry = {

@@ -5,6 +5,8 @@ import {
   normalizePersonality,
 } from "@/lib/personalities";
 import { normalizeStoredStats } from "@/lib/personalities/stats";
+import { resolveSocialRanksForPersonalities } from "@/lib/profile/social-rank";
+import type { SocialRank } from "@/lib/scoring/ranks";
 import type { Personality } from "@/lib/types/personality";
 import type {
   FarmerLeaderboardEntry,
@@ -18,6 +20,8 @@ function toPersonalityEntry(
   score: number,
   rank: number,
   ownerUsername: string,
+  socialRank: SocialRank,
+  socialRankLabel: string,
 ): PersonalityLeaderboardEntry {
   return {
     rank,
@@ -28,6 +32,8 @@ function toPersonalityEntry(
     avatarUrl: personality.avatarUrl ?? null,
     avatarColor: avatarColorForHandle(personality.handle),
     score,
+    socialRank,
+    socialRankLabel,
   };
 }
 
@@ -69,16 +75,24 @@ async function sortPersonalitiesByScore(
     ]),
   );
 
-  return sorted.map((entry, index) =>
-    toPersonalityEntry(
+  const socialRanks = await resolveSocialRanksForPersonalities(
+    sorted.map((entry) => entry.personality),
+  );
+
+  return sorted.map((entry, index) => {
+    const rankInfo = socialRanks.get(entry.personality.id);
+
+    return toPersonalityEntry(
       entry.personality,
       entry.score,
       index + 1,
       entry.personality.ownerId
         ? (usernameByOwnerId.get(entry.personality.ownerId) ?? "Unknown")
         : "Unknown",
-    ),
-  );
+      rankInfo?.rank ?? "novice",
+      rankInfo?.label ?? "Novice",
+    );
+  });
 }
 
 export async function getTopPersonalitiesByClout(
