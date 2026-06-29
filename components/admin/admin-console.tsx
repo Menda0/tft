@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import {
   logLevelColor,
+  refreshTrendingTopicsRequest,
   streamSimulationTickRequest,
   type StreamTickEvent,
 } from "@/lib/simulation/client";
@@ -18,9 +19,10 @@ type ConsoleLine = {
 
 const HELP_TEXT = [
   "Available commands:",
-  "  tick   — run a simulation tick",
-  "  clear  — clear the console",
-  "  help   — show this message",
+  "  tick    — run a simulation tick",
+  "  trends  — refresh trending topics",
+  "  clear   — clear the console",
+  "  help    — show this message",
   "",
   "Press Ctrl+C to stop a running tick.",
 ].join("\n");
@@ -159,6 +161,40 @@ export function AdminConsole({ open, onClose }: AdminConsoleProps) {
     }
   }, [appendLine, running, token]);
 
+  const refreshTrends = useCallback(async () => {
+    if (!token || running) {
+      return;
+    }
+
+    setRunning(true);
+    appendLine("system", `[${formatTime()}] Refreshing trending topics...`);
+
+    try {
+      const result = await refreshTrendingTopicsRequest(token);
+
+      if (!result.ok) {
+        appendLine("error", result.error);
+        return;
+      }
+
+      const { topics, usedFallback, updatedAt } = result.data;
+
+      if (usedFallback) {
+        appendLine("warn", "Used fallback/cached topics.");
+      } else {
+        appendLine("success", `Trending topics refreshed (${topics.length}).`);
+      }
+
+      appendLine("system", `Updated at ${formatTime(new Date(updatedAt))}`);
+
+      for (const topic of topics) {
+        appendLine("info", topic);
+      }
+    } finally {
+      setRunning(false);
+    }
+  }, [appendLine, running, token]);
+
   const handleCommand = useCallback(
     async (raw: string) => {
       const command = raw.trim().toLowerCase();
@@ -184,9 +220,14 @@ export function AdminConsole({ open, onClose }: AdminConsoleProps) {
         return;
       }
 
+      if (command === "trends" || command === "trending" || command === "topics") {
+        await refreshTrends();
+        return;
+      }
+
       appendLine("error", `Unknown command: ${raw.trim()}. Type \`help\` for options.`);
     },
-    [appendLine, runTick],
+    [appendLine, refreshTrends, runTick],
   );
 
   function handleSubmit(event: React.FormEvent) {

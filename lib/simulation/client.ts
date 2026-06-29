@@ -134,3 +134,34 @@ export function logLevelColor(level: TickLogLevel): string {
       return "text-[#c2c3c7]";
   }
 }
+
+export type RefreshTrendingTopicsResponse = {
+  topics: string[];
+  updatedAt: string;
+  usedFallback: boolean;
+  fromCache: boolean;
+};
+
+export async function refreshTrendingTopicsRequest(
+  token: string,
+): Promise<
+  | { ok: true; data: RefreshTrendingTopicsResponse }
+  | { ok: false; error: string }
+> {
+  const response = await fetch("/api/simulation/trending/refresh", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = (await response.json()) as RefreshTrendingTopicsResponse & {
+    error?: string;
+  };
+
+  if (!response.ok) {
+    return { ok: false, error: data.error ?? "Could not refresh trending topics." };
+  }
+
+  return { ok: true, data };
+}

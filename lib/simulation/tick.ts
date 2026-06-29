@@ -1,9 +1,4 @@
-import {
-  fetchTrendingTopics,
-  getFallbackTrendingTopics,
-} from "@/lib/openai/trending";
 import { saveWorldState } from "@/lib/db/world";
-import type { TrendingTopic } from "@/lib/types/world";
 
 import { chooseAction } from "./actions";
 import {
@@ -17,8 +12,9 @@ import {
   truncateForLog,
   type SimulationLogFn,
 } from "./logger";
-import { getDailyPostLimit, getTrendingTopicsTtlMs } from "./limits";
+import { getDailyPostLimit } from "./limits";
 import { throwIfCancelled } from "./cancel";
+import { refreshTrendingTopics } from "./trending-state";
 import type { SimulationWorld } from "./world";
 import { runWithConcurrency, shuffle } from "./utils";
 import type { Personality } from "@/lib/types/personality";
@@ -26,100 +22,21 @@ import type { ActionType } from "@/lib/types/world";
 
 export type { SimulationLogFn, TickLogEntry, TickLogLevel } from "./logger";
 export { createSimulationLogger, noopSimulationLog } from "./logger";
+export { shouldRefreshTrendingTopics } from "./trending-state";
 
 type PersonalityAction = {
   personality: Personality;
   action: ActionType;
 };
 
-function getTrendingTopicsAnchor(state: SimulationWorld["state"]): Date | null {
-  if (state.trendingTopicsUpdatedAt) {
-    return new Date(state.trendingTopicsUpdatedAt);
-  }
-
-  const firstTopic = state.trendingTopics[0];
-
-  if (firstTopic?.fetchedAt) {
-    return new Date(firstTopic.fetchedAt);
-  }
-
-  return null;
-}
-
-export function shouldRefreshTrendingTopics(
-  state: SimulationWorld["state"],
-  now = Date.now(),
-): boolean {
-  if (state.trendingTopics.length === 0) {
-    return true;
-  }
-
-  const anchor = getTrendingTopicsAnchor(state);
-
-  if (!anchor) {
-    return true;
-  }
-
-  return now - anchor.getTime() >= getTrendingTopicsTtlMs();
-}
-
 async function updateTrendingTopics(
   world: SimulationWorld,
   log: SimulationLogFn,
 ): Promise<void> {
-  if (!shouldRefreshTrendingTopics(world.state)) {
-    const anchor = getTrendingTopicsAnchor(world.state);
-    const labels = world.state.trendingTopics.map((entry) => entry.topic);
+  const result = await refreshTrendingTopics({ log });
 
-    log(
-      "info",
-      `Using cached trending topics from ${anchor?.toISOString() ?? "unknown time"}.`,
-    );
-    log(
-      "success",
-      `Trending topics (${labels.length}): ${labels.join(" | ")}`,
-    );
-    return;
-  }
-
-  log("info", "Fetching trending topics...");
-
-  let topicLabels: string[];
-  let usedFallback = false;
-
-  try {
-    topicLabels = await fetchTrendingTopics();
-  } catch (error) {
-    console.error("Trending topic fetch failed, using fallback:", error);
-    usedFallback = true;
-    topicLabels =
-      world.state.trendingTopics.length > 0
-        ? world.state.trendingTopics.map((entry) => entry.topic)
-        : getFallbackTrendingTopics();
-  }
-
-  const now = new Date();
-  const trendingTopics: TrendingTopic[] = topicLabels.map((topic) => ({
-    topic,
-    fetchedAt: now,
-  }));
-
-  world.state.trendingTopics = trendingTopics;
-  world.state.trendingTopicsUpdatedAt = now;
-
-  await saveWorldState({
-    trendingTopics,
-    trendingTopicsUpdatedAt: now,
-  });
-
-  if (usedFallback) {
-    log("warn", "Trending fetch failed. Using cached/fallback topics.");
-  }
-
-  log(
-    "success",
-    `Trending topics refreshed (${topicLabels.length}): ${topicLabels.join(" | ")}`,
-  );
+  world.state.trendingTopics = result.trendingTopics;
+  world.state.trendingTopicsUpdatedAt = result.updatedAt;
 }
 
 async function executeAction(
