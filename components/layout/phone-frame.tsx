@@ -1,3 +1,4 @@
+import { DesktopSidebar } from "@/components/layout/desktop-sidebar";
 import { PROJECT_NAME_BADGE } from "@/lib/brand";
 
 type PhoneFrameProps = {
@@ -68,7 +69,7 @@ function PhoneSideButtons() {
 
 export function PhoneFrame({ children }: PhoneFrameProps) {
   return (
-    <div className="min-h-dvh md:flex md:items-center md:justify-center md:bg-[#0f0f1a] md:p-8 md:[background-image:radial-gradient(#29366f_1px,transparent_1px),linear-gradient(#0f0f1a,#1d2b53)] md:[background-size:16px_16px,100%_100%]">
+    <>
       {/* Mobile: full bleed */}
       <div className="min-h-dvh md:hidden">
         <div className="pixel-scanlines min-h-dvh overflow-y-auto overscroll-contain">
@@ -76,30 +77,38 @@ export function PhoneFrame({ children }: PhoneFrameProps) {
         </div>
       </div>
 
-      {/* Desktop: pixel phone */}
-      <div
-        aria-label="Phone preview"
-        className="relative mx-auto hidden w-[454px] flex-col md:flex md:h-[min(90dvh,900px)]"
-      >
-        <PhoneSideButtons />
+      {/* Desktop: phone left, sidebar right */}
+      <div className="hidden min-h-dvh md:flex md:items-center md:justify-center md:bg-[#0f0f1a] md:p-8 md:[background-image:radial-gradient(#29366f_1px,transparent_1px),linear-gradient(#0f0f1a,#1d2b53)] md:[background-size:16px_16px,100%_100%]">
+        <div className="mx-auto grid w-full max-w-7xl min-w-0 grid-cols-[2fr_3fr] items-center gap-10">
+          <div className="flex min-w-0 justify-end">
+            <div
+              aria-label="Phone preview"
+              className="relative w-[454px] shrink-0 flex-col md:flex md:h-[min(90dvh,900px)]"
+            >
+              <PhoneSideButtons />
 
-        <div className="phone-shell-shadow relative flex h-full flex-col border-[3px] border-[#fff1e8] bg-[#83769a] p-3">
-          <div className="pointer-events-none absolute inset-x-3 top-0 h-[2px] bg-[#c2c3c7]/60" />
-          <div className="pointer-events-none absolute inset-y-3 left-0 w-[2px] bg-[#c2c3c7]/40" />
+              <div className="phone-shell-shadow relative flex h-full flex-col border-[3px] border-[#fff1e8] bg-[#83769a] p-3">
+                <div className="pointer-events-none absolute inset-x-3 top-0 h-[2px] bg-[#c2c3c7]/60" />
+                <div className="pointer-events-none absolute inset-y-3 left-0 w-[2px] bg-[#c2c3c7]/40" />
 
-          <PhoneHardwareTop />
+                <PhoneHardwareTop />
 
-          <div className="relative flex min-h-0 flex-1 flex-col phone-screen-inset bg-[#0a0a2a] p-1">
-            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
-              <div className="pixel-scanlines min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                {children}
+                <div className="relative flex min-h-0 flex-1 flex-col phone-screen-inset bg-[#0a0a2a] p-1">
+                  <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
+                    <div className="pixel-scanlines min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                      {children}
+                    </div>
+                  </div>
+                </div>
+
+                <PhoneHardwareBottom />
               </div>
             </div>
           </div>
 
-          <PhoneHardwareBottom />
+          <DesktopSidebar />
         </div>
       </div>
-    </div>
+    </>
   );
 }
