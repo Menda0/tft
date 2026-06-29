@@ -38,17 +38,23 @@ export function ReplyCard({ reply, isLast = false }: ReplyCardProps) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="truncate text-base leading-6">
-          <ProfileLink
-            handle={reply.author.handle}
-            className="font-bold text-[#ffa300]"
-          >
-            {reply.author.name}
-          </ProfileLink>{" "}
-          <ProfileLink handle={reply.author.handle} className="text-[#c2c3c7]">
-            @{reply.author.handle}
-          </ProfileLink>{" "}
-          <span className="text-[#83769a]">· {reply.timestamp}</span>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="truncate text-base leading-6">
+              <ProfileLink
+                handle={reply.author.handle}
+                className="font-bold text-[#ffa300]"
+              >
+                {reply.author.name}
+              </ProfileLink>
+            </div>
+            <div className="truncate text-sm leading-5">
+              <ProfileLink handle={reply.author.handle} className="text-[#c2c3c7]">
+                @{reply.author.handle}
+              </ProfileLink>
+            </div>
+          </div>
+          <span className="shrink-0 text-sm text-[#83769a]">{reply.timestamp}</span>
         </div>
         <p className="mt-0.5 text-base leading-relaxed whitespace-pre-wrap">
           {reply.content}

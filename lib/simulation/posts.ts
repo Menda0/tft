@@ -11,6 +11,7 @@ import { generateLLMPost, generateLLMReply } from "@/lib/openai/post";
 import type { Post } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
+import type { ResponseTone } from "./engagement";
 import {
   getDailyPostLimit,
   startOfRollingWindow,
@@ -18,7 +19,6 @@ import {
 import { truncateForLog, type SimulationLogFn } from "./logger";
 import { pickTopicForPersonality } from "./topics";
 import type { SimulationWorld } from "./world";
-import { getTopLevelPosts } from "./world";
 
 export type CreatePostResult =
   | { ok: true; post: Post }
@@ -34,36 +34,16 @@ function authorFromPersonality(personality: Personality) {
   });
 }
 
-function pickRandomPost(
-  posts: Post[],
-  excludePersonalityId?: string,
-): Post | null {
-  const candidates = posts.filter(
-    (post) =>
-      post.replyToPostId === null &&
-      post.author.personalityId !== excludePersonalityId,
-  );
+function syncPostStat(
+  world: SimulationWorld,
+  postId: string,
+  field: "replies" | "reposts" | "likes" | "views",
+): void {
+  const cached = world.posts.find((post) => post.id === postId);
 
-  if (candidates.length === 0) {
-    return null;
+  if (cached) {
+    cached.stats[field] += 1;
   }
-
-  return candidates[Math.floor(Math.random() * candidates.length)] ?? null;
-}
-
-function pickRandomPersonality(
-  personalities: Personality[],
-  excludePersonalityId: string,
-): Personality | null {
-  const candidates = personalities.filter(
-    (personality) => personality.id !== excludePersonalityId,
-  );
-
-  if (candidates.length === 0) {
-    return null;
-  }
-
-  return candidates[Math.floor(Math.random() * candidates.length)] ?? null;
 }
 
 export async function canPersonalityPostToday(
@@ -129,48 +109,20 @@ export async function createPost(
   }
 }
 
-export async function replyToPost(
-  personality: Personality,
+export async function likePost(
+  _personality: Personality,
+  target: Post,
   world: SimulationWorld,
-): Promise<Post | null> {
-  const target = pickRandomPost(world.posts, personality.id);
-
-  if (!target) {
-    return null;
-  }
-
-  try {
-    const content = await generateLLMReply(personality, target);
-    const reply = await insertPost({
-      author: authorFromPersonality(personality),
-      content,
-      topic: target.topic,
-      createdAt: new Date(),
-      tickNumber: world.state.tickNumber + 1,
-      replyToPostId: target.id,
-      repostOfPostId: null,
-    });
-
-    await incrementPostStat(target.id, "replies");
-    target.stats.replies += 1;
-    world.posts.unshift(reply);
-    return reply;
-  } catch (error) {
-    console.error(`replyToPost failed for ${personality.handle}:`, error);
-    return null;
-  }
+): Promise<void> {
+  await incrementPostStat(target.id, "likes");
+  syncPostStat(world, target.id, "likes");
 }
 
-export async function repostPost(
+export async function repostSpecificPost(
   personality: Personality,
+  target: Post,
   world: SimulationWorld,
-): Promise<Post | null> {
-  const target = pickRandomPost(world.posts, personality.id);
-
-  if (!target) {
-    return null;
-  }
-
+): Promise<Post> {
   const repost = await insertPost({
     author: authorFromPersonality(personality),
     content: target.content,
@@ -182,18 +134,45 @@ export async function repostPost(
   });
 
   await incrementPostStat(target.id, "reposts");
-  target.stats.reposts += 1;
+  syncPostStat(world, target.id, "reposts");
   world.posts.unshift(repost);
   return repost;
 }
 
-export async function followSomeone(
+export async function replyToSpecificPost(
   personality: Personality,
+  target: Post,
+  world: SimulationWorld,
+  options?: { tone?: ResponseTone },
+): Promise<Post | null> {
+  try {
+    const content = await generateLLMReply(personality, target, options);
+    const reply = await insertPost({
+      author: authorFromPersonality(personality),
+      content,
+      topic: target.topic,
+      createdAt: new Date(),
+      tickNumber: world.state.tickNumber + 1,
+      replyToPostId: target.id,
+      repostOfPostId: null,
+    });
+
+    await incrementPostStat(target.id, "replies");
+    syncPostStat(world, target.id, "replies");
+    world.posts.unshift(reply);
+    return reply;
+  } catch (error) {
+    console.error(`replyToSpecificPost failed for ${personality.handle}:`, error);
+    return null;
+  }
+}
+
+export async function followAuthor(
+  personality: Personality,
+  target: Personality,
   world: SimulationWorld,
 ): Promise<Personality | null> {
-  const target = pickRandomPersonality(world.personalities, personality.id);
-
-  if (!target) {
+  if (target.id === personality.id) {
     return null;
   }
 
@@ -219,6 +198,10 @@ export async function followSomeone(
   return target;
 }
 
-export function getReplyTargetPosts(world: SimulationWorld): Post[] {
-  return getTopLevelPosts(world.posts);
+export async function recordPostView(
+  target: Post,
+  world: SimulationWorld,
+): Promise<void> {
+  await incrementPostStat(target.id, "views");
+  syncPostStat(world, target.id, "views");
 }

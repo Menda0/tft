@@ -91,7 +91,7 @@ export function topicWasUsedBefore(
   return usedTopics.some((used) => topicsAreSimilar(candidate, used));
 }
 
-function topicsMatchInterest(topic: string, interest: string): boolean {
+export function topicsMatchInterest(topic: string, interest: string): boolean {
   const normalizedTopic = normalize(topic);
   const normalizedInterest = normalize(interest);
 

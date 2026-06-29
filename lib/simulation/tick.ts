@@ -1,12 +1,7 @@
 import { saveWorldState } from "@/lib/db/world";
 
-import { chooseAction } from "./actions";
-import {
-  createPost,
-  followSomeone,
-  replyToPost,
-  repostPost,
-} from "./posts";
+import { chooseOptionalAction } from "./actions";
+import { createPost } from "./posts";
 import {
   noopSimulationLog,
   truncateForLog,
@@ -14,20 +9,15 @@ import {
 } from "./logger";
 import { getDailyPostLimit } from "./limits";
 import { throwIfCancelled } from "./cancel";
+import { readPostsAndEngage } from "./read-posts";
 import { refreshTrendingTopics } from "./trending-state";
 import type { SimulationWorld } from "./world";
 import { runWithConcurrency, shuffle } from "./utils";
 import type { Personality } from "@/lib/types/personality";
-import type { ActionType } from "@/lib/types/world";
 
 export type { SimulationLogFn, TickLogEntry, TickLogLevel } from "./logger";
 export { createSimulationLogger, noopSimulationLog } from "./logger";
 export { shouldRefreshTrendingTopics } from "./trending-state";
-
-type PersonalityAction = {
-  personality: Personality;
-  action: ActionType;
-};
 
 async function updateTrendingTopics(
   world: SimulationWorld,
@@ -39,95 +29,44 @@ async function updateTrendingTopics(
   world.state.trendingTopicsUpdatedAt = result.updatedAt;
 }
 
-async function executeAction(
+async function simulatePersonality(
   personality: Personality,
-  action: ActionType,
   world: SimulationWorld,
   log: SimulationLogFn,
 ): Promise<void> {
   const handle = `@${personality.handle}`;
 
-  switch (action) {
-    case "post": {
-      log("info", `${handle} chose POST`);
-      const result = await createPost(personality, world, log);
+  await readPostsAndEngage(personality, world, log);
 
-      if (!result.ok) {
-        if (result.reason === "daily_limit") {
-          log(
-            "warn",
-            `${handle} hit the daily post limit (${getDailyPostLimit()}/day).`,
-          );
-        } else if (result.reason === "no_topic") {
-          log("warn", `${handle} skipped posting — no fresh topic available.`);
-        } else {
-          log("warn", `${handle} failed to post.`);
-        }
-        return;
+  const optional = chooseOptionalAction(personality);
+
+  if (optional === "post") {
+    log("info", `${handle} chose POST`);
+    const result = await createPost(personality, world, log);
+
+    if (!result.ok) {
+      if (result.reason === "daily_limit") {
+        log(
+          "warn",
+          `${handle} hit the daily post limit (${getDailyPostLimit()}/day).`,
+        );
+      } else if (result.reason === "no_topic") {
+        log("warn", `${handle} skipped posting — no fresh topic available.`);
+      } else {
+        log("warn", `${handle} failed to post.`);
       }
-
-      log(
-        "success",
-        `${handle} posted about "${result.post.topic ?? "general"}": ${truncateForLog(result.post.content)}`,
-      );
       return;
     }
-    case "reply": {
-      log("info", `${handle} chose REPLY — generating...`);
-      const reply = await replyToPost(personality, world);
 
-      if (!reply) {
-        log("warn", `${handle} had no post to reply to.`);
-        return;
-      }
+    log(
+      "success",
+      `${handle} posted about "${result.post.topic ?? "general"}": ${truncateForLog(result.post.content)}`,
+    );
+    return;
+  }
 
-      const targetHandle = world.posts.find(
-        (post) => post.id === reply.replyToPostId,
-      )?.author.handle;
-
-      log(
-        "success",
-        `${handle} replied to @${targetHandle ?? "unknown"}: ${truncateForLog(reply.content)}`,
-      );
-      return;
-    }
-    case "repost": {
-      log("info", `${handle} chose REPOST`);
-      const repost = await repostPost(personality, world);
-
-      if (!repost) {
-        log("warn", `${handle} had no post to repost.`);
-        return;
-      }
-
-      const source = world.posts.find(
-        (post) => post.id === repost.repostOfPostId,
-      );
-
-      log(
-        "success",
-        `${handle} reposted @${source?.author.handle ?? "unknown"}: ${truncateForLog(repost.content)}`,
-      );
-      return;
-    }
-    case "follow": {
-      log("info", `${handle} chose FOLLOW`);
-      const target = await followSomeone(personality, world);
-
-      if (!target) {
-        log("warn", `${handle} had nobody to follow.`);
-        return;
-      }
-
-      log(
-        "success",
-        `${handle} followed @${target.handle} (${target.stats.followers} followers)`,
-      );
-      return;
-    }
-    case "lurk":
-      log("info", `${handle} is lurking.`);
-      return;
+  if (optional === "lurk") {
+    log("info", `${handle} is lurking.`);
   }
 }
 
@@ -150,38 +89,18 @@ export async function simulationTick(
     log("warn", "No personalities to simulate.");
   }
 
-  const actions: PersonalityAction[] = shuffle(world.personalities).map(
-    (personality) => ({
-      personality,
-      action: chooseAction(personality),
-    }),
-  );
+  const personalities = shuffle(world.personalities);
 
-  const llmActions = actions.filter(
-    (entry) => entry.action === "post" || entry.action === "reply",
-  );
-  const otherActions = actions.filter(
-    (entry) => entry.action !== "post" && entry.action !== "reply",
-  );
-
-  log(
-    "info",
-    `Actions queued: ${actions.length} (${llmActions.length} LLM, ${otherActions.length} instant)`,
-  );
+  log("info", `Simulating ${personalities.length} personalities (read + optional action)`);
 
   await runWithConcurrency(
-    llmActions,
+    personalities,
     3,
-    async ({ personality, action }) => {
-      await executeAction(personality, action, world, log);
+    async (personality) => {
+      await simulatePersonality(personality, world, log);
     },
     signal,
   );
-
-  for (const { personality, action } of otherActions) {
-    throwIfCancelled(signal);
-    await executeAction(personality, action, world, log);
-  }
 
   throwIfCancelled(signal);
 

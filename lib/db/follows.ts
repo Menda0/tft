@@ -60,6 +60,15 @@ export async function insertFollow(
   }
 }
 
+export async function getFollowingIds(followerId: string): Promise<Set<string>> {
+  const collection = await getFollowsCollection();
+  const follows = await collection
+    .find({ followerId }, { projection: { followingId: 1 } })
+    .toArray();
+
+  return new Set(follows.map((follow) => follow.followingId));
+}
+
 export async function getFollowersForPersonality(
   personalityId: string,
   limit = 100,

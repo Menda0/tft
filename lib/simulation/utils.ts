@@ -66,12 +66,30 @@ export async function runWithConcurrency<T>(
   await Promise.all(workers);
 }
 
+export function weightedSampleWithoutReplacement<T>(
+  items: T[],
+  count: number,
+  getWeight: (item: T) => number,
+): T[] {
+  const pool = [...items];
+  const picked: T[] = [];
+
+  while (pool.length > 0 && picked.length < count) {
+    const weights = Object.fromEntries(
+      pool.map((item, index) => [String(index), getWeight(item)]),
+    ) as Record<string, number>;
+    const indexKey = weightedRandom(weights);
+    const index = Number.parseInt(indexKey, 10);
+    const [item] = pool.splice(index, 1);
+
+    if (item) {
+      picked.push(item);
+    }
+  }
+
+  return picked;
+}
+
 export function isActionType(value: string): value is ActionType {
-  return (
-    value === "post" ||
-    value === "reply" ||
-    value === "repost" ||
-    value === "lurk" ||
-    value === "follow"
-  );
+  return value === "post" || value === "lurk";
 }

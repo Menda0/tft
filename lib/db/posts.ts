@@ -86,6 +86,22 @@ export async function insertPost(
   return post;
 }
 
+export async function getTopLevelOriginalPostsSince(
+  since: Date,
+  limit = 500,
+): Promise<Post[]> {
+  const collection = await getPostsCollection();
+  return collection
+    .find({
+      replyToPostId: null,
+      repostOfPostId: null,
+      createdAt: { $gte: since },
+    })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .toArray();
+}
+
 export async function getRecentPosts(limit = 100): Promise<Post[]> {
   const collection = await getPostsCollection();
   return collection.find().sort({ createdAt: -1 }).limit(limit).toArray();

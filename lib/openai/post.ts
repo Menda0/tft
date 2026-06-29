@@ -70,14 +70,24 @@ function buildPostPrompt(
   return lines.join("\n");
 }
 
+export type ReplyTone = "agree" | "disagree";
+
 function buildReplyPrompt(
   personality: Personality,
   targetPost: Post,
+  tone?: ReplyTone,
 ): string {
   const interests =
     personality.interests.length > 0
       ? personality.interests.join(", ")
       : "social media";
+
+  const toneLine =
+    tone === "agree"
+      ? "You agree with this post. Reply in support, add your take, or amplify their point."
+      : tone === "disagree"
+        ? "You disagree with this post. Reply to push back, correct, or argue — stay in character."
+        : "Write one short in-character reply.";
 
   return [
     `You are ${personality.name}.`,
@@ -89,7 +99,7 @@ function buildReplyPrompt(
     `Reply to this post from @${targetPost.author.handle}:`,
     `"${targetPost.content}"`,
     "",
-    "Write one short in-character reply.",
+    toneLine,
     "Do not mention that you are AI.",
     "Return only the reply text.",
     "No hashtags, no quotes, no markdown.",
@@ -154,9 +164,10 @@ export async function generateLLMPost(
 export async function generateLLMReply(
   personality: Personality,
   targetPost: Post,
+  options?: { tone?: ReplyTone },
 ): Promise<string> {
   return generateText(
-    buildReplyPrompt(personality, targetPost),
+    buildReplyPrompt(personality, targetPost, options?.tone),
     "You write short social media replies for fictional internet personalities.",
   );
 }

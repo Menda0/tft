@@ -27,7 +27,7 @@ export function PostAuthor({
   const avatarSize = size === "sm" ? "size-8" : "size-10";
 
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex w-full items-start gap-3">
       <ProfileLink handle={author.handle} className="shrink-0 hover:no-underline">
         <Avatar
           size={size === "sm" ? "default" : "lg"}
@@ -50,14 +50,20 @@ export function PostAuthor({
         </Avatar>
       </ProfileLink>
 
-      <div className="min-w-0 truncate text-base leading-6">
-        <ProfileLink handle={author.handle} className="font-bold text-[#ffa300]">
-          {author.name}
-        </ProfileLink>{" "}
-        <ProfileLink handle={author.handle} className="text-[#c2c3c7]">
-          @{author.handle}
-        </ProfileLink>{" "}
-        <span className="text-[#83769a]">· {timestamp}</span>
+      <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate text-base leading-6">
+            <ProfileLink handle={author.handle} className="font-bold text-[#ffa300]">
+              {author.name}
+            </ProfileLink>
+          </div>
+          <div className="truncate text-sm leading-5">
+            <ProfileLink handle={author.handle} className="text-[#c2c3c7]">
+              @{author.handle}
+            </ProfileLink>
+          </div>
+        </div>
+        <span className="shrink-0 text-sm text-[#83769a]">{timestamp}</span>
       </div>
     </div>
   );

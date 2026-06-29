@@ -3,14 +3,16 @@ import type { ActionType } from "@/lib/types/world";
 
 import { weightedRandom } from "./utils";
 
-export function chooseAction(personality: Personality): ActionType {
-  const weights = {
-    post: 20 + personality.stats.creativity * 2,
-    reply: 20 + personality.traits.aggression + personality.traits.troll,
-    repost: 10 + personality.traits.radical,
-    lurk: 30,
-    follow: 5 + personality.traits.negacionist,
-  };
+type OptionalRoll = ActionType | "skip";
 
-  return weightedRandom(weights);
+export function chooseOptionalAction(
+  personality: Personality,
+): ActionType | null {
+  const result = weightedRandom<OptionalRoll>({
+    post: 20 + personality.stats.creativity * 2,
+    lurk: 30,
+    skip: 50,
+  });
+
+  return result === "skip" ? null : result;
 }

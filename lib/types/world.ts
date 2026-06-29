@@ -12,4 +12,4 @@ export type WorldState = {
   isRunning: boolean;
 };
 
-export type ActionType = "post" | "reply" | "repost" | "lurk" | "follow";
+export type ActionType = "post" | "lurk";

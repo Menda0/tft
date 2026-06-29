@@ -5,6 +5,7 @@ import {
   tryAcquireWorldLock,
 } from "@/lib/db/world";
 import { ensureFollowIndexes } from "@/lib/db/follows";
+import { ensurePostReadIndexes } from "@/lib/db/post-reads";
 import { ensurePostIndexes } from "@/lib/db/posts";
 import { ensurePersonalityIndexes } from "@/lib/personalities";
 import {
@@ -44,6 +45,7 @@ export async function runSimulationTick(
     ensureWorldStateIndexes(),
     ensurePostIndexes(),
     ensureFollowIndexes(),
+    ensurePostReadIndexes(),
     ensurePersonalityIndexes(),
   ]);
 
