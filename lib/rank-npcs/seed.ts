@@ -2,7 +2,10 @@ import { getActiveRankNpcs } from "@/lib/personalities";
 import { loadRankNpcConfig } from "@/lib/rank-npcs/config";
 import { queueRankNpcAssetGeneration } from "@/lib/rank-npcs/assets";
 import { defaultRankNpcLog, type RankNpcLog } from "@/lib/rank-npcs/logger";
-import { queuePendingMirroredPostMedia } from "@/lib/rank-npcs/post-media";
+import {
+  queuePendingMirroredPostMedia,
+  waitForMirroredPostMediaJobs,
+} from "@/lib/rank-npcs/post-media";
 import { reconcileRankNpcs } from "@/lib/rank-npcs/reconcile";
 import { syncActiveRankNpcs } from "@/lib/x/sync";
 
@@ -73,6 +76,9 @@ export async function seedRankNpcsFromConfig(options?: {
   if (pendingMedia > 0) {
     log(`Queued ${pendingMedia} pending post media job(s).`);
   }
+
+  log("Waiting for pixel art jobs to finish...");
+  await waitForMirroredPostMediaJobs();
 
   return { reconcile, sync, assets };
 }

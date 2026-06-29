@@ -11,6 +11,8 @@ import {
 import { defaultRankNpcLog, type RankNpcLog } from "@/lib/rank-npcs/logger";
 import type { Post } from "@/lib/types/post";
 
+const inFlightMediaJobs = new Set<Promise<void>>();
+
 function getPostMediaConcurrency(): number {
   const raw = process.env.RANK_NPC_POST_MEDIA_CONCURRENCY?.trim();
   const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
@@ -137,10 +139,24 @@ export async function generateMirroredPostMedia(
   }
 }
 
+function trackMediaJob(job: Promise<void>): Promise<void> {
+  inFlightMediaJobs.add(job);
+
+  return job.finally(() => {
+    inFlightMediaJobs.delete(job);
+  });
+}
+
+export async function waitForMirroredPostMediaJobs(): Promise<void> {
+  while (inFlightMediaJobs.size > 0) {
+    await Promise.allSettled([...inFlightMediaJobs]);
+  }
+}
+
 export function scheduleMirroredPostMediaGeneration(
   postIds: string[],
   options: { log?: RankNpcLog; awaitCompletion?: boolean } = {},
-): void {
+): Promise<void> | void {
   const log = options.log ?? defaultRankNpcLog;
   const awaitCompletion = options.awaitCompletion ?? false;
   const uniqueIds = [...new Set(postIds)];
@@ -151,23 +167,21 @@ export function scheduleMirroredPostMediaGeneration(
 
   log(`Queued async pixel art for ${uniqueIds.length} post(s).`);
 
-  const job = runWithConcurrency(
-    uniqueIds,
-    getPostMediaConcurrency(),
-    async (postId) => {
+  const job = trackMediaJob(
+    runWithConcurrency(uniqueIds, getPostMediaConcurrency(), async (postId) => {
       await generateMirroredPostMedia(postId, log);
-    },
+    }),
   );
 
   if (awaitCompletion) {
-    void job.then(() => {
+    return job.then(() => {
       log(`Finished ${uniqueIds.length} post media job(s).`);
     });
-  } else {
-    void job.catch((error) => {
-      console.error("Background post media generation failed:", error);
-    });
   }
+
+  void job.catch((error) => {
+    console.error("Background post media generation failed:", error);
+  });
 }
 
 export async function queuePendingMirroredPostMedia(

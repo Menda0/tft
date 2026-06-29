@@ -18,73 +18,86 @@ export async function POST(request: Request) {
   const writer = stream.writable.getWriter();
 
   void (async () => {
+    let streamClosed = false;
+
+    const writeEvent = async (data: unknown): Promise<void> => {
+      if (request.signal.aborted || streamClosed) {
+        return;
+      }
+
+      try {
+        await writer.write(formatSse(data));
+      } catch (error) {
+        streamClosed = true;
+
+        if (
+          !(error instanceof TypeError) ||
+          !/closed/i.test(error.message)
+        ) {
+          console.error("Rank NPC seed stream write failed:", error);
+        }
+      }
+    };
+
     try {
       const result = await seedRankNpcsFromConfig({
         log: (message) => {
-          if (request.signal.aborted) {
-            return;
-          }
-
-          void writer.write(
-            formatSse({
-              type: "log",
-              message,
-              at: new Date().toISOString(),
-            }),
-          );
+          void writeEvent({
+            type: "log",
+            message,
+            at: new Date().toISOString(),
+          });
         },
       });
 
       if (request.signal.aborted) {
-        await writer.write(
-          formatSse({
-            type: "cancelled",
-            message: "Seed cancelled.",
-          }),
-        );
+        await writeEvent({
+          type: "cancelled",
+          message: "Seed cancelled.",
+        });
         return;
       }
 
-      await writer.write(
-        formatSse({
-          type: "done",
-          reconcile: result.reconcile,
-          sync: {
-            synced: result.sync.synced,
-            newPosts: result.sync.newPosts,
-            skipped: result.sync.skipped,
-            skipReason: result.sync.skipReason,
-            errors: result.sync.errors,
-            createdPosts: result.sync.results.flatMap((entry) =>
-              entry.createdPosts.map((post) => ({
-                handle: entry.knockOffHandle,
-                ...post,
-              })),
-            ),
-          },
-          assets: result.assets,
-        }),
-      );
+      await writeEvent({
+        type: "done",
+        reconcile: result.reconcile,
+        sync: {
+          synced: result.sync.synced,
+          newPosts: result.sync.newPosts,
+          skipped: result.sync.skipped,
+          skipReason: result.sync.skipReason,
+          errors: result.sync.errors,
+          createdPosts: result.sync.results.flatMap((entry) =>
+            entry.createdPosts.map((post) => ({
+              handle: entry.knockOffHandle,
+              ...post,
+            })),
+          ),
+        },
+        assets: result.assets,
+      });
     } catch (error) {
       if (request.signal.aborted) {
-        await writer.write(
-          formatSse({
-            type: "cancelled",
-            message: "Seed cancelled.",
-          }),
-        );
+        await writeEvent({
+          type: "cancelled",
+          message: "Seed cancelled.",
+        });
         return;
       }
 
       console.error("Rank NPC seed stream failed:", error);
-      await writer.write(
-        formatSse({
-          type: "error",
-          message: "Rank NPC seed failed.",
-        }),
-      );
+      await writeEvent({
+        type: "error",
+        message: "Rank NPC seed failed.",
+      });
     } finally {
-      await writer.close();
+      streamClosed = true;
+
+      try {
+        await writer.close();
+      } catch {
+        // Stream may already be closed if the client disconnected.
+      }
     }
   })();
 
