@@ -19,30 +19,30 @@ import {
   generateDescriptionRequest,
   listPersonalitiesRequest,
 } from "@/lib/personalities/client";
-import type { Personality } from "@/lib/types/personality";
+import type { PersonalityListItem } from "@/lib/profile/social-rank";
 
-function needsAvatarGeneration(personality: Personality): boolean {
+function needsAvatarGeneration(personality: PersonalityListItem): boolean {
   return (
     personality.avatarStatus === "pending" ||
     personality.avatarStatus === "failed"
   );
 }
 
-function isAvatarInProgress(personality: Personality): boolean {
+function isAvatarInProgress(personality: PersonalityListItem): boolean {
   return (
     personality.avatarStatus === "pending" ||
     personality.avatarStatus === "generating"
   );
 }
 
-function isDescriptionInProgress(personality: Personality): boolean {
+function isDescriptionInProgress(personality: PersonalityListItem): boolean {
   return (
     personality.descriptionStatus === "pending" ||
     personality.descriptionStatus === "generating"
   );
 }
 
-function needsDescriptionGeneration(personality: Personality): boolean {
+function needsDescriptionGeneration(personality: PersonalityListItem): boolean {
   return (
     personality.descriptionStatus === "pending" ||
     personality.descriptionStatus === "failed"
@@ -52,7 +52,7 @@ function needsDescriptionGeneration(personality: Personality): boolean {
 export function PersonalitiesList() {
   const router = useRouter();
   const { user, token, isReady } = useAuth();
-  const [personalities, setPersonalities] = useState<Personality[]>([]);
+  const [personalities, setPersonalities] = useState<PersonalityListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const generationStarted = useRef(new Set<string>());
@@ -241,6 +241,9 @@ export function PersonalitiesList() {
                     </p>
                   ) : null}
                   <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="pixel-border-thin bg-[#1d2b53] px-2 py-0.5 pixel-heading text-[8px] text-[#29adff]">
+                      {personality.socialRankLabel.toUpperCase()}
+                    </span>
                     <span className="pixel-border-thin bg-[#1d2b53] px-2 py-0.5 pixel-heading text-[8px] text-[#ffa300]">
                       {personality.stats.socialScore.toLocaleString()} CLOUT
                     </span>

@@ -155,6 +155,28 @@ export async function getPersonalityCount(): Promise<number> {
   return collection.countDocuments();
 }
 
+export async function getGlobalSocialScoreLeaderboard(): Promise<
+  Array<{ id: string; socialScore: number }>
+> {
+  const collection = await getPersonalitiesCollection();
+  const personalities = await collection
+    .find({}, { projection: { id: 1, stats: 1 } })
+    .toArray();
+
+  return personalities
+    .map((personality) => ({
+      id: personality.id,
+      socialScore: normalizeStoredStats(personality.stats).socialScore,
+    }))
+    .sort((a, b) => {
+      if (b.socialScore !== a.socialScore) {
+        return b.socialScore - a.socialScore;
+      }
+
+      return a.id.localeCompare(b.id);
+    });
+}
+
 export async function getSocialScoreGlobalRank(
   personalityId: string,
 ): Promise<number> {

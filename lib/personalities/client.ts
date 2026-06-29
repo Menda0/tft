@@ -1,5 +1,14 @@
 import { profileKindUsesIdentity } from "@/lib/avatars/page-kind";
-import type { Archetype, Gender, PageKind, Personality, PoliticalSwing, Pronouns, Traits } from "@/lib/types/personality";
+import type { PersonalityListItem } from "@/lib/profile/social-rank";
+import type {
+  Archetype,
+  Gender,
+  PageKind,
+  Personality,
+  PoliticalSwing,
+  Pronouns,
+  Traits,
+} from "@/lib/types/personality";
 
 export type CreatePersonalityPayload = {
   name: string;
@@ -22,14 +31,14 @@ function authHeaders(token: string): HeadersInit {
 export async function listPersonalitiesRequest(
   token: string,
 ): Promise<
-  { ok: true; personalities: Personality[] } | { ok: false; error: string }
+  { ok: true; personalities: PersonalityListItem[] } | { ok: false; error: string }
 > {
   const response = await fetch("/api/personalities", {
     headers: authHeaders(token),
   });
 
   const data = (await response.json()) as {
-    personalities?: Personality[];
+    personalities?: PersonalityListItem[];
     error?: string;
   };
 

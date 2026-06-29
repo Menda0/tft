@@ -5,6 +5,7 @@ import {
   insertPersonality,
   normalizePersonality,
 } from "@/lib/personalities";
+import { attachSocialRanksToPersonalities } from "@/lib/profile/social-rank";
 import { getAuthUser } from "@/lib/auth/server";
 import { authError } from "@/lib/auth/responses";
 import {
@@ -83,7 +84,9 @@ export async function GET(request: Request) {
       .toArray();
 
     return Response.json({
-      personalities: personalities.map(normalizePersonality),
+      personalities: await attachSocialRanksToPersonalities(
+        personalities.map(normalizePersonality),
+      ),
     });
   } catch (error) {
     console.error("List personalities failed:", error);
