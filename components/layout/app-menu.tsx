@@ -52,6 +52,13 @@ export function AppMenu() {
 
         {menuOpen ? (
           <div className="absolute top-[calc(100%+8px)] right-0 z-50 w-52 pixel-border bg-[#1d2b53] pixel-shadow-sm">
+            <Link
+              href="/"
+              onClick={() => setMenuOpen(false)}
+              className="block w-full border-b-2 border-[#fff1e8] px-3 py-3 text-left text-sm text-[#fff1e8] transition-colors hover:bg-[#29366f]"
+            >
+              Posts
+            </Link>
             {user ? (
               <>
                 <div className="border-b-2 border-[#fff1e8] px-3 py-3">
