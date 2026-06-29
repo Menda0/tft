@@ -1,0 +1,80 @@
+import { PROJECT_NAME } from "@/lib/brand";
+import { getOpenAIClient, getTextModel } from "@/lib/openai/client";
+import { PostGenerationError } from "@/lib/openai/post";
+import { getRankNpcRealName } from "@/lib/personalities/rank-npc";
+import type { Post } from "@/lib/types/post";
+import type { Personality } from "@/lib/types/personality";
+
+export type RankNpcReplyTone = "agree" | "disagree";
+
+function normalizeReplyContent(text: string): string {
+  return text
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .replace(/\s+/g, " ")
+    .slice(0, 280);
+}
+
+function buildRankNpcReplyPrompt(
+  npc: Personality,
+  targetPost: Post,
+  tone: RankNpcReplyTone,
+): string {
+  const realName = getRankNpcRealName(npc);
+  const toneLine =
+    tone === "agree"
+      ? "You agree with this post. Reply in support while sounding exactly like the real person would."
+      : "You disagree with this post. Push back sharply while sounding exactly like the real person would.";
+
+  return [
+    `You are ${npc.name} (@${npc.handle}), a knock-off parody account.`,
+    `You are a parody version of ${realName}.`,
+    `Write this reply exactly as ${realName} would — their voice, tone, mannerisms, and worldview — while staying in the knock-off persona.`,
+    "",
+    `Reply to @${targetPost.author.handle}:`,
+    `"${targetPost.content}"`,
+    "",
+    toneLine,
+    "Do not mention that you are AI.",
+    "Return only the reply text.",
+    "No hashtags, no quotes, no markdown.",
+    "Max 280 characters.",
+  ].join("\n");
+}
+
+export async function generateRankNpcReply(
+  npc: Personality,
+  targetPost: Post,
+  tone: RankNpcReplyTone,
+): Promise<string> {
+  const openai = getOpenAIClient();
+  const model = getTextModel();
+
+  const response = await openai.chat.completions.create({
+    model,
+    temperature: 0.95,
+    max_tokens: 120,
+    messages: [
+      {
+        role: "system",
+        content:
+          "You write short social media replies for knock-off celebrity parody accounts. Capture the real celebrity's voice faithfully.",
+      },
+      {
+        role: "user",
+        content: buildRankNpcReplyPrompt(npc, targetPost, tone),
+      },
+    ],
+  });
+
+  const content = response.choices[0]?.message?.content?.trim();
+
+  if (!content) {
+    throw new PostGenerationError(
+      "OpenAI did not return rank NPC reply content.",
+      `Model ${model} returned an empty response.`,
+    );
+  }
+
+  return normalizeReplyContent(content);
+}

@@ -1,9 +1,10 @@
 import {
+  getCompetitivePersonalityCount,
   getGlobalSocialScoreLeaderboard,
-  getPersonalityCount,
   getSocialScoreGlobalRank,
   normalizePersonality,
 } from "@/lib/personalities";
+import { isActiveRankNpc } from "@/lib/personalities/rank-npc";
 import {
   formatSocialRank,
   resolveSocialRank,
@@ -41,9 +42,21 @@ export async function resolvePersonalitySocialRank(
   personality: Personality,
 ): Promise<PersonalitySocialRank> {
   const normalized = normalizePersonality(personality);
+
+  if (isActiveRankNpc(normalized) && normalized.fixedSocialRank) {
+    const totalPersonalities = await getCompetitivePersonalityCount();
+
+    return {
+      rank: normalized.fixedSocialRank,
+      label: formatSocialRank(normalized.fixedSocialRank),
+      globalRank: 0,
+      totalPersonalities,
+    };
+  }
+
   const [globalRank, totalPersonalities] = await Promise.all([
     getSocialScoreGlobalRank(normalized.id),
-    getPersonalityCount(),
+    getCompetitivePersonalityCount(),
   ]);
 
   return buildRankFromContext(
@@ -58,7 +71,7 @@ export async function resolveSocialRanksForPersonalities(
 ): Promise<Map<string, PersonalitySocialRank>> {
   const [leaderboard, totalPersonalities] = await Promise.all([
     getGlobalSocialScoreLeaderboard(),
-    getPersonalityCount(),
+    getCompetitivePersonalityCount(),
   ]);
 
   const globalRankById = new Map<string, number>(

@@ -3,6 +3,7 @@ import type { Archetype } from "@/lib/personalities/archetypes";
 import type { Gender } from "@/lib/personalities/gender";
 import type { PoliticalSwing } from "@/lib/personalities/political-swing";
 import type { Pronouns } from "@/lib/personalities/pronouns";
+import type { SocialRank } from "@/lib/scoring/ranks";
 
 export type { PageKind };
 
@@ -51,6 +52,15 @@ export type AvatarStatus = "pending" | "generating" | "ready" | "failed";
 
 export type DescriptionStatus = AvatarStatus;
 
+export type PersonalityRole = "player" | "rank_npc";
+
+export type XSyncState = {
+  xHandle: string;
+  realName?: string;
+  lastSyncedTweetId: string | null;
+  lastSyncedAt: Date | null;
+};
+
 export type Personality = {
   id: string;
   name: string;
@@ -72,4 +82,8 @@ export type Personality = {
   stats: Stats;
   memory: MemoryItem[];
   relationships: Record<string, Relationship>;
+  role?: PersonalityRole;
+  rankNpcActive?: boolean;
+  xSync?: XSyncState;
+  fixedSocialRank?: SocialRank;
 };

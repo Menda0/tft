@@ -4,6 +4,7 @@ import {
   getPersonalitiesCollection,
   normalizePersonality,
 } from "@/lib/personalities";
+import { isRankNpc } from "@/lib/personalities/rank-npc";
 import { normalizeStoredStats } from "@/lib/personalities/stats";
 import { resolveSocialRanksForPersonalities } from "@/lib/profile/social-rank";
 import type { SocialRank } from "@/lib/scoring/ranks";
@@ -99,7 +100,14 @@ export async function getTopPersonalitiesByClout(
   limit = LEADERBOARD_LIMIT,
 ): Promise<PersonalityLeaderboardEntry[]> {
   const collection = await getPersonalitiesCollection();
-  const personalities = await collection.find().toArray();
+  const personalities = await collection
+    .find({
+      $or: [
+        { role: { $exists: false } },
+        { role: { $ne: "rank_npc" as const } },
+      ],
+    })
+    .toArray();
 
   return sortPersonalitiesByScore(
     personalities,
@@ -112,7 +120,14 @@ export async function getTopPersonalitiesByHeat(
   limit = LEADERBOARD_LIMIT,
 ): Promise<PersonalityLeaderboardEntry[]> {
   const collection = await getPersonalitiesCollection();
-  const personalities = await collection.find().toArray();
+  const personalities = await collection
+    .find({
+      $or: [
+        { role: { $exists: false } },
+        { role: { $ne: "rank_npc" as const } },
+      ],
+    })
+    .toArray();
 
   return sortPersonalitiesByScore(
     personalities,
@@ -133,7 +148,7 @@ async function getTopFarmersByMetric(
   for (const raw of personalities) {
     const personality = normalizePersonality(raw);
 
-    if (!personality.ownerId) {
+    if (isRankNpc(personality) || !personality.ownerId) {
       continue;
     }
 

@@ -16,10 +16,12 @@ import {
 import { getDailyPostLimit } from "./limits";
 import { throwIfCancelled } from "./cancel";
 import { applyPersonalityUpdate } from "./personality-state";
+import { rankNpcEngagementPass } from "./rank-npc-engage";
 import { readPostsAndEngage } from "./read-posts";
 import { refreshTrendingTopics } from "./trending-state";
 import type { SimulationWorld } from "./world";
 import { runWithConcurrency, shuffle } from "./utils";
+import { isRankNpc } from "@/lib/personalities/rank-npc";
 import type { Personality } from "@/lib/types/personality";
 
 export type { SimulationLogFn, TickLogEntry, TickLogLevel } from "./logger";
@@ -86,6 +88,10 @@ async function runEvolutionPass(
   log: SimulationLogFn,
 ): Promise<void> {
   for (const personality of world.personalities) {
+    if (isRankNpc(personality)) {
+      continue;
+    }
+
     if (shouldAttemptEvolution()) {
       const patch = evolvePersonality(personality);
 
@@ -141,7 +147,9 @@ export async function simulationTick(
     log("warn", "No personalities to simulate.");
   }
 
-  const personalities = shuffle(world.personalities);
+  const personalities = shuffle(
+    world.personalities.filter((personality) => !isRankNpc(personality)),
+  );
 
   log("info", `Simulating ${personalities.length} personalities (read + optional action)`);
 
@@ -153,6 +161,10 @@ export async function simulationTick(
     },
     signal,
   );
+
+  throwIfCancelled(signal);
+
+  await rankNpcEngagementPass(world, log, signal);
 
   throwIfCancelled(signal);
 

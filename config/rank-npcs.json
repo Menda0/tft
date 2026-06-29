@@ -1,0 +1,226 @@
+{
+  "onRemove": "deactivate",
+  "initialPostCount": 3,
+  "celebrities": [
+    {
+      "xHandle": "elonmusk",
+      "realName": "Elon Musk",
+      "name": "Elon Tusk",
+      "handle": "elonmusktusk",
+      "fixedSocialRank": "icon",
+      "kind": "person",
+      "archetype": "tech_bro",
+      "followers": 50000000,
+      "socialScore": 500000
+    },
+    {
+      "xHandle": "BarackObama",
+      "realName": "Barack Obama",
+      "name": "Barack O'Drama",
+      "handle": "barackodrama",
+      "fixedSocialRank": "icon",
+      "kind": "person",
+      "archetype": "politician",
+      "followers": 45000000,
+      "socialScore": 480000
+    },
+    {
+      "xHandle": "Cristiano",
+      "realName": "Cristiano Ronaldo",
+      "name": "Cristian Bananaldo",
+      "handle": "cristianbananaldo",
+      "fixedSocialRank": "icon",
+      "kind": "person",
+      "archetype": "fitness",
+      "followers": 40000000,
+      "socialScore": 450000
+    },
+    {
+      "xHandle": "taylorswift13",
+      "realName": "Taylor Swift",
+      "name": "Taylor Thrift",
+      "handle": "tylerthrift",
+      "fixedSocialRank": "icon",
+      "kind": "artist",
+      "archetype": "artist",
+      "followers": 38000000,
+      "socialScore": 420000
+    },
+    {
+      "xHandle": "rihanna",
+      "realName": "Rihanna",
+      "name": "Rihannah",
+      "handle": "rihannah",
+      "fixedSocialRank": "icon",
+      "kind": "artist",
+      "archetype": "artist",
+      "followers": 35000000,
+      "socialScore": 400000
+    },
+    {
+      "xHandle": "justinbieber",
+      "realName": "Justin Bieber",
+      "name": "Justin Beaver",
+      "handle": "justinbeaver",
+      "fixedSocialRank": "celebrity",
+      "kind": "artist",
+      "archetype": "artist",
+      "followers": 30000000,
+      "socialScore": 350000
+    },
+    {
+      "xHandle": "narendramodi",
+      "realName": "Narendra Modi",
+      "name": "Narendra Moodi",
+      "handle": "narendramoodi",
+      "fixedSocialRank": "celebrity",
+      "kind": "person",
+      "archetype": "politician",
+      "followers": 28000000,
+      "socialScore": 320000
+    },
+    {
+      "xHandle": "KimKardashian",
+      "realName": "Kim Kardashian",
+      "name": "Kim Carwashian",
+      "handle": "kimkardashianin",
+      "fixedSocialRank": "celebrity",
+      "kind": "person",
+      "archetype": "lifestyle",
+      "followers": 25000000,
+      "socialScore": 300000
+    },
+    {
+      "xHandle": "TheRock",
+      "realName": "Dwayne Johnson",
+      "name": "The Brock",
+      "handle": "thebrock",
+      "fixedSocialRank": "celebrity",
+      "kind": "person",
+      "archetype": "fitness",
+      "followers": 22000000,
+      "socialScore": 280000
+    },
+    {
+      "xHandle": "BillGates",
+      "realName": "Bill Gates",
+      "name": "Bill Windows",
+      "handle": "billwindows",
+      "fixedSocialRank": "celebrity",
+      "kind": "person",
+      "archetype": "tech_bro",
+      "followers": 20000000,
+      "socialScore": 260000
+    },
+    {
+      "xHandle": "MrBeast",
+      "realName": "MrBeast",
+      "name": "MrFeast",
+      "handle": "mrfeast",
+      "fixedSocialRank": "celebrity",
+      "kind": "person",
+      "archetype": "lifestyle",
+      "followers": 18000000,
+      "socialScore": 240000
+    },
+    {
+      "xHandle": "NASA",
+      "realName": "NASA",
+      "name": "NASUH",
+      "handle": "nasuh",
+      "fixedSocialRank": "celebrity",
+      "kind": "brand",
+      "archetype": "tech",
+      "followers": 16000000,
+      "socialScore": 220000
+    },
+    {
+      "xHandle": "YouTube",
+      "realName": "YouTube",
+      "name": "YohTube",
+      "handle": "yohtube",
+      "fixedSocialRank": "celebrity",
+      "kind": "brand",
+      "archetype": "tech",
+      "followers": 15000000,
+      "socialScore": 210000
+    },
+    {
+      "xHandle": "SpaceX",
+      "realName": "SpaceX",
+      "name": "SpaceY",
+      "handle": "spacey",
+      "fixedSocialRank": "celebrity",
+      "kind": "brand",
+      "archetype": "tech",
+      "followers": 14000000,
+      "socialScore": 200000
+    },
+    {
+      "xHandle": "CNN",
+      "realName": "CNN",
+      "name": "CCN",
+      "handle": "ccn_news",
+      "fixedSocialRank": "celebrity",
+      "kind": "news",
+      "archetype": "traditional",
+      "followers": 12000000,
+      "socialScore": 180000
+    },
+    {
+      "xHandle": "nytimes",
+      "realName": "The New York Times",
+      "name": "NY Gazette",
+      "handle": "nygazette",
+      "fixedSocialRank": "celebrity",
+      "kind": "news",
+      "archetype": "traditional",
+      "followers": 11000000,
+      "socialScore": 170000
+    },
+    {
+      "xHandle": "Oprah",
+      "realName": "Oprah Winfrey",
+      "name": "Oprah Winfreh",
+      "handle": "oprahwinfreh",
+      "fixedSocialRank": "celebrity",
+      "kind": "person",
+      "archetype": "lifestyle",
+      "followers": 10000000,
+      "socialScore": 160000
+    },
+    {
+      "xHandle": "sama",
+      "realName": "Sam Altman",
+      "name": "Sam Promptman",
+      "handle": "sampromptman",
+      "fixedSocialRank": "celebrity",
+      "kind": "person",
+      "archetype": "tech_bro",
+      "followers": 9000000,
+      "socialScore": 150000
+    },
+    {
+      "xHandle": "drake",
+      "realName": "Drake",
+      "name": "SodaPappi",
+      "handle": "sodapappi",
+      "fixedSocialRank": "celebrity",
+      "kind": "artist",
+      "archetype": "artist",
+      "followers": 8000000,
+      "socialScore": 140000
+    },
+    {
+      "xHandle": "jack",
+      "realName": "Jack Dorsey",
+      "name": "Jack Dorkey",
+      "handle": "jackdorkey",
+      "fixedSocialRank": "celebrity",
+      "kind": "person",
+      "archetype": "tech_bro",
+      "followers": 7000000,
+      "socialScore": 130000
+    }
+  ]
+}

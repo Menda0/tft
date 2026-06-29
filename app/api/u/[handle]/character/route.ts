@@ -1,4 +1,4 @@
-import { findPersonalityByHandle } from "@/lib/personalities";
+import { findPublicPersonalityByHandle } from "@/lib/personalities";
 import { loadProfileCharacterSheet } from "@/lib/profile/build-character";
 import { normalizeHandle } from "@/lib/personalities/validation";
 
@@ -10,7 +10,7 @@ export async function GET(_request: Request, context: RouteContext) {
   try {
     const { handle: rawHandle } = await context.params;
     const handle = normalizeHandle(rawHandle);
-    const personality = await findPersonalityByHandle(handle);
+    const personality = await findPublicPersonalityByHandle(handle);
 
     if (!personality) {
       return Response.json({ error: "Profile not found." }, { status: 404 });

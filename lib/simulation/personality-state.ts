@@ -1,4 +1,5 @@
 import { updatePersonality } from "@/lib/personalities";
+import { isRankNpc } from "@/lib/personalities/rank-npc";
 import type {
   MemoryItem,
   Personality,
@@ -132,6 +133,10 @@ export async function applyPersonalityUpdate(
 
   if (!personality) {
     return null;
+  }
+
+  if (isRankNpc(personality)) {
+    return personality;
   }
 
   const normalized = normalizePatch(personality, patch);

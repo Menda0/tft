@@ -28,6 +28,10 @@ export async function ensurePostIndexes(): Promise<void> {
     replyToPostId: 1,
     repostOfPostId: 1,
   });
+  await collection.createIndex(
+    { externalId: 1 },
+    { unique: true, sparse: true },
+  );
 }
 
 function isOriginalTopLevelPost(post: Pick<Post, "replyToPostId" | "repostOfPostId">): boolean {
@@ -84,6 +88,35 @@ export async function insertPost(
 
   await collection.insertOne(post);
   return post;
+}
+
+export async function findPostByExternalId(
+  externalId: string,
+): Promise<Post | null> {
+  const collection = await getPostsCollection();
+  return collection.findOne({ externalId });
+}
+
+export async function countMirroredPostsByPersonality(
+  personalityId: string,
+): Promise<number> {
+  const collection = await getPostsCollection();
+  return collection.countDocuments({
+    "author.personalityId": personalityId,
+    source: "mirrored",
+    replyToPostId: null,
+    repostOfPostId: null,
+  });
+}
+
+export async function deletePostsByPersonality(
+  personalityId: string,
+): Promise<number> {
+  const collection = await getPostsCollection();
+  const result = await collection.deleteMany({
+    "author.personalityId": personalityId,
+  });
+  return result.deletedCount;
 }
 
 export async function getTopLevelOriginalPostsSince(

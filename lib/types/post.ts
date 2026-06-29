@@ -5,6 +5,8 @@ export type PostStats = {
   views: number;
 };
 
+export type PostSource = "simulated" | "mirrored";
+
 export type PostAuthor = {
   personalityId: string;
   name: string;
@@ -23,6 +25,8 @@ export type Post = {
   stats: PostStats;
   replyToPostId: string | null;
   repostOfPostId: string | null;
+  source?: PostSource;
+  externalId?: string | null;
 };
 
 export function defaultPostStats(): PostStats {

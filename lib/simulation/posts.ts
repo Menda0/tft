@@ -7,6 +7,7 @@ import {
 } from "@/lib/db/posts";
 import { deleteFollow, hasFollow, insertFollow } from "@/lib/db/follows";
 import { updatePersonality } from "@/lib/personalities";
+import { isRankNpc } from "@/lib/personalities/rank-npc";
 import { generateLLMPost, generateLLMReply } from "@/lib/openai/post";
 import type { Post } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
@@ -143,10 +144,12 @@ export async function replyToSpecificPost(
   personality: Personality,
   target: Post,
   world: SimulationWorld,
-  options?: { tone?: ResponseTone },
+  options?: { tone?: ResponseTone; content?: string },
 ): Promise<Post | null> {
   try {
-    const content = await generateLLMReply(personality, target, options);
+    const content =
+      options?.content ??
+      (await generateLLMReply(personality, target, options));
     const reply = await insertPost({
       author: authorFromPersonality(personality),
       content,
@@ -187,14 +190,17 @@ export async function followAuthor(
   }
 
   const nextFollowers = target.stats.followers + 1;
-  await updatePersonality(target.id, {
-    stats: {
-      ...target.stats,
-      followers: nextFollowers,
-    },
-  });
 
-  target.stats.followers = nextFollowers;
+  if (!isRankNpc(target)) {
+    await updatePersonality(target.id, {
+      stats: {
+        ...target.stats,
+        followers: nextFollowers,
+      },
+    });
+    target.stats.followers = nextFollowers;
+  }
+
   return target;
 }
 
@@ -218,14 +224,17 @@ export async function unfollowAuthor(
   }
 
   const nextFollowers = Math.max(0, target.stats.followers - 1);
-  await updatePersonality(target.id, {
-    stats: {
-      ...target.stats,
-      followers: nextFollowers,
-    },
-  });
 
-  target.stats.followers = nextFollowers;
+  if (!isRankNpc(target)) {
+    await updatePersonality(target.id, {
+      stats: {
+        ...target.stats,
+        followers: nextFollowers,
+      },
+    });
+    target.stats.followers = nextFollowers;
+  }
+
   return target;
 }
 

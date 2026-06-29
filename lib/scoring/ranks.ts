@@ -121,3 +121,7 @@ export function getBestSocialRank(ranks: SocialRank[]): SocialRank {
     compareSocialRanks(current, best) > 0 ? current : best,
   );
 }
+
+export function isAtLeastInfluencer(rank: SocialRank): boolean {
+  return compareSocialRanks(rank, "influencer") >= 0;
+}

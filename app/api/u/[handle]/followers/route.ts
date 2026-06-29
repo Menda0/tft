@@ -1,5 +1,5 @@
 import { ensureFollowIndexes } from "@/lib/db/follows";
-import { findPersonalityByHandle } from "@/lib/personalities";
+import { findPublicPersonalityByHandle } from "@/lib/personalities";
 import { buildProfileFollowers } from "@/lib/profile/build-followers";
 import { normalizeHandle } from "@/lib/personalities/validation";
 
@@ -13,7 +13,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
     const { handle: rawHandle } = await context.params;
     const handle = normalizeHandle(rawHandle);
-    const personality = await findPersonalityByHandle(handle);
+    const personality = await findPublicPersonalityByHandle(handle);
 
     if (!personality) {
       return Response.json({ error: "Profile not found." }, { status: 404 });
