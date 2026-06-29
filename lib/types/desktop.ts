@@ -17,3 +17,30 @@ export type ThreadingTopicsPayload = {
   topics: ThreadingTopic[];
   updatedAt: string | null;
 };
+
+export type PersonalityLeaderboardEntry = {
+  rank: number;
+  id: string;
+  name: string;
+  handle: string;
+  ownerUsername: string;
+  avatarUrl: string | null;
+  avatarColor: string;
+  score: number;
+};
+
+export type FarmerLeaderboardEntry = {
+  rank: number;
+  userId: string;
+  username: string;
+  score: number;
+  botCount: number;
+};
+
+export type LeaderboardsPayload = {
+  personalitiesByClout: PersonalityLeaderboardEntry[];
+  farmersByClout: FarmerLeaderboardEntry[];
+  personalitiesByHeat: PersonalityLeaderboardEntry[];
+  farmersByHeat: FarmerLeaderboardEntry[];
+  updatedAt: string;
+};

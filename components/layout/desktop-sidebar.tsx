@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 
 import { getInitials } from "@/components/feed/post-author";
+import { LeaderboardsSection } from "@/components/layout/leaderboard-panel";
 import { ProfileLink } from "@/components/profile/profile-link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { fetchThreadingTopics } from "@/lib/desktop/client";
+import { fetchLeaderboards, fetchThreadingTopics } from "@/lib/desktop/client";
 import { PROJECT_NAME, PROJECT_TAGLINE } from "@/lib/brand";
 import { getPixelAvatarColor } from "@/lib/pixel-theme";
 import type {
+  LeaderboardsPayload,
   ThreadingTopic,
   ThreadingTopicParticipant,
 } from "@/lib/types/desktop";
@@ -16,6 +18,14 @@ import { cn } from "@/lib/utils";
 
 const REFRESH_INTERVAL_MS = 60_000;
 const MAX_VISIBLE_AVATARS = 5;
+
+const EMPTY_LEADERBOARDS: LeaderboardsPayload = {
+  personalitiesByClout: [],
+  farmersByClout: [],
+  personalitiesByHeat: [],
+  farmersByHeat: [],
+  updatedAt: "",
+};
 
 function ParticipantAvatar({
   participant,
@@ -88,28 +98,43 @@ function TopicRow({ topic }: { topic: ThreadingTopic }) {
 
 export function DesktopSidebar() {
   const [topics, setTopics] = useState<ThreadingTopic[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [topicsLoading, setTopicsLoading] = useState(true);
+  const [topicsError, setTopicsError] = useState<string | null>(null);
+  const [leaderboards, setLeaderboards] =
+    useState<LeaderboardsPayload>(EMPTY_LEADERBOARDS);
+  const [leaderboardsLoading, setLeaderboardsLoading] = useState(true);
+  const [leaderboardsError, setLeaderboardsError] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      const result = await fetchThreadingTopics();
+      const [topicsResult, leaderboardsResult] = await Promise.all([
+        fetchThreadingTopics(),
+        fetchLeaderboards(),
+      ]);
 
       if (cancelled) {
         return;
       }
 
-      if (!result.ok) {
-        setError(result.error);
-        setLoading(false);
-        return;
+      if (!topicsResult.ok) {
+        setTopicsError(topicsResult.error);
+      } else {
+        setTopics(topicsResult.payload.topics);
+        setTopicsError(null);
       }
+      setTopicsLoading(false);
 
-      setTopics(result.payload.topics);
-      setError(null);
-      setLoading(false);
+      if (!leaderboardsResult.ok) {
+        setLeaderboardsError(leaderboardsResult.error);
+      } else {
+        setLeaderboards(leaderboardsResult.payload);
+        setLeaderboardsError(null);
+      }
+      setLeaderboardsLoading(false);
     }
 
     void load();
@@ -146,10 +171,10 @@ export function DesktopSidebar() {
           THREADING TOPICS
         </h2>
 
-        {loading ? (
+        {topicsLoading ? (
           <p className="mt-3 text-xs text-[#83769a]">Loading...</p>
-        ) : error ? (
-          <p className="mt-3 text-xs text-[#ff004d]">{error}</p>
+        ) : topicsError ? (
+          <p className="mt-3 text-xs text-[#ff004d]">{topicsError}</p>
         ) : topics.length === 0 ? (
           <p className="mt-3 text-xs text-[#83769a]">No topics yet.</p>
         ) : (
@@ -160,6 +185,12 @@ export function DesktopSidebar() {
           </ul>
         )}
       </section>
+
+      <LeaderboardsSection
+        leaderboards={leaderboards}
+        loading={leaderboardsLoading}
+        error={leaderboardsError}
+      />
     </aside>
   );
 }

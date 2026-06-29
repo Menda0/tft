@@ -316,5 +316,6 @@ export async function ensurePersonalityIndexes(): Promise<void> {
   await collection.createIndex({ archetype: 1 });
   await collection.createIndex({ ownerId: 1 });
   await collection.createIndex({ "stats.socialScore": -1 });
+  await collection.createIndex({ "stats.controversy": -1 });
   await migrateInvalidPersonalityArchetypes();
 }
