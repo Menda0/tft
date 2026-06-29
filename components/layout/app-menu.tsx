@@ -81,6 +81,15 @@ export function AppMenu() {
                 >
                   Create personality
                 </Link>
+                {user.role === "admin" ? (
+                  <Link
+                    href="/admin/rank-npcs"
+                    onClick={() => setMenuOpen(false)}
+                    className="block w-full border-b-2 border-[#fff1e8] px-3 py-3 text-left text-sm text-[#fff1e8] transition-colors hover:bg-[#29366f]"
+                  >
+                    Parody NPCs
+                  </Link>
+                ) : null}
                 <button
                   type="button"
                   onClick={handleLogout}

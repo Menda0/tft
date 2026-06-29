@@ -51,6 +51,10 @@ function getAuthConfig(): { authToken: string; ct0: string } {
   return { authToken, ct0 };
 }
 
+export function isXAuthConfigured(): boolean {
+  return Boolean(process.env.X_AUTH_TOKEN?.trim() && process.env.X_CT0?.trim());
+}
+
 function buildHeaders(ct0: string, authToken: string): HeadersInit {
   return {
     authorization: `Bearer ${X_BEARER_TOKEN}`,
@@ -197,6 +201,43 @@ function parseTimelineEntry(entry: unknown): ScrapedTweet | null {
   return parseTweetResult(tweetResults?.result);
 }
 
+function collectTweetsDeep(payload: unknown): ScrapedTweet[] {
+  const tweets: ScrapedTweet[] = [];
+  const seen = new Set<string>();
+
+  function visit(value: unknown): void {
+    if (!value) {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        visit(item);
+      }
+      return;
+    }
+
+    if (typeof value !== "object") {
+      return;
+    }
+
+    const record = value as Record<string, unknown>;
+    const tweet = parseTweetResult(record);
+
+    if (tweet && !seen.has(tweet.id)) {
+      seen.add(tweet.id);
+      tweets.push(tweet);
+    }
+
+    for (const nested of Object.values(record)) {
+      visit(nested);
+    }
+  }
+
+  visit(payload);
+  return tweets;
+}
+
 function extractTweetsFromTimeline(payload: unknown): ScrapedTweet[] {
   const instructions =
     getNested(payload, [
@@ -217,7 +258,7 @@ function extractTweetsFromTimeline(payload: unknown): ScrapedTweet[] {
     ]);
 
   if (!Array.isArray(instructions)) {
-    return [];
+    return collectTweetsDeep(payload);
   }
 
   const tweets: ScrapedTweet[] = [];
@@ -242,6 +283,10 @@ function extractTweetsFromTimeline(payload: unknown): ScrapedTweet[] {
         tweets.push(tweet);
       }
     }
+  }
+
+  if (tweets.length === 0) {
+    return collectTweetsDeep(payload);
   }
 
   return tweets;

@@ -1,4 +1,5 @@
 import { syncAllRankNpcs } from "@/lib/x/sync";
+import { defaultRankNpcLog } from "@/lib/rank-npcs/logger";
 
 export const maxDuration = 300;
 
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await syncAllRankNpcs();
+    const result = await syncAllRankNpcs({ log: defaultRankNpcLog });
 
     return Response.json({
       reconcile: result.reconcile,

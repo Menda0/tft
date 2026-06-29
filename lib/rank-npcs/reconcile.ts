@@ -13,6 +13,7 @@ import {
 import { defaultPronounsForGender } from "@/lib/personalities/gender";
 import { createPersonalityId, normalizeStoredTraits } from "@/lib/personalities/validation";
 import type { RankNpcConfig, RankNpcConfigEntry } from "@/lib/rank-npcs/config";
+import { defaultRankNpcLog, type RankNpcLog } from "@/lib/rank-npcs/logger";
 import { ensureSystemUser } from "@/lib/system/owner";
 import type { Personality } from "@/lib/types/personality";
 
@@ -89,18 +90,23 @@ async function ensureHandleAvailable(
 async function upsertRankNpc(
   entry: RankNpcConfigEntry,
   ownerId: string,
+  log: RankNpcLog,
 ): Promise<"created" | "updated"> {
   const existing = await findRankNpcByXHandle(entry.xHandle);
 
   if (!existing) {
     await ensureHandleAvailable(entry.handle, "");
     await insertPersonality(buildPersonalityFromEntry(entry, ownerId));
+    log(
+      `Created @${entry.handle} (${entry.name}, parody of ${entry.realName}) — avatar pending`,
+    );
     return "created";
   }
 
   await ensureHandleAvailable(entry.handle, existing.id);
 
   const xHandleChanged = existing.xSync?.xHandle !== entry.xHandle;
+  const realNameChanged = existing.xSync?.realName !== entry.realName;
   const updates: Partial<Personality> = {
     name: entry.name,
     handle: entry.handle,
@@ -125,26 +131,46 @@ async function upsertRankNpc(
     },
   };
 
+  if (realNameChanged) {
+    updates.avatarStatus = "pending";
+    updates.avatarUrl = null;
+    log(
+      `Updated @${entry.handle} — realName changed, avatar will regenerate async`,
+    );
+  }
+
   await updatePersonality(existing.id, updates);
+
+  if (!realNameChanged) {
+    log(`Updated @${entry.handle} (${entry.name})`);
+  }
+
   return "updated";
 }
 
 async function removeRankNpc(
   personality: Personality,
   onRemove: RankNpcConfig["onRemove"],
+  log: RankNpcLog,
 ): Promise<"deactivated" | "deleted"> {
+  const handle = personality.handle;
+  const xHandle = personality.xSync?.xHandle ?? handle;
+
   if (onRemove === "delete") {
     await deletePostsByPersonality(personality.id);
     await deletePersonality(personality.id);
+    log(`Deleted rank NPC @${handle} (${xHandle})`);
     return "deleted";
   }
 
   await updatePersonality(personality.id, { rankNpcActive: false });
+  log(`Deactivated rank NPC @${handle} (${xHandle})`);
   return "deactivated";
 }
 
 export async function reconcileRankNpcs(
   config: RankNpcConfig,
+  log: RankNpcLog = defaultRankNpcLog,
 ): Promise<ReconcileResult> {
   await ensurePersonalityIndexes();
   const ownerId = await ensureSystemUser();
@@ -161,7 +187,7 @@ export async function reconcileRankNpcs(
   );
 
   for (const entry of config.celebrities) {
-    const action = await upsertRankNpc(entry, ownerId);
+    const action = await upsertRankNpc(entry, ownerId, log);
 
     if (action === "created") {
       result.created.push(entry.xHandle);
@@ -179,7 +205,7 @@ export async function reconcileRankNpcs(
       continue;
     }
 
-    const action = await removeRankNpc(personality, config.onRemove);
+    const action = await removeRankNpc(personality, config.onRemove, log);
 
     if (action === "deleted") {
       result.deleted.push(xHandle);

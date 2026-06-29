@@ -1,111 +1,72 @@
-import { storeAvatarImage } from "@/lib/avatars/store-avatar";
-import {
-  claimAvatarGeneration,
-  claimDescriptionGeneration,
-  getActiveRankNpcs,
-  normalizePersonality,
-  updatePersonality,
-} from "@/lib/personalities";
+import { getActiveRankNpcs } from "@/lib/personalities";
 import { loadRankNpcConfig } from "@/lib/rank-npcs/config";
+import { queueRankNpcAssetGeneration } from "@/lib/rank-npcs/assets";
+import { defaultRankNpcLog, type RankNpcLog } from "@/lib/rank-npcs/logger";
 import { reconcileRankNpcs } from "@/lib/rank-npcs/reconcile";
-import { generatePixelAvatar } from "@/lib/openai/avatar";
-import { generateProfileDescription } from "@/lib/openai/description";
 import { syncActiveRankNpcs } from "@/lib/x/sync";
 
-async function generateAssetsForPersonality(
-  personalityId: string,
-): Promise<void> {
-  const claimedDescription = await claimDescriptionGeneration(personalityId);
-
-  if (claimedDescription) {
-    try {
-      const description = await generateProfileDescription({
-        name: claimedDescription.name,
-        handle: claimedDescription.handle,
-        kind: claimedDescription.kind,
-        gender: claimedDescription.gender,
-        pronouns: claimedDescription.pronouns,
-        archetype: claimedDescription.archetype,
-        traits: claimedDescription.traits,
-        politicalSwing: claimedDescription.politicalSwing,
-        interests: claimedDescription.interests,
-      });
-
-      await updatePersonality(personalityId, {
-        description,
-        descriptionStatus: "ready",
-      });
-    } catch (error) {
-      console.error(
-        `Description generation failed for ${claimedDescription.handle}:`,
-        error,
-      );
-      await updatePersonality(personalityId, {
-        descriptionStatus: "failed",
-      });
-    }
-  }
-
-  const claimedAvatar = await claimAvatarGeneration(personalityId);
-
-  if (claimedAvatar) {
-    try {
-      const imageDataUrl = await generatePixelAvatar({
-        name: claimedAvatar.name,
-        handle: claimedAvatar.handle,
-        kind: claimedAvatar.kind,
-        gender: claimedAvatar.gender,
-        pronouns: claimedAvatar.pronouns,
-        archetype: claimedAvatar.archetype,
-        traits: claimedAvatar.traits,
-        interests: claimedAvatar.interests,
-      });
-      const avatarUrl = await storeAvatarImage({
-        personalityId: claimedAvatar.id,
-        handle: claimedAvatar.handle,
-        imageDataUrl,
-      });
-
-      await updatePersonality(personalityId, {
-        avatarUrl,
-        avatarStatus: "ready",
-      });
-    } catch (error) {
-      console.error(
-        `Avatar generation failed for ${claimedAvatar.handle}:`,
-        error,
-      );
-      await updatePersonality(personalityId, {
-        avatarStatus: "failed",
-      });
-    }
-  }
-}
-
-export async function seedRankNpcsFromConfig(): Promise<{
+export async function seedRankNpcsFromConfig(options?: {
+  log?: RankNpcLog;
+  awaitAvatars?: boolean;
+}): Promise<{
   reconcile: Awaited<ReturnType<typeof reconcileRankNpcs>>;
   sync: Awaited<ReturnType<typeof syncActiveRankNpcs>>;
+  assets: Awaited<ReturnType<typeof queueRankNpcAssetGeneration>>;
 }> {
+  const log = options?.log ?? defaultRankNpcLog;
+  const awaitAvatars = options?.awaitAvatars ?? true;
+
+  log("Loading rank NPC config...");
   const config = await loadRankNpcConfig();
-  const reconcile = await reconcileRankNpcs(config);
+  log(`Found ${config.celebrities.length} celebrities in config.`);
+
+  log("Reconciling rank NPC personalities...");
+  const reconcile = await reconcileRankNpcs(config, log);
+
+  log("Syncing mirrored posts from X...");
   const sync = await syncActiveRankNpcs({
     initialPostCount: config.initialPostCount,
+    log,
   });
 
-  const personalities = await getActiveRankNpcs();
+  if (sync.skipped) {
+    log(`X sync skipped: ${sync.skipReason}`);
+  } else {
+    log(
+      `X sync complete: ${sync.newPosts} new post(s), ${sync.errors.length} error(s).`,
+    );
+  }
 
-  for (const personality of personalities) {
-    const normalized = normalizePersonality(personality);
+  for (const result of sync.results) {
+    if (result.error) {
+      continue;
+    }
 
-    if (
-      normalized.avatarStatus === "pending" ||
-      normalized.avatarStatus === "failed" ||
-      normalized.descriptionStatus === "pending" ||
-      normalized.descriptionStatus === "failed"
-    ) {
-      await generateAssetsForPersonality(normalized.id);
+    if (result.createdPosts.length > 0) {
+      log(
+        `@${result.knockOffHandle}: ${result.createdPosts.length} post(s) created.`,
+      );
     }
   }
 
-  return { reconcile, sync };
+  const personalities = await getActiveRankNpcs();
+  const forceAvatarRegenerate =
+    process.env.RANK_NPC_REGENERATE_AVATARS?.trim() === "true";
+
+  if (forceAvatarRegenerate) {
+    log("RANK_NPC_REGENERATE_AVATARS=true — avatars will be regenerated.");
+  }
+
+  log(`Checking assets for ${personalities.length} active rank NPC(s)...`);
+  const assets = await queueRankNpcAssetGeneration(personalities, {
+    log,
+    forceAvatarRegenerate,
+    awaitAvatars,
+  });
+
+  log(
+    `Asset pass complete: ${assets.descriptions} bio(s) generated, ${assets.avatarsQueued} avatar(s) queued.`,
+  );
+
+  return { reconcile, sync, assets };
 }

@@ -228,17 +228,10 @@ function formatOpenAIError(error: unknown): string {
   return "Unknown OpenAI error";
 }
 
-export async function generatePixelAvatar(input: {
-  name: string;
-  handle: string;
-  kind?: PageKind;
-  gender: Gender;
-  pronouns: Pronouns;
-  archetype: Archetype | null;
-  traits: Traits;
-  interests: string[];
-}): Promise<string> {
-  const prompt = buildAvatarPromptFromInput(input);
+async function generateImageFromPrompt(
+  prompt: string,
+  proceduralFallback?: () => string,
+): Promise<string> {
   const openai = getOpenAIClient();
   const models = await resolveImageModels(openai);
   const errors: string[] = [];
@@ -253,12 +246,12 @@ export async function generatePixelAvatar(input: {
     }
   }
 
-  if (shouldUseProceduralFallback()) {
+  if (proceduralFallback && shouldUseProceduralFallback()) {
     console.warn(
       "OpenAI image generation failed; using procedural fallback because OPENAI_AVATAR_PROCEDURAL_FALLBACK=true.",
       errors.join(" | "),
     );
-    return generateProceduralAvatar(input);
+    return proceduralFallback();
   }
 
   const lastError = errors[errors.length - 1] ?? "Unknown OpenAI error.";
@@ -268,3 +261,19 @@ export async function generatePixelAvatar(input: {
     `${lastError} ${IMAGE_MODEL_HINT}`,
   );
 }
+
+export async function generatePixelAvatar(input: {
+  name: string;
+  handle: string;
+  kind?: PageKind;
+  gender: Gender;
+  pronouns: Pronouns;
+  archetype: Archetype | null;
+  traits: Traits;
+  interests: string[];
+}): Promise<string> {
+  const prompt = buildAvatarPromptFromInput(input);
+  return generateImageFromPrompt(prompt, () => generateProceduralAvatar(input));
+}
+
+export { generateImageFromPrompt };

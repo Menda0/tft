@@ -1,3 +1,5 @@
+import "./load-env";
+
 import { aggregateSocialScoreByPersonality } from "@/lib/db/posts";
 import {
   getAllPersonalities,

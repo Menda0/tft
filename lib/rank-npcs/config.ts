@@ -3,7 +3,11 @@ import path from "path";
 
 import { isPageKind, type PageKind } from "@/lib/avatars/page-kind";
 import { normalizeArchetype } from "@/lib/personalities/archetypes";
-import { isArchetypeAllowedForPageKind } from "@/lib/personalities/kind-archetypes";
+import {
+  coerceArchetypeForPageKind,
+  isArchetypeAllowedForPageKind,
+  pageKindUsesArchetype,
+} from "@/lib/personalities/kind-archetypes";
 import { normalizeHandle, validateHandle } from "@/lib/personalities/validation";
 import type { SocialRank } from "@/lib/scoring/ranks";
 import type { Archetype } from "@/lib/types/personality";
@@ -102,20 +106,26 @@ function parseEntry(raw: unknown, index: number): RankNpcConfigEntry {
 
   const kindRaw = String(entry.kind ?? "person");
   const kind: PageKind = isPageKind(kindRaw) ? kindRaw : "person";
-  const archetype =
+  const rawArchetype =
     entry.archetype == null || entry.archetype === ""
       ? null
       : normalizeArchetype(String(entry.archetype));
 
-  if (entry.archetype != null && entry.archetype !== "" && !archetype) {
+  if (entry.archetype != null && entry.archetype !== "" && !rawArchetype) {
     throw new Error(`celebrities[${index}].archetype is invalid.`);
   }
 
-  if (archetype && !isArchetypeAllowedForPageKind(kind, archetype)) {
+  if (
+    rawArchetype &&
+    pageKindUsesArchetype(kind) &&
+    !isArchetypeAllowedForPageKind(kind, rawArchetype)
+  ) {
     throw new Error(
       `celebrities[${index}].archetype does not fit kind "${kind}".`,
     );
   }
+
+  const archetype = coerceArchetypeForPageKind(kind, rawArchetype);
 
   return {
     xHandle,
