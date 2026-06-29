@@ -36,7 +36,7 @@ export function ThreadView({
           />
         </div>
         <div className="pl-[52px]">
-          <PostActions stats={thread.stats} />
+          <PostActions postId={thread.id} stats={thread.stats} />
         </div>
       </article>
 

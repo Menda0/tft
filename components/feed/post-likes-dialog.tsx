@@ -10,43 +10,43 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { fetchPostLikes } from "@/lib/feed/client";
 import { useInfiniteScrollObserver } from "@/lib/hooks/use-infinite-scroll-observer";
-import { fetchProfileFollowers } from "@/lib/profile/client";
 import type { AvatarStatus } from "@/lib/types/personality";
 import type { ProfileFollower } from "@/lib/types/profile";
 
-type FollowersDialogProps = {
-  handle: string;
-  followerCount: number;
+type PostLikesDialogProps = {
+  postId: string;
+  likeCount: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-function toAvatarSource(follower: ProfileFollower) {
+function toAvatarSource(liker: ProfileFollower) {
   return {
-    name: follower.name,
-    handle: follower.handle,
-    avatarUrl: follower.avatarUrl,
-    avatarStatus: (follower.avatarUrl ? "ready" : "pending") as AvatarStatus,
+    name: liker.name,
+    handle: liker.handle,
+    avatarUrl: liker.avatarUrl,
+    avatarStatus: (liker.avatarUrl ? "ready" : "pending") as AvatarStatus,
   };
 }
 
-export function FollowersDialog({
-  handle,
-  followerCount,
+export function PostLikesDialog({
+  postId,
+  likeCount,
   open,
   onOpenChange,
-}: FollowersDialogProps) {
-  const [followers, setFollowers] = useState<ProfileFollower[]>([]);
+}: PostLikesDialogProps) {
+  const [likers, setLikers] = useState<ProfileFollower[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const followersRef = useRef(followers);
+  const likersRef = useRef(likers);
 
   useEffect(() => {
-    followersRef.current = followers;
-  }, [followers]);
+    likersRef.current = likers;
+  }, [likers]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) {
@@ -55,8 +55,8 @@ export function FollowersDialog({
 
     setLoadingMore(true);
 
-    const result = await fetchProfileFollowers(handle, {
-      offset: followersRef.current.length,
+    const result = await fetchPostLikes(postId, {
+      offset: likersRef.current.length,
     });
 
     if (!result.ok) {
@@ -65,11 +65,11 @@ export function FollowersDialog({
       return;
     }
 
-    setFollowers((current) => [...current, ...result.followers]);
+    setLikers((current) => [...current, ...result.likers]);
     setHasMore(result.hasMore);
     setError(null);
     setLoadingMore(false);
-  }, [handle, hasMore, loadingMore]);
+  }, [hasMore, loadingMore, postId]);
 
   useEffect(() => {
     if (!open) {
@@ -78,14 +78,14 @@ export function FollowersDialog({
 
     let cancelled = false;
 
-    async function loadFollowers() {
+    async function loadLikers() {
       setLoading(true);
       setLoadingMore(false);
-      setFollowers([]);
+      setLikers([]);
       setHasMore(false);
       setError(null);
 
-      const result = await fetchProfileFollowers(handle);
+      const result = await fetchPostLikes(postId);
 
       if (cancelled) {
         return;
@@ -93,22 +93,22 @@ export function FollowersDialog({
 
       if (!result.ok) {
         setError(result.error);
-        setFollowers([]);
+        setLikers([]);
         setLoading(false);
         return;
       }
 
-      setFollowers(result.followers);
+      setLikers(result.likers);
       setHasMore(result.hasMore);
       setLoading(false);
     }
 
-    void loadFollowers();
+    void loadLikers();
 
     return () => {
       cancelled = true;
     };
-  }, [handle, open]);
+  }, [open, postId]);
 
   const loadMoreRef = useInfiniteScrollObserver({
     enabled: open,
@@ -116,7 +116,7 @@ export function FollowersDialog({
     loadingMore,
     hasMore,
     onLoadMore: loadMore,
-    deps: [followers.length],
+    deps: [likers.length],
   });
 
   return (
@@ -127,44 +127,42 @@ export function FollowersDialog({
       >
         <DialogHeader className="gap-1 border-b-[3px] border-[#fff1e8] bg-[#29366f] px-4 py-4">
           <DialogTitle className="pixel-heading text-[11px] text-[#ffa300] uppercase">
-            Followers
+            Likes
           </DialogTitle>
           <p className="text-sm text-[#c2c3c7]">
-            {followerCount.toLocaleString()} people follow @{handle}
+            {likeCount.toLocaleString()}{" "}
+            {likeCount === 1 ? "person liked this" : "people liked this"}
           </p>
         </DialogHeader>
 
         <div className="max-h-[min(50vh,24rem)] overflow-y-auto px-4 py-3">
           {loading ? (
-            <p className="py-4 text-sm text-[#83769a]">Loading followers...</p>
+            <p className="py-4 text-sm text-[#83769a]">Loading likes...</p>
           ) : error ? (
             <p className="py-4 text-sm text-[#ff004d]">{error}</p>
-          ) : followers.length === 0 ? (
-            <p className="py-4 text-sm text-[#83769a]">No followers yet.</p>
+          ) : likers.length === 0 ? (
+            <p className="py-4 text-sm text-[#83769a]">No likes yet.</p>
           ) : (
             <ul className="space-y-3">
-              {followers.map((follower) => (
-                <li key={follower.id}>
+              {likers.map((liker) => (
+                <li key={liker.id}>
                   <div className="flex items-center gap-3">
-                    <ProfileLink handle={follower.handle} className="shrink-0">
+                    <ProfileLink handle={liker.handle} className="shrink-0">
                       <PersonalityAvatar
-                        personality={toAvatarSource(follower)}
+                        personality={toAvatarSource(liker)}
                         size="sm"
                       />
                     </ProfileLink>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-bold text-[#ffa300]">
-                        <ProfileLink handle={follower.handle}>
-                          {follower.name}
+                        <ProfileLink handle={liker.handle}>
+                          {liker.name}
                         </ProfileLink>
                       </p>
                       <p className="truncate text-sm text-[#c2c3c7]">
-                        <ProfileLink handle={follower.handle}>
-                          @{follower.handle}
+                        <ProfileLink handle={liker.handle}>
+                          @{liker.handle}
                         </ProfileLink>
-                      </p>
-                      <p className="mt-0.5 text-xs text-[#83769a]">
-                        follows @{handle}
                       </p>
                     </div>
                   </div>
@@ -175,9 +173,7 @@ export function FollowersDialog({
           {hasMore ? (
             <div ref={loadMoreRef} className="py-4 text-center">
               {loadingMore ? (
-                <p className="text-sm text-[#83769a]">
-                  Loading more followers...
-                </p>
+                <p className="text-sm text-[#83769a]">Loading more likes...</p>
               ) : (
                 <p className="text-sm text-[#83769a]">Scroll for more</p>
               )}

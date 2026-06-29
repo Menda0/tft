@@ -72,14 +72,19 @@ export async function fetchProfilePosts(
 
 export async function fetchProfileFollowers(
   handle: string,
+  options: { limit?: number; offset?: number } = {},
 ): Promise<
-  { ok: true; followers: ProfileFollower[] } | { ok: false; error: string }
+  | { ok: true; followers: ProfileFollower[]; hasMore: boolean }
+  | { ok: false; error: string }
 > {
+  const limit = options.limit ?? PROFILE_PAGE_SIZE;
+  const offset = options.offset ?? 0;
   const response = await fetch(
-    `/api/u/${encodeURIComponent(handle)}/followers`,
+    `/api/u/${encodeURIComponent(handle)}/followers?limit=${limit}&offset=${offset}`,
   );
   const data = (await response.json()) as {
     followers?: ProfileFollower[];
+    hasMore?: boolean;
     error?: string;
   };
 
@@ -87,7 +92,11 @@ export async function fetchProfileFollowers(
     return { ok: false, error: data.error ?? "Could not load followers." };
   }
 
-  return { ok: true, followers: data.followers ?? [] };
+  if (!data.followers || typeof data.hasMore !== "boolean") {
+    return { ok: false, error: "Invalid server response." };
+  }
+
+  return { ok: true, followers: data.followers, hasMore: data.hasMore };
 }
 
 export async function fetchProfileCharacter(

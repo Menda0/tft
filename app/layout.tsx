@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Pixelify_Sans, Press_Start_2P } from "next/font/google";
 
-import { PROJECT_NAME, PROJECT_TAGLINE } from "@/lib/brand";
+import { BRAND_BG } from "@/lib/brand";
+import { siteMetadata } from "@/lib/metadata/site";
 import "./globals.css";
 
 const pixelBody = Pixelify_Sans({
@@ -17,9 +18,10 @@ const pixelHeading = Press_Start_2P({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: PROJECT_NAME,
-  description: PROJECT_TAGLINE,
+export const metadata: Metadata = siteMetadata;
+
+export const viewport: Viewport = {
+  themeColor: BRAND_BG,
 };
 
 export default function RootLayout({

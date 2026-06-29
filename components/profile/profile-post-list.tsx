@@ -72,7 +72,7 @@ export function ProfilePostList({
             <p className="mt-1 text-xs text-[#83769a]">{item.timestamp}</p>
             {item.stats ? (
               <div onClick={(event) => event.preventDefault()}>
-                <PostActions stats={item.stats} />
+                <PostActions postId={item.id} stats={item.stats} />
               </div>
             ) : null}
           </Link>

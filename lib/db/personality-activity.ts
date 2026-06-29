@@ -21,6 +21,46 @@ export async function ensurePersonalityActivityIndexes(): Promise<void> {
   const collection = await getPersonalityActivityCollection();
   await collection.createIndex({ id: 1 }, { unique: true });
   await collection.createIndex({ personalityId: 1, at: -1 });
+  await collection.createIndex({ type: 1, postId: 1, at: -1 });
+}
+
+export type PostLikerRow = {
+  personalityId: string;
+  likedAt: Date;
+};
+
+export async function getPostLikersPage(
+  postId: string,
+  limit: number,
+  offset: number,
+): Promise<PostLikerRow[]> {
+  const collection = await getPersonalityActivityCollection();
+  const rows = await collection
+    .aggregate<{ _id: string; likedAt: Date }>([
+      {
+        $match: {
+          type: "like_received",
+          postId,
+          actorPersonalityId: { $exists: true, $ne: null },
+        },
+      },
+      { $sort: { at: -1 } },
+      {
+        $group: {
+          _id: "$actorPersonalityId",
+          likedAt: { $first: "$at" },
+        },
+      },
+      { $sort: { likedAt: -1 } },
+      { $skip: offset },
+      { $limit: limit },
+    ])
+    .toArray();
+
+  return rows.map((row) => ({
+    personalityId: row._id,
+    likedAt: row.likedAt,
+  }));
 }
 
 export type RecordActivityInput = {

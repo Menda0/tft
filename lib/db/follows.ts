@@ -81,11 +81,13 @@ export async function getFollowingIds(followerId: string): Promise<Set<string>> 
 export async function getFollowersForPersonality(
   personalityId: string,
   limit = 100,
+  offset = 0,
 ): Promise<Follow[]> {
   const collection = await getFollowsCollection();
   return collection
     .find({ followingId: personalityId })
     .sort({ createdAt: -1 })
+    .skip(offset)
     .limit(limit)
     .toArray();
 }

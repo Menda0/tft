@@ -1,4 +1,5 @@
 import type { FeedThread } from "@/lib/types/post";
+import type { ProfileFollower } from "@/lib/types/profile";
 import { PAGE_SIZE } from "@/lib/pagination";
 
 export type FeedTab = "threading" | "all";
@@ -66,4 +67,33 @@ export async function fetchThread(
   }
 
   return { ok: true, thread: data.thread, hasMore: data.hasMore };
+}
+
+export async function fetchPostLikes(
+  postId: string,
+  options: FetchFeedOptions = {},
+): Promise<
+  | { ok: true; likers: ProfileFollower[]; hasMore: boolean }
+  | { ok: false; error: string }
+> {
+  const limit = options.limit ?? FEED_PAGE_SIZE;
+  const offset = options.offset ?? 0;
+  const response = await fetch(
+    `/api/posts/${encodeURIComponent(postId)}/likes?limit=${limit}&offset=${offset}`,
+  );
+  const data = (await response.json()) as {
+    likers?: ProfileFollower[];
+    hasMore?: boolean;
+    error?: string;
+  };
+
+  if (!response.ok) {
+    return { ok: false, error: data.error ?? "Could not load likes." };
+  }
+
+  if (!data.likers || typeof data.hasMore !== "boolean") {
+    return { ok: false, error: "Invalid server response." };
+  }
+
+  return { ok: true, likers: data.likers, hasMore: data.hasMore };
 }

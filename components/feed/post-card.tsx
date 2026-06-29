@@ -61,7 +61,7 @@ export function PostCard({ thread, onOpen }: PostCardProps) {
         </button>
 
         <div className="pl-[52px]">
-          <PostActions stats={thread.stats} />
+          <PostActions postId={thread.id} stats={thread.stats} />
         </div>
       </div>
       <Separator className="h-[2px] bg-foreground" />
