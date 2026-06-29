@@ -1,10 +1,12 @@
 import {
   ensurePostIndexes,
   getPostById,
+  getRepliesForPost,
   getRepliesForPosts,
   getTopLevelPosts,
   getTrendingTopLevelPostsSince,
 } from "@/lib/db/posts";
+import { PAGE_SIZE } from "@/lib/pagination";
 import { avatarColorForHandle, formatRelativeTime } from "@/lib/feed/format";
 import type {
   FeedAuthor,
@@ -49,7 +51,9 @@ function toFeedThread(
 
 export async function buildThreadByPostId(
   postId: string,
-): Promise<FeedThread | null> {
+  replyLimit = PAGE_SIZE,
+  replyOffset = 0,
+): Promise<{ thread: FeedThread; hasMore: boolean } | null> {
   await ensurePostIndexes();
 
   const post = await getPostById(postId);
@@ -65,10 +69,19 @@ export async function buildThreadByPostId(
     return null;
   }
 
-  const replies = await getRepliesForPosts([rootPost.id]);
+  const replies = await getRepliesForPost(
+    rootPost.id,
+    replyLimit + 1,
+    replyOffset,
+  );
+  const hasMore = replies.length > replyLimit;
+  const pageReplies = hasMore ? replies.slice(0, replyLimit) : replies;
   const now = Date.now();
 
-  return toFeedThread(rootPost, replies, now);
+  return {
+    thread: toFeedThread(rootPost, pageReplies, now),
+    hasMore,
+  };
 }
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
@@ -99,19 +112,23 @@ async function buildFeedThreadsFromPosts(
   );
 }
 
-export async function buildFeedThreads(limit = 50): Promise<FeedThread[]> {
+export async function buildFeedThreads(
+  limit = 50,
+  offset = 0,
+): Promise<FeedThread[]> {
   await ensurePostIndexes();
 
-  const topLevelPosts = await getTopLevelPosts(limit);
+  const topLevelPosts = await getTopLevelPosts(limit, offset);
   return buildFeedThreadsFromPosts(topLevelPosts);
 }
 
 export async function buildThreadingFeedThreads(
   limit = 50,
+  offset = 0,
 ): Promise<FeedThread[]> {
   await ensurePostIndexes();
 
   const since = new Date(Date.now() - TWENTY_FOUR_HOURS_MS);
-  const topLevelPosts = await getTrendingTopLevelPostsSince(since, limit);
+  const topLevelPosts = await getTrendingTopLevelPostsSince(since, limit, offset);
   return buildFeedThreadsFromPosts(topLevelPosts);
 }

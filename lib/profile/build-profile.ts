@@ -105,18 +105,19 @@ export async function buildProfilePosts(
   personalityId: string,
   type: ProfilePostType,
   limit = 50,
+  offset = 0,
 ): Promise<ProfilePostItem[]> {
   let posts: Post[];
 
   switch (type) {
     case "posts":
-      posts = await getOriginalPostsByPersonality(personalityId, limit);
+      posts = await getOriginalPostsByPersonality(personalityId, limit, offset);
       break;
     case "replies":
-      posts = await getRepliesByPersonality(personalityId, limit);
+      posts = await getRepliesByPersonality(personalityId, limit, offset);
       break;
     case "reposts":
-      posts = await getRepostsByPersonality(personalityId, limit);
+      posts = await getRepostsByPersonality(personalityId, limit, offset);
       break;
   }
 

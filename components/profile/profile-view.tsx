@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ProfileCharacterSheetView } from "@/components/profile/profile-character-sheet";
 import { ProfileHeader } from "@/components/profile/profile-header";
@@ -55,8 +55,16 @@ export function ProfileView({ handle }: ProfileViewProps) {
   );
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [loadingCharacter, setLoadingCharacter] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const itemsRef = useRef(items);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   const handleBack = useCallback(() => {
     if (window.history.length > 1) {
@@ -66,6 +74,29 @@ export function ProfileView({ handle }: ProfileViewProps) {
 
     router.push("/");
   }, [router]);
+
+  const loadMore = useCallback(async () => {
+    if (!isPostTab(activeTab) || loadingMore || !hasMore) {
+      return;
+    }
+
+    setLoadingMore(true);
+
+    const result = await fetchProfilePosts(handle, activeTab, {
+      offset: itemsRef.current.length,
+    });
+
+    if (!result.ok) {
+      setError(result.error);
+      setLoadingMore(false);
+      return;
+    }
+
+    setItems((current) => [...current, ...result.items]);
+    setHasMore(result.hasMore);
+    setError(null);
+    setLoadingMore(false);
+  }, [activeTab, handle, hasMore, loadingMore]);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,6 +135,11 @@ export function ProfileView({ handle }: ProfileViewProps) {
 
     async function loadPosts() {
       setLoadingPosts(true);
+      setLoadingMore(false);
+      setItems([]);
+      setHasMore(false);
+      setError(null);
+
       const result = await fetchProfilePosts(handle, postTab);
 
       if (cancelled) return;
@@ -115,6 +151,7 @@ export function ProfileView({ handle }: ProfileViewProps) {
       }
 
       setItems(result.items);
+      setHasMore(result.hasMore);
       setError(null);
       setLoadingPosts(false);
     }
@@ -125,6 +162,33 @@ export function ProfileView({ handle }: ProfileViewProps) {
       cancelled = true;
     };
   }, [handle, activeTab]);
+
+  useEffect(() => {
+    if (!isPostTab(activeTab)) {
+      return;
+    }
+
+    const element = loadMoreRef.current;
+
+    if (!element || loadingPosts || loadingMore || !hasMore) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void loadMore();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [activeTab, hasMore, loadMore, loadingMore, loadingPosts, items.length]);
 
   useEffect(() => {
     if (activeTab !== "character") {
@@ -214,6 +278,9 @@ export function ProfileView({ handle }: ProfileViewProps) {
             <ProfilePostList
               items={items}
               emptyMessage={EMPTY_MESSAGES[activeTab]}
+              hasMore={hasMore}
+              loadingMore={loadingMore}
+              loadMoreRef={loadMoreRef}
             />
           )}
         </>

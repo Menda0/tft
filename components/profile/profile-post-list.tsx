@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { RefObject } from "react";
 
 import { PostActions } from "@/components/feed/post-actions";
 import { Separator } from "@/components/ui/separator";
@@ -7,9 +8,18 @@ import type { ProfilePostItem } from "@/lib/types/profile";
 type ProfilePostListProps = {
   items: ProfilePostItem[];
   emptyMessage: string;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  loadMoreRef?: RefObject<HTMLDivElement | null>;
 };
 
-export function ProfilePostList({ items, emptyMessage }: ProfilePostListProps) {
+export function ProfilePostList({
+  items,
+  emptyMessage,
+  hasMore = false,
+  loadingMore = false,
+  loadMoreRef,
+}: ProfilePostListProps) {
   if (items.length === 0) {
     return (
       <p className="px-4 py-6 text-sm text-[#83769a]">{emptyMessage}</p>
@@ -64,6 +74,15 @@ export function ProfilePostList({ items, emptyMessage }: ProfilePostListProps) {
           <Separator className="h-[2px] bg-foreground" />
         </article>
       ))}
+      {hasMore && loadMoreRef ? (
+        <div ref={loadMoreRef} className="px-4 py-6 text-center">
+          {loadingMore ? (
+            <p className="text-sm text-[#83769a]">Loading more posts...</p>
+          ) : (
+            <p className="text-sm text-[#83769a]">Scroll for more</p>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { PostCard } from "@/components/feed/post-card";
-import { ThreadView } from "@/components/feed/thread-view";
+import { PaginatedThreadView } from "@/components/feed/paginated-thread-view";
 import { AppBar } from "@/components/layout/app-bar";
 import { PROJECT_NAME } from "@/lib/brand";
-import { fetchFeed, type FeedTab } from "@/lib/feed/client";
+import { FEED_PAGE_SIZE, fetchFeed, type FeedTab } from "@/lib/feed/client";
 import type { FeedThread } from "@/lib/types/post";
 import { cn } from "@/lib/utils";
 
@@ -25,31 +25,73 @@ export function Feed() {
   const [threads, setThreads] = useState<FeedThread[]>([]);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const threadsRef = useRef(threads);
 
-  const loadFeed = useCallback(async (tab: FeedTab) => {
-    const result = await fetchFeed(tab);
+  useEffect(() => {
+    threadsRef.current = threads;
+  }, [threads]);
+
+  const refreshFeed = useCallback(async (tab: FeedTab) => {
+    const currentCount = threadsRef.current.length;
+    const limit = Math.max(currentCount, FEED_PAGE_SIZE);
+    const result = await fetchFeed(tab, { offset: 0, limit: limit + 1 });
 
     if (!result.ok) {
       console.error("Feed load failed:", result.error);
       setError(result.error);
-      setLoading(false);
       return;
     }
 
-    setThreads(result.threads);
+    const nextHasMore = result.threads.length > limit;
+
+    setThreads(result.threads.slice(0, limit));
+    setHasMore(nextHasMore);
     setError(null);
-    setLoading(false);
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) {
+      return;
+    }
+
+    setLoadingMore(true);
+
+    const result = await fetchFeed(activeTab, {
+      offset: threadsRef.current.length,
+    });
+
+    if (!result.ok) {
+      console.error("Feed load failed:", result.error);
+      setError(result.error);
+      setLoadingMore(false);
+      return;
+    }
+
+    setThreads((current) => [...current, ...result.threads]);
+    setHasMore(result.hasMore);
+    setError(null);
+    setLoadingMore(false);
+  }, [activeTab, hasMore, loadingMore]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       setLoading(true);
+      setLoadingMore(false);
+      setThreads([]);
+      setHasMore(false);
+      setError(null);
+
       const result = await fetchFeed(activeTab);
 
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
 
       if (!result.ok) {
         console.error("Feed load failed:", result.error);
@@ -59,31 +101,52 @@ export function Feed() {
       }
 
       setThreads(result.threads);
-      setError(null);
+      setHasMore(result.hasMore);
       setLoading(false);
     }
 
     void load();
 
     const intervalId = window.setInterval(() => {
-      void loadFeed(activeTab);
+      void refreshFeed(activeTab);
     }, 60_000);
 
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [activeTab, loadFeed]);
+  }, [activeTab, refreshFeed]);
 
-  const selectedThread = selectedThreadId
-    ? threads.find((thread) => thread.id === selectedThreadId) ?? null
-    : null;
+  useEffect(() => {
+    const element = loadMoreRef.current;
+
+    if (!element || loading || loadingMore || !hasMore) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void loadMore();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMore, loadMore, loading, loadingMore, threads.length]);
+
+  const selectedThread = selectedThreadId;
 
   if (selectedThread) {
     return (
       <>
         <AppBar title="Thread" onBack={() => setSelectedThreadId(null)} />
-        <ThreadView thread={selectedThread} />
+        <PaginatedThreadView postId={selectedThread} />
       </>
     );
   }
@@ -131,6 +194,15 @@ export function Feed() {
               onOpen={() => setSelectedThreadId(thread.id)}
             />
           ))}
+        {!loading && !error && hasMore && (
+          <div ref={loadMoreRef} className="px-4 py-6 text-center">
+            {loadingMore ? (
+              <p className="text-sm text-[#83769a]">Loading more posts...</p>
+            ) : (
+              <p className="text-sm text-[#83769a]">Scroll for more</p>
+            )}
+          </div>
+        )}
       </section>
     </>
   );

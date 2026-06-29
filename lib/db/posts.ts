@@ -107,11 +107,15 @@ export async function getRecentPosts(limit = 100): Promise<Post[]> {
   return collection.find().sort({ createdAt: -1 }).limit(limit).toArray();
 }
 
-export async function getTopLevelPosts(limit = 50): Promise<Post[]> {
+export async function getTopLevelPosts(
+  limit = 50,
+  skip = 0,
+): Promise<Post[]> {
   const collection = await getPostsCollection();
   return collection
     .find({ replyToPostId: null })
     .sort({ createdAt: -1 })
+    .skip(skip)
     .limit(limit)
     .toArray();
 }
@@ -119,6 +123,7 @@ export async function getTopLevelPosts(limit = 50): Promise<Post[]> {
 export async function getTrendingTopLevelPostsSince(
   since: Date,
   limit = 50,
+  skip = 0,
 ): Promise<Post[]> {
   const collection = await getPostsCollection();
 
@@ -143,9 +148,24 @@ export async function getTrendingTopLevelPostsSince(
         },
       },
       { $sort: { engagementScore: -1, createdAt: -1 } },
+      { $skip: skip },
       { $limit: limit },
       { $project: { engagementScore: 0 } },
     ])
+    .toArray();
+}
+
+export async function getRepliesForPost(
+  postId: string,
+  limit = 50,
+  skip = 0,
+): Promise<Post[]> {
+  const collection = await getPostsCollection();
+  return collection
+    .find({ replyToPostId: postId })
+    .sort({ createdAt: 1 })
+    .skip(skip)
+    .limit(limit)
     .toArray();
 }
 
@@ -178,6 +198,7 @@ export async function getPostsByIds(ids: string[]): Promise<Post[]> {
 export async function getOriginalPostsByPersonality(
   personalityId: string,
   limit = 50,
+  skip = 0,
 ): Promise<Post[]> {
   const collection = await getPostsCollection();
   return collection
@@ -187,6 +208,7 @@ export async function getOriginalPostsByPersonality(
       repostOfPostId: null,
     })
     .sort({ createdAt: -1 })
+    .skip(skip)
     .limit(limit)
     .toArray();
 }
@@ -194,6 +216,7 @@ export async function getOriginalPostsByPersonality(
 export async function getRepliesByPersonality(
   personalityId: string,
   limit = 50,
+  skip = 0,
 ): Promise<Post[]> {
   const collection = await getPostsCollection();
   return collection
@@ -202,6 +225,7 @@ export async function getRepliesByPersonality(
       replyToPostId: { $ne: null },
     })
     .sort({ createdAt: -1 })
+    .skip(skip)
     .limit(limit)
     .toArray();
 }
@@ -209,6 +233,7 @@ export async function getRepliesByPersonality(
 export async function getRepostsByPersonality(
   personalityId: string,
   limit = 50,
+  skip = 0,
 ): Promise<Post[]> {
   const collection = await getPostsCollection();
   return collection
@@ -217,6 +242,7 @@ export async function getRepostsByPersonality(
       repostOfPostId: { $ne: null },
     })
     .sort({ createdAt: -1 })
+    .skip(skip)
     .limit(limit)
     .toArray();
 }

@@ -1,6 +1,7 @@
 import { findPersonalityByHandle } from "@/lib/personalities";
 import { buildProfilePosts } from "@/lib/profile/build-profile";
 import { normalizeHandle } from "@/lib/personalities/validation";
+import { PAGE_SIZE, parsePositiveInt } from "@/lib/pagination";
 import type { ProfilePostType } from "@/lib/types/profile";
 
 type RouteContext = {
@@ -24,10 +25,20 @@ export async function GET(request: Request, context: RouteContext) {
     const type: ProfilePostType = VALID_TYPES.has(rawType as ProfilePostType)
       ? (rawType as ProfilePostType)
       : "posts";
+    const limit = parsePositiveInt(searchParams.get("limit"), PAGE_SIZE);
+    const offset = parsePositiveInt(searchParams.get("offset"), 0);
+    const items = await buildProfilePosts(
+      personality.id,
+      type,
+      limit + 1,
+      offset,
+    );
+    const hasMore = items.length > limit;
 
-    const items = await buildProfilePosts(personality.id, type);
-
-    return Response.json({ items });
+    return Response.json({
+      items: hasMore ? items.slice(0, limit) : items,
+      hasMore,
+    });
   } catch (error) {
     console.error("Profile posts load failed:", error);
     return Response.json({ error: "Could not load posts." }, { status: 500 });

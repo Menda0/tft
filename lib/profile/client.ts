@@ -5,6 +5,9 @@ import type {
   ProfilePostType,
   PublicPersonality,
 } from "@/lib/types/profile";
+import { PAGE_SIZE } from "@/lib/pagination";
+
+export const PROFILE_PAGE_SIZE = PAGE_SIZE;
 
 export async function fetchProfile(
   handle: string,
@@ -31,14 +34,19 @@ export async function fetchProfile(
 export async function fetchProfilePosts(
   handle: string,
   type: ProfilePostType,
+  options: { limit?: number; offset?: number } = {},
 ): Promise<
-  { ok: true; items: ProfilePostItem[] } | { ok: false; error: string }
+  | { ok: true; items: ProfilePostItem[]; hasMore: boolean }
+  | { ok: false; error: string }
 > {
+  const limit = options.limit ?? PROFILE_PAGE_SIZE;
+  const offset = options.offset ?? 0;
   const response = await fetch(
-    `/api/u/${encodeURIComponent(handle)}/posts?type=${encodeURIComponent(type)}`,
+    `/api/u/${encodeURIComponent(handle)}/posts?type=${encodeURIComponent(type)}&limit=${limit}&offset=${offset}`,
   );
   const data = (await response.json()) as {
     items?: ProfilePostItem[];
+    hasMore?: boolean;
     error?: string;
   };
 
@@ -46,7 +54,11 @@ export async function fetchProfilePosts(
     return { ok: false, error: data.error ?? "Could not load posts." };
   }
 
-  return { ok: true, items: data.items ?? [] };
+  if (!data.items || typeof data.hasMore !== "boolean") {
+    return { ok: false, error: "Invalid server response." };
+  }
+
+  return { ok: true, items: data.items, hasMore: data.hasMore };
 }
 
 export async function fetchProfileFollowers(
