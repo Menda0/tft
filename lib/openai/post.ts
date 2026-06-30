@@ -1,12 +1,18 @@
-import { PROJECT_NAME } from "@/lib/brand";
 import { getOpenAIClient, getTextModel } from "@/lib/openai/client";
 import { trackedChatCompletion } from "@/lib/openai/usage";
 import { researchTopicForPost } from "@/lib/openai/post-research";
+import {
+  buildReplyPrompt,
+  type ReplyEngagementContext,
+  type ReplyTone,
+} from "@/lib/openai/reply-prompt";
 import { formatPersonalityVoiceLabel } from "@/lib/personalities/kind-archetypes";
 import { formatPoliticalSwingDescription } from "@/lib/personalities/political-swing";
 import { formatMemoriesForPrompt } from "@/lib/simulation/memory";
-import type { Post } from "@/lib/types/post";
-import type { Personality, Traits } from "@/lib/types/personality";
+import type { Personality } from "@/lib/types/personality";
+
+export type { ReplyEngagementContext, ReplyTone } from "@/lib/openai/reply-prompt";
+export { buildReplyPrompt } from "@/lib/openai/reply-prompt";
 
 export class PostGenerationError extends Error {
   details: string;
@@ -19,10 +25,6 @@ export class PostGenerationError extends Error {
 }
 
 export type PostGenerationStage = "research" | "write";
-
-function traitSummary(traits: Traits): string {
-  return JSON.stringify(traits);
-}
 
 function normalizePostContent(text: string): string {
   return text
@@ -85,44 +87,6 @@ function buildPostPrompt(
   );
 
   return lines.join("\n");
-}
-
-export type ReplyTone = "agree" | "disagree";
-
-function buildReplyPrompt(
-  personality: Personality,
-  targetPost: Post,
-  tone?: ReplyTone,
-): string {
-  const interests =
-    personality.interests.length > 0
-      ? personality.interests.join(", ")
-      : "social media";
-
-  const toneLine =
-    tone === "agree"
-      ? "You agree with this post. Reply in support, add your take, or amplify their point."
-      : tone === "disagree"
-        ? "You disagree with this post. Reply to push back, correct, or argue — stay in character."
-        : "Write one short in-character reply.";
-
-  return [
-    `You are ${personality.name}.`,
-    `Archetype: ${formatPersonalityVoiceLabel(personality.kind, personality.archetype)}.`,
-    `Political swing: ${formatPoliticalSwingDescription(personality.politicalSwing)}.`,
-    //`Traits: ${traitSummary(personality.traits)}`,
-    `Interests: ${interests}`,
-    ...memoryPromptLines(personality),
-    "",
-    `Reply to this post from @${targetPost.author.handle}:`,
-    `"${targetPost.content}"`,
-    "",
-    toneLine,
-    "Do not mention that you are AI.",
-    "Return only the reply text.",
-    "No hashtags, no quotes, no markdown.",
-    "Max 280 characters.",
-  ].join("\n");
 }
 
 async function generateText(
@@ -193,11 +157,16 @@ export async function generateLLMPost(
 
 export async function generateLLMReply(
   personality: Personality,
-  targetPost: Post,
-  options?: { tone?: ReplyTone },
+  targetPost: Parameters<typeof buildReplyPrompt>[1],
+  options?: { tone?: ReplyTone; engagementContext?: ReplyEngagementContext },
 ): Promise<string> {
   return generateText(
-    buildReplyPrompt(personality, targetPost, options?.tone),
+    buildReplyPrompt(
+      personality,
+      targetPost,
+      options?.tone,
+      options?.engagementContext,
+    ),
     "You write short social media replies for fictional internet personalities.",
     "reply",
     personality.id,

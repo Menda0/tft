@@ -14,7 +14,7 @@ import {
   recordAuthoredRepostActivity,
   recordFollowActivityPair,
 } from "@/lib/personality-activity/record";
-import { generateLLMPost, generateLLMReply } from "@/lib/openai/post";
+import { generateLLMPost, generateLLMReply, type ReplyEngagementContext } from "@/lib/openai/post";
 import { refreshGrossCloutInWorld } from "@/lib/scoring/refresh-gross-clout";
 import { defaultPostStats, type Post } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
@@ -167,13 +167,20 @@ export async function replyToSpecificPost(
   personality: Personality,
   target: Post,
   world: SimulationWorld,
-  options?: { tone?: ResponseTone; content?: string },
+  options?: {
+    tone?: ResponseTone;
+    content?: string;
+    engagementContext?: ReplyEngagementContext;
+  },
 ): Promise<Post | null> {
   try {
     const tone = options?.tone ?? "agree";
     const content =
       options?.content ??
-      (await generateLLMReply(personality, target, options));
+      (await generateLLMReply(personality, target, {
+        tone,
+        engagementContext: options?.engagementContext,
+      }));
     const reply = await insertPost({
       author: authorFromPersonality(personality),
       content,

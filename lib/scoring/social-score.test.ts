@@ -122,8 +122,8 @@ describe("log-scaled clout", () => {
 });
 
 describe("decayControversy", () => {
-  it("reduces heat by about 2% per tick", () => {
-    assert.equal(decayControversy(96), 94);
+  it("reduces heat by about 6% per tick", () => {
+    assert.equal(decayControversy(96), 90);
   });
 
   it("does not drop below zero", () => {

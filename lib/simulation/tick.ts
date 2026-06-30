@@ -15,6 +15,7 @@ import {
 } from "./logger";
 import { getDailyPostLimit, getSimulationPersonalitiesPerTick } from "./limits";
 import { throwIfCancelled } from "./cancel";
+import { runHeatDecayPass } from "./heat-decay";
 import { applyPersonalityUpdate } from "./personality-state";
 import { rankNpcEngagementPass } from "./rank-npc-engage";
 import { readPostsAndEngage } from "./read-posts";
@@ -23,6 +24,7 @@ import type { SimulationWorld } from "./world";
 import { runWithConcurrency, shuffle } from "./utils";
 import { isRankNpc } from "@/lib/personalities/rank-npc";
 import type { Personality } from "@/lib/types/personality";
+import { getThreadingPosts } from "@/lib/feed/threading";
 
 export type { SimulationLogFn, TickLogEntry, TickLogLevel } from "./logger";
 export { createSimulationLogger, noopSimulationLog } from "./logger";
@@ -150,6 +152,18 @@ export async function simulationTick(
 
   throwIfCancelled(signal);
 
+  const threadingPosts = await getThreadingPosts();
+  world.threadingPostIds = new Set(threadingPosts.map((post) => post.id));
+
+  if (threadingPosts.length > 0) {
+    log(
+      "info",
+      `Threading set: ${threadingPosts.length} posts from last 6 hours.`,
+    );
+  }
+
+  throwIfCancelled(signal);
+
   const eligible = world.personalities.filter(
     (personality) => !isRankNpc(personality),
   );
@@ -189,6 +203,10 @@ export async function simulationTick(
   throwIfCancelled(signal);
 
   await runEvolutionPass(world, personalities, log);
+
+  throwIfCancelled(signal);
+
+  await runHeatDecayPass(world, log);
 
   throwIfCancelled(signal);
 

@@ -1,6 +1,16 @@
 import type { Post } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
+import {
+  classifyRelationship,
+} from "@/lib/profile/relationship-category";
+
+import {
+  computeAgreeProbabilityModifiers,
+  computeDisagreeCooldownMultiplier,
+  computeDisagreeProbabilityModifiers,
+  getRelationshipTowardAuthor,
+} from "./engagement-intensity";
 import { topicsMatchInterest } from "./topics";
 
 export type ResponseTone = "agree" | "disagree";
@@ -15,6 +25,7 @@ export type EngagementDecision = {
 };
 
 const MAX_PROBABILITY = 0.85;
+const THREADING_ENGAGEMENT_BOOST = 2.5;
 
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
@@ -182,32 +193,67 @@ type EngagementContext = {
   post: Post;
   author: Personality | null;
   alreadyFollowing: boolean;
+  isThreadingPost?: boolean;
+  recentDisagreeCount?: number;
 };
+
+function applyThreadingBoost(probability: number, isThreadingPost?: boolean): number {
+  if (!isThreadingPost) {
+    return probability;
+  }
+
+  return probability * THREADING_ENGAGEMENT_BOOST;
+}
 
 function roll(probability: number): boolean {
   return Math.random() < capProbability(probability);
 }
 
 export function decideEngagement(context: EngagementContext): EngagementDecision {
-  const { personality, post, author, alreadyFollowing } = context;
+  const {
+    personality,
+    post,
+    author,
+    alreadyFollowing,
+    isThreadingPost,
+    recentDisagreeCount = 0,
+  } = context;
   const alignment = scorePostAlignment(personality, post, author);
   const traits = personality.traits;
+  const relationship = getRelationshipTowardAuthor(
+    personality,
+    post.author.personalityId,
+  );
+  const category = classifyRelationship(relationship);
 
-  const likeProbability =
-    0.1 + alignment * 0.35 + traits.humor * 0.02;
-  const repostProbability =
-    0.05 + alignment * 0.25 + traits.radical * 0.02;
-  const respondAgreeProbability =
-    0.06 + alignment * 0.28 + traits.humor * 0.015;
-  const respondDisagreeProbability =
-    0.06 +
-    (1 - alignment) * 0.28 +
-    traits.aggression * 0.015 +
-    traits.troll * 0.015 +
-    traits.negacionist * 0.01 +
-    (author && author.stats.controversy > 30 ? 0.04 : 0);
-  const followProbability =
-    0.04 + alignment * 0.3 + traits.negacionist * 0.02;
+  const likeProbability = applyThreadingBoost(
+    0.1 + alignment * 0.35 + traits.humor * 0.02,
+    isThreadingPost,
+  );
+  const repostProbability = applyThreadingBoost(
+    0.025 + alignment * 0.25 + traits.radical * 0.02,
+    isThreadingPost,
+  );
+  let respondAgreeProbability = applyThreadingBoost(
+    0.03 +
+      alignment * 0.28 +
+      computeAgreeProbabilityModifiers(relationship, traits, category),
+    isThreadingPost,
+  );
+  let respondDisagreeProbability = applyThreadingBoost(
+    0.02 +
+      (1 - alignment) * 0.28 +
+      computeDisagreeProbabilityModifiers(relationship, traits, author, category),
+    isThreadingPost,
+  );
+  respondDisagreeProbability *= computeDisagreeCooldownMultiplier(
+    recentDisagreeCount,
+    relationship.rivalry,
+  );
+  const followProbability = applyThreadingBoost(
+    0.04 + alignment * 0.3 + traits.negacionist * 0.02,
+    isThreadingPost,
+  );
 
   const agreeRoll = Math.random();
   const disagreeRoll = Math.random();

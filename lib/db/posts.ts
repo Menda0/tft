@@ -863,3 +863,40 @@ export function toPostAuthor(input: {
     avatarUrl: input.avatarUrl,
   };
 }
+
+export async function countDisagreeRepliesFromToSince(
+  replierId: string,
+  authorId: string,
+  since: Date,
+): Promise<number> {
+  const collection = await getPostsCollection();
+  const rows = await collection
+    .aggregate<{ total: number }>([
+      {
+        $match: mergeNotDeletedPost({
+          "author.personalityId": replierId,
+          replyTone: "disagree",
+          replyToPostId: { $ne: null },
+          createdAt: { $gte: since },
+        }),
+      },
+      {
+        $lookup: {
+          from: COLLECTION,
+          localField: "replyToPostId",
+          foreignField: "id",
+          as: "parent",
+        },
+      },
+      { $unwind: "$parent" },
+      {
+        $match: {
+          "parent.author.personalityId": authorId,
+        },
+      },
+      { $count: "total" },
+    ])
+    .toArray();
+
+  return rows[0]?.total ?? 0;
+}

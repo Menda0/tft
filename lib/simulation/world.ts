@@ -9,6 +9,7 @@ export type SimulationWorld = {
   state: WorldState;
   personalities: Personality[];
   posts: Post[];
+  threadingPostIds: Set<string>;
 };
 
 export async function loadSimulationWorld(): Promise<SimulationWorld> {
@@ -24,6 +25,7 @@ export async function loadSimulationWorld(): Promise<SimulationWorld> {
       .map(normalizePersonality)
       .filter((personality) => !isPersonalityDeleted(personality)),
     posts,
+    threadingPostIds: new Set(),
   };
 }
 

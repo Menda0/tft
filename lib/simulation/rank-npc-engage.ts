@@ -33,10 +33,12 @@ import { weightedRandom, weightedSampleWithoutReplacement } from "./utils";
 type RankNpcAction = "like" | "follow" | "reply";
 
 const ACTION_WEIGHTS: Record<RankNpcAction, number> = {
-  like: 40,
+  like: 45,
   follow: 25,
-  reply: 35,
+  reply: 25,
 };
+
+const THREADING_POST_READ_BOOST = 5;
 
 function getRankNpcEngageChance(): number {
   const raw = process.env.RANK_NPC_ENGAGE_CHANCE?.trim();
@@ -49,7 +51,11 @@ function getRankNpcEngageChance(): number {
   return 0.03;
 }
 
-function postSelectionWeight(post: Post, author?: Personality | null): number {
+function postSelectionWeight(
+  post: Post,
+  author: Personality | null | undefined,
+  threadingPostIds: Set<string>,
+): number {
   const clout = author?.stats.socialScore ?? 0;
   const engagement =
     post.stats.likes * 2 +
@@ -57,7 +63,13 @@ function postSelectionWeight(post: Post, author?: Personality | null): number {
     post.stats.replies * 4 +
     post.stats.views * 0.05;
 
-  return (1 + Math.log1p(engagement)) * (1 + Math.log1p(clout / 500));
+  const baseWeight = (1 + Math.log1p(engagement)) * (1 + Math.log1p(clout / 500));
+
+  if (threadingPostIds.has(post.id)) {
+    return baseWeight * THREADING_POST_READ_BOOST;
+  }
+
+  return baseWeight;
 }
 
 function findAuthor(
@@ -212,7 +224,8 @@ export async function rankNpcEngagementPass(
     const [picked] = weightedSampleWithoutReplacement(
       eligiblePosts,
       1,
-      (entry) => postSelectionWeight(entry.post, entry.author),
+      (entry) =>
+        postSelectionWeight(entry.post, entry.author, world.threadingPostIds),
     );
 
     if (!picked) {

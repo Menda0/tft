@@ -3,9 +3,9 @@ import {
   getRepliesForPost,
   getTopLevelPosts,
   getTopPreviewRepliesForPosts,
-  getTrendingTopLevelPostsSince,
   syncPostStatsIfStale,
 } from "@/lib/db/posts";
+import { getThreadingPosts } from "@/lib/feed/threading";
 import { PAGE_SIZE } from "@/lib/pagination";
 import { avatarColorForHandle, formatRelativeTime } from "@/lib/feed/format";
 import type {
@@ -88,8 +88,6 @@ export async function buildThreadByPostId(
   };
 }
 
-const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
-
 async function buildFeedThreadsFromPosts(
   topLevelPosts: Post[],
 ): Promise<FeedThread[]> {
@@ -120,7 +118,6 @@ export async function buildThreadingFeedThreads(
   limit = 50,
   offset = 0,
 ): Promise<FeedThread[]> {
-  const since = new Date(Date.now() - TWENTY_FOUR_HOURS_MS);
-  const topLevelPosts = await getTrendingTopLevelPostsSince(since, limit, offset);
+  const topLevelPosts = await getThreadingPosts(limit, offset);
   return buildFeedThreadsFromPosts(topLevelPosts);
 }

@@ -1,5 +1,6 @@
 export const MAX_POSTS_PER_PERSONALITY_PER_DAY = 3;
 export const SIMULATION_PERSONALITIES_PER_TICK = 15;
+const DISAGREE_COOLDOWN_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const DEFAULT_TRENDING_TOPICS_TTL_MS = 6 * 60 * 60 * 1000;
 const DEFAULT_DAY_MS = 24 * 60 * 60 * 1000;
@@ -39,6 +40,14 @@ export function getDailyPostLimit(): number {
 
 export function startOfRollingWindow(now = Date.now()): Date {
   return new Date(now - getDailyPostWindowMs());
+}
+
+export function startOfThreadingWindow(now = Date.now()): Date {
+  return new Date(now - getTrendingTopicsTtlMs());
+}
+
+export function startOfDisagreeCooldownWindow(now = Date.now()): Date {
+  return new Date(now - DISAGREE_COOLDOWN_WINDOW_MS);
 }
 
 export function getSimulationPersonalitiesPerTick(): number {

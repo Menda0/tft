@@ -3,6 +3,7 @@ import type { Archetype } from "@/lib/personalities/archetypes";
 import type { Gender } from "@/lib/personalities/gender";
 import type { PoliticalSwing } from "@/lib/personalities/political-swing";
 import type { Pronouns } from "@/lib/personalities/pronouns";
+import type { RelationshipCategory } from "@/lib/profile/relationship-category";
 import type { Stats, Traits, MemoryItem } from "@/lib/types/personality";
 import type { SocialRank } from "@/lib/scoring/ranks";
 import type { PostMediaStatus, PostStats } from "@/lib/types/post";
@@ -45,6 +46,8 @@ export type ProfileRelationship = {
   rivalry: number;
   admiration: number;
   familiarity: number;
+  category: RelationshipCategory;
+  categoryLabel: string;
 };
 
 export type ProfileCharacterSheet = {

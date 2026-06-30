@@ -21,6 +21,7 @@ import {
   fetchProfileCharacterRelationships,
   PROFILE_CHARACTER_SECTION_PAGE_SIZE,
 } from "@/lib/profile/client";
+import type { RelationshipCategory } from "@/lib/profile/relationship-category";
 import type { MemoryItem, MemoryType, Traits } from "@/lib/types/personality";
 import type {
   ProfileCharacterSheet,
@@ -41,6 +42,8 @@ const MEMORY_TYPE_LABELS: Record<MemoryType, string> = {
   friendship: "FRIEND",
   rivalry: "RIVAL",
   scandal: "SCANDAL",
+  endorsement: "ENDORSE",
+  exchange: "EXCHANGE",
   milestone: "MILESTONE",
   belief_change: "SHIFT",
 };
@@ -58,6 +61,38 @@ const RELATIONSHIP_FIELDS: {
   { key: "admiration", label: "Admiration", color: "bg-[#ffa300]" },
   { key: "familiarity", label: "Familiarity", color: "bg-[#29adff]" },
 ];
+
+const RELATIONSHIP_CATEGORY_COLORS: Record<RelationshipCategory, string> = {
+  nemesis: "bg-[#ff004d] text-[#fff1e8]",
+  frenemy: "bg-[#ffa300] text-[#1d2b53]",
+  rival: "bg-[#ff6b6b] text-[#fff1e8]",
+  hater: "bg-[#7e2553] text-[#fff1e8]",
+  admirer: "bg-[#ffd700] text-[#1d2b53]",
+  ally: "bg-[#00e756] text-[#1d2b53]",
+  friend: "bg-[#29adff] text-[#1d2b53]",
+  skeptic: "bg-[#83769a] text-[#fff1e8]",
+  acquaintance: "bg-[#5f574f] text-[#fff1e8]",
+  stranger: "bg-[#3e3546] text-[#fff1e8]",
+};
+
+function RelationshipCategoryBadge({
+  label,
+  category,
+}: {
+  label: string;
+  category: RelationshipCategory;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-block px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide",
+        RELATIONSHIP_CATEGORY_COLORS[category],
+      )}
+    >
+      {label}
+    </span>
+  );
+}
 
 type ProfileCharacterSheetProps = {
   handle: string;
@@ -483,10 +518,16 @@ export function ProfileCharacterSheetView({
                     }}
                     size="sm"
                   />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-[#ffa300]">
-                      {relationship.name}
-                    </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-bold text-[#ffa300]">
+                        {relationship.name}
+                      </p>
+                      <RelationshipCategoryBadge
+                        label={relationship.categoryLabel}
+                        category={relationship.category}
+                      />
+                    </div>
                     <p className="truncate text-xs text-[#83769a]">
                       @{relationship.handle}
                     </p>

@@ -78,7 +78,7 @@ export async function recordRankNpcDisagreeReplyEffects(
   await applyPersonalityUpdate(world, target.id, {
     stats: {
       ...targetEntry.stats,
-      controversy: targetEntry.stats.controversy + 15,
+      controversy: targetEntry.stats.controversy + 6,
     },
     memory: milestoneMemory(npc, "pushed back on your post"),
   });

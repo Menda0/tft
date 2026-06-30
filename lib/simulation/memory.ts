@@ -5,10 +5,17 @@ import type {
   Relationship,
 } from "@/lib/types/personality";
 
+import {
+  computeDisagreeIntensity,
+  computeEndorsementImportance,
+  computeExchangeImportance,
+  computeAgreeIntensity,
+} from "./engagement-intensity";
+
 export const MAX_STORED_MEMORIES = 25;
 export const MAX_PROMPT_MEMORIES = 6;
 
-const RIVALRY_THRESHOLD = 7;
+export const RIVALRY_THRESHOLD = 7;
 const FRIENDSHIP_THRESHOLD = 7;
 
 function clampImportance(value: number): number {
@@ -142,21 +149,54 @@ export function recordFriendshipMemory(
   };
 }
 
-export function recordScandalMemory(
-  target: Personality,
+export function recordEndorsementMemory(
+  author: Personality,
+  actor: Personality,
+  topic: string | null | undefined,
+  action: "agreed" | "followed",
+): MemoryItem | null {
+  const key = `@${actor.handle}`;
+
+  if (hasMemory(author, "endorsement", key)) {
+    return null;
+  }
+
+  const relationship = getRelationship(author, actor.id);
+  const intensity = computeAgreeIntensity(actor, relationship);
+  const text =
+    action === "followed"
+      ? `@${author.handle} gained a new follower in @${actor.handle} after ${topicLabel(topic)}.`
+      : `@${author.handle} received support from @${actor.handle} on ${topicLabel(topic)}.`;
+
+  return {
+    type: "endorsement",
+    text,
+    importance: computeEndorsementImportance(intensity),
+  };
+}
+
+export function recordExchangeMemory(
+  author: Personality,
   actor: Personality,
   topic: string | null | undefined,
 ): MemoryItem | null {
   const key = `@${actor.handle}`;
+  const relationship = getRelationship(author, actor.id);
 
-  if (hasMemory(target, "scandal", key)) {
+  if (relationship.rivalry < RIVALRY_THRESHOLD) {
     return null;
   }
 
+  if (hasMemory(author, "exchange", key)) {
+    return null;
+  }
+
+  const intensity = computeDisagreeIntensity(actor, author, relationship);
+
   return {
-    type: "scandal",
-    text: `@${target.handle} got pushback from ${actor.name} on ${topicLabel(topic)}.`,
-    importance: 6,
+    type: "exchange",
+    text: `@${author.handle} and @${actor.handle} clashed over ${topicLabel(topic)}.`,
+    importance: computeExchangeImportance(intensity),
   };
 }
 

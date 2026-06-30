@@ -1,5 +1,10 @@
 import { getPersonalitiesByIds, normalizePersonality } from "@/lib/personalities";
 import { normalizeStoredStats, normalizeStoredStatsRaw } from "@/lib/personalities/stats";
+import {
+  classifyRelationship,
+  getRelationshipCategoryLabel,
+  relationshipCategorySortWeight,
+} from "@/lib/profile/relationship-category";
 import { resolvePersonalitySocialRank } from "@/lib/profile/social-rank";
 import { getCloutBreakdown } from "@/lib/scoring/social-score";
 import { filterEvolutionMemories } from "@/lib/simulation/memory";
@@ -23,6 +28,7 @@ function relationshipInteractionScore(
   relationship: ProfileRelationship,
 ): number {
   return (
+    relationshipCategorySortWeight(relationship.category) * 10 +
     relationship.trust +
     relationship.rivalry +
     relationship.admiration +
@@ -47,6 +53,8 @@ function buildAllRelationships(
         return null;
       }
 
+      const category = classifyRelationship(relationship);
+
       return {
         personalityId,
         name: related.name,
@@ -56,6 +64,8 @@ function buildAllRelationships(
         rivalry: relationship.rivalry,
         admiration: relationship.admiration,
         familiarity: relationship.familiarity,
+        category,
+        categoryLabel: getRelationshipCategoryLabel(category),
       };
     })
     .filter((entry): entry is ProfileRelationship => entry !== null)

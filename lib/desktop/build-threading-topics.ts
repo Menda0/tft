@@ -1,6 +1,7 @@
 import { getTopLevelOriginalPostsSince } from "@/lib/db/posts";
 import { getWorldState } from "@/lib/db/world";
 import { avatarColorForHandle } from "@/lib/feed/format";
+import { startOfThreadingWindow } from "@/lib/simulation/limits";
 import { topicsAreSimilar } from "@/lib/simulation/topics";
 import type {
   ThreadingTopic,
@@ -8,7 +9,6 @@ import type {
   ThreadingTopicsPayload,
 } from "@/lib/types/desktop";
 
-const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const MAX_VISIBLE_PARTICIPANTS = 5;
 
 function findMatchingTopicLabel(
@@ -26,7 +26,7 @@ function findMatchingTopicLabel(
 
 export async function buildThreadingTopics(): Promise<ThreadingTopicsPayload> {
   const state = await getWorldState();
-  const since = new Date(Date.now() - TWENTY_FOUR_HOURS_MS);
+  const since = startOfThreadingWindow();
   const posts = await getTopLevelOriginalPostsSince(since);
   const trendingLabels = state.trendingTopics.map((entry) => entry.topic);
 

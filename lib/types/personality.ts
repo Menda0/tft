@@ -16,6 +16,8 @@ export type MemoryType =
   | "friendship"
   | "rivalry"
   | "scandal"
+  | "endorsement"
+  | "exchange"
   | "milestone"
   | "belief_change";
 

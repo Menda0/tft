@@ -22,7 +22,7 @@ const FEED_TABS: { id: FeedTab; label: string }[] = [
 const ACTIVITY_TAB = { id: "activity" as const, label: "Activity" };
 
 const EMPTY_MESSAGES: Record<FeedTab, string> = {
-  threading: "No threads in the last 24 hours.",
+  threading: "No threads in the last 6 hours.",
   all: "No posts yet. Create personalities and run a simulation tick.",
 };
 

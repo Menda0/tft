@@ -1,10 +1,25 @@
+import {
+  computeControversyDelta,
+  computeScaledControversyDelta,
+} from "@/lib/scoring/controversy";
 import { refreshGrossCloutInWorld } from "@/lib/scoring/refresh-gross-clout";
 import type { Post } from "@/lib/types/post";
 import type { MemoryItem, Personality } from "@/lib/types/personality";
 
-import { computeControversyDelta } from "@/lib/scoring/controversy";
-
-import { hasMemory, recordFriendshipMemory, recordRivalryMemory, recordScandalMemory } from "./memory";
+import {
+  computeAgreeIntensity,
+  computeAuthorHeatDefense,
+  computeDisagreeIntensity,
+  scaleRelationshipDelta,
+} from "./engagement-intensity";
+import {
+  getRelationship,
+  hasMemory,
+  recordEndorsementMemory,
+  recordExchangeMemory,
+  recordFriendshipMemory,
+  recordRivalryMemory,
+} from "./memory";
 import {
   applyPersonalityUpdate,
   applyRelationshipDelta,
@@ -32,6 +47,7 @@ async function updateActorTowardTarget(
   targetId: string,
   options: {
     relationshipDelta?: Parameters<typeof applyRelationshipDelta>[2];
+    targetRelationshipDelta?: Parameters<typeof applyRelationshipDelta>[2];
     actorStatsDelta?: Parameters<typeof applyStatsDelta>[1];
     targetStatsDelta?: Parameters<typeof applyStatsDelta>[1];
     actorMemory?: Personality["memory"];
@@ -83,6 +99,14 @@ async function updateActorTowardTarget(
     );
   }
 
+  if (options.targetRelationshipDelta) {
+    targetPatch.relationships = applyRelationshipDelta(
+      targetPatch.relationships ?? target.relationships ?? {},
+      actorId,
+      options.targetRelationshipDelta,
+    );
+  }
+
   if (options.targetStatsDelta) {
     targetPatch.stats = applyStatsDelta(target.stats, options.targetStatsDelta);
   }
@@ -106,6 +130,7 @@ async function applyRelationshipAndStats(
   targetId: string,
   options: {
     relationshipDelta?: Parameters<typeof applyRelationshipDelta>[2];
+    targetRelationshipDelta?: Parameters<typeof applyRelationshipDelta>[2];
     actorStatsDelta?: Parameters<typeof applyStatsDelta>[1];
     targetStatsDelta?: Parameters<typeof applyStatsDelta>[1];
     refreshTargetClout?: boolean;
@@ -169,13 +194,26 @@ export async function recordFollowEffects(
   author: Personality,
   post: Post,
 ): Promise<void> {
+  const relationship = getRelationship(actor, author.id);
+  const intensity = computeAgreeIntensity(actor, relationship);
+
   await applyRelationshipAndStats(world, actor.id, author.id, {
-    relationshipDelta: { trust: 1, admiration: 2, familiarity: 1 },
+    relationshipDelta: {
+      trust: scaleRelationshipDelta(1, intensity),
+      admiration: scaleRelationshipDelta(2, intensity),
+      familiarity: 1,
+    },
     refreshTargetClout: false,
   });
 
   await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({
     actorMemory: recordFriendshipMemory(freshActor, freshAuthor, post.topic),
+    targetMemory: recordEndorsementMemory(
+      freshAuthor,
+      freshActor,
+      post.topic,
+      "followed",
+    ),
   }));
 }
 
@@ -185,13 +223,26 @@ export async function recordAgreeReplyEffects(
   author: Personality,
   post: Post,
 ): Promise<void> {
+  const relationship = getRelationship(actor, author.id);
+  const intensity = computeAgreeIntensity(actor, relationship);
+
   await applyRelationshipAndStats(world, actor.id, author.id, {
-    relationshipDelta: { trust: 1, admiration: 1, familiarity: 1 },
+    relationshipDelta: {
+      trust: scaleRelationshipDelta(1, intensity),
+      admiration: scaleRelationshipDelta(1, intensity),
+      familiarity: 1,
+    },
     refreshTargetClout: false,
   });
 
   await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({
     actorMemory: recordFriendshipMemory(freshActor, freshAuthor, post.topic),
+    targetMemory: recordEndorsementMemory(
+      freshAuthor,
+      freshActor,
+      post.topic,
+      "agreed",
+    ),
   }));
 }
 
@@ -201,10 +252,23 @@ export async function recordUnfollowEffects(
   author: Personality,
   post: Post,
 ): Promise<void> {
+  const relationship = getRelationship(actor, author.id);
+  const intensity = computeDisagreeIntensity(actor, author, relationship);
+  const heatDefense = computeAuthorHeatDefense(author);
+  const targetHeat = computeScaledControversyDelta(
+    computeControversyDelta("unfollow_after_conflict"),
+    intensity * heatDefense,
+  );
+
   await applyRelationshipAndStats(world, actor.id, author.id, {
-    relationshipDelta: { trust: -2, admiration: -2, rivalry: 1, familiarity: -1 },
+    relationshipDelta: {
+      trust: scaleRelationshipDelta(-2, intensity),
+      admiration: scaleRelationshipDelta(-2, intensity),
+      rivalry: scaleRelationshipDelta(1, intensity),
+      familiarity: -1,
+    },
     targetStatsDelta: {
-      controversy: computeControversyDelta("unfollow_after_conflict"),
+      controversy: targetHeat,
     },
   });
 
@@ -219,24 +283,44 @@ export async function recordDisagreeReplyEffects(
   author: Personality,
   post: Post,
 ): Promise<void> {
-  const scandalKey = `@${actor.handle}`;
-  const scandalIsNew = !hasMemory(author, "scandal", scandalKey);
-  const targetControversy =
-    computeControversyDelta("disagree_reply_target") +
-    (scandalIsNew ? computeControversyDelta("scandal_memory") : 0);
+  const relationship = getRelationship(actor, author.id);
+  const intensity = computeDisagreeIntensity(actor, author, relationship);
+  const heatDefense = computeAuthorHeatDefense(author);
+  const actorKey = `@${actor.handle}`;
+  const isRepeat =
+    hasMemory(author, "exchange", actorKey) ||
+    hasMemory(author, "scandal", actorKey);
+  const baseTargetHeat = computeControversyDelta(
+    isRepeat ? "disagree_reply_target_repeat" : "disagree_reply_target",
+  );
+  const actorHeat = computeScaledControversyDelta(
+    computeControversyDelta("disagree_reply_actor"),
+    intensity,
+  );
+  const targetHeat = computeScaledControversyDelta(
+    baseTargetHeat,
+    intensity * heatDefense,
+  );
 
   await applyRelationshipAndStats(world, actor.id, author.id, {
-    relationshipDelta: { trust: -1, rivalry: 2, familiarity: 1 },
+    relationshipDelta: {
+      trust: scaleRelationshipDelta(-1, intensity),
+      rivalry: scaleRelationshipDelta(2, intensity),
+      familiarity: 1,
+    },
+    targetRelationshipDelta: {
+      rivalry: scaleRelationshipDelta(1, intensity),
+    },
     actorStatsDelta: {
-      controversy: computeControversyDelta("disagree_reply_actor"),
+      controversy: actorHeat,
     },
     targetStatsDelta: {
-      controversy: targetControversy,
+      controversy: targetHeat,
     },
   });
 
   await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({
     actorMemory: recordRivalryMemory(freshActor, freshAuthor, post.topic),
-    targetMemory: recordScandalMemory(freshAuthor, freshActor, post.topic),
+    targetMemory: recordExchangeMemory(freshAuthor, freshActor, post.topic),
   }));
 }

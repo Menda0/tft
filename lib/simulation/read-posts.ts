@@ -1,11 +1,21 @@
-import { getTopLevelOriginalPostsSince, getTopRepliesForPost } from "@/lib/db/posts";
+import { getTopLevelOriginalPostsSince, getTopRepliesForPost, countDisagreeRepliesFromToSince } from "@/lib/db/posts";
 import { getReadPostIds, recordPostRead } from "@/lib/db/post-reads";
 import { getFollowingIds } from "@/lib/db/follows";
 import { recordLikeReceivedActivity } from "@/lib/personality-activity/record";
+import type { ReplyEngagementContext } from "@/lib/openai/post";
+import {
+  classifyRelationship,
+  getRelationshipCategoryLabel,
+} from "@/lib/profile/relationship-category";
 import type { Post } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
 import { decideEngagement, decideReplyLike } from "./engagement";
+import {
+  computeAgreeIntensity,
+  computeDisagreeIntensity,
+  getRelationshipTowardAuthor,
+} from "./engagement-intensity";
 import {
   recordAgreeReplyEffects,
   recordDisagreeReplyEffects,
@@ -14,7 +24,7 @@ import {
   recordRepostEffects,
   recordUnfollowEffects,
 } from "./engagement-effects";
-import { startOfRollingWindow } from "./limits";
+import { startOfDisagreeCooldownWindow, startOfRollingWindow } from "./limits";
 import { truncateForLog, type SimulationLogFn } from "./logger";
 import {
   followAuthor,
@@ -31,6 +41,7 @@ const READ_POST_COUNT = 5;
 const REPLIES_TO_EVALUATE = 5;
 const FOLLOWED_AUTHOR_WEIGHT = 3;
 const DEFAULT_AUTHOR_WEIGHT = 1;
+const THREADING_POST_READ_BOOST = 5;
 
 function engagementReadWeight(post: Post, authorSocialScore = 0): number {
   const { replies, views, reposts, likes } = post.stats;
@@ -45,12 +56,19 @@ function getPostReadWeight(
   post: Post,
   followingIds: Set<string>,
   authorSocialScore = 0,
+  threadingPostIds: Set<string>,
 ): number {
   const followWeight = followingIds.has(post.author.personalityId)
     ? FOLLOWED_AUTHOR_WEIGHT
     : DEFAULT_AUTHOR_WEIGHT;
 
-  return followWeight * engagementReadWeight(post, authorSocialScore);
+  const baseWeight = followWeight * engagementReadWeight(post, authorSocialScore);
+
+  if (threadingPostIds.has(post.id)) {
+    return baseWeight * THREADING_POST_READ_BOOST;
+  }
+
+  return baseWeight;
 }
 
 function findAuthor(
@@ -62,6 +80,33 @@ function findAuthor(
       (personality) => personality.id === personalityId,
     ) ?? null
   );
+}
+
+function buildReplyEngagementContext(
+  actor: Personality,
+  author: Personality,
+  tone: "agree" | "disagree",
+): ReplyEngagementContext {
+  const relationship = getRelationshipTowardAuthor(actor, author.id);
+  const category = classifyRelationship(relationship);
+
+  return {
+    targetAuthor: {
+      name: author.name,
+      handle: author.handle,
+    },
+    relationship,
+    category,
+    categoryLabel: getRelationshipCategoryLabel(category),
+    agreeIntensity:
+      tone === "agree"
+        ? computeAgreeIntensity(actor, relationship)
+        : undefined,
+    disagreeIntensity:
+      tone === "disagree"
+        ? computeDisagreeIntensity(actor, author, relationship)
+        : undefined,
+  };
 }
 
 async function pickPostsToRead(
@@ -87,6 +132,7 @@ async function pickPostsToRead(
         post,
         followingIds,
         author?.stats.socialScore ?? 0,
+        world.threadingPostIds,
       );
     },
   );
@@ -116,6 +162,8 @@ export async function readPostsAndEngage(
     tone: "agree" | "disagree";
   }> = [];
 
+  const disagreeCooldownSince = startOfDisagreeCooldownWindow();
+
   for (const post of posts) {
     await recordPostView(post, world);
     await recordPostRead(personality.id, post.id);
@@ -125,11 +173,22 @@ export async function readPostsAndEngage(
     );
 
     const author = findAuthor(world, post.author.personalityId);
+    const isThreadingPost = world.threadingPostIds.has(post.id);
+    const recentDisagreeCount =
+      author && author.id !== personality.id
+        ? await countDisagreeRepliesFromToSince(
+            personality.id,
+            author.id,
+            disagreeCooldownSince,
+          )
+        : 0;
     const decision = decideEngagement({
       personality,
       post,
       author,
       alreadyFollowing: followingIds.has(post.author.personalityId),
+      isThreadingPost,
+      recentDisagreeCount,
     });
 
     if (decision.like && author) {
@@ -225,7 +284,13 @@ export async function readPostsAndEngage(
       `${handle} ${tone === "agree" ? "agreeing with" : "pushing back on"} @${post.author.handle}...`,
     );
 
-    const reply = await replyToSpecificPost(personality, post, world, { tone });
+    const engagementContext =
+      author ? buildReplyEngagementContext(personality, author, tone) : undefined;
+
+    const reply = await replyToSpecificPost(personality, post, world, {
+      tone,
+      engagementContext,
+    });
 
     if (!reply) {
       log("warn", `${handle} failed to reply to @${post.author.handle}.`);

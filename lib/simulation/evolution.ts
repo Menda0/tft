@@ -1,18 +1,28 @@
 import type { MemoryItem, Personality } from "@/lib/types/personality";
 import type { SocialRank } from "@/lib/scoring/ranks";
 
-import { addMemory, hasMemory } from "./memory";
-import { clampTraits } from "./personality-state";
+import { hasMemory } from "./memory";
 
 export const EVOLVE_CHANCE = 0.15;
-export const CONTROVERSY_EVOLVE_THRESHOLD = 100;
+export const CONTROVERSY_EVOLVE_THRESHOLD = 200;
 export const CELEBRITY_FOLLOWERS_THRESHOLD = 10000;
+const HIGH_RIVALRY_EVOLVE_MIN = 6;
+const HIGH_RIVALRY_EVOLVE_COUNT = 2;
 
 export type EvolutionPatch = {
   traits?: Personality["traits"];
   stats?: Personality["stats"];
   memory?: MemoryItem[];
 };
+
+export function countHighRivalryRelationships(
+  personality: Personality,
+  minRivalry = HIGH_RIVALRY_EVOLVE_MIN,
+): number {
+  return Object.values(personality.relationships ?? {}).filter(
+    (relationship) => relationship.rivalry >= minRivalry,
+  ).length;
+}
 
 export function evolvePersonality(personality: Personality): EvolutionPatch | null {
   const traits = { ...personality.traits };
@@ -22,6 +32,7 @@ export function evolvePersonality(personality: Personality): EvolutionPatch | nu
 
   if (
     stats.controversy > CONTROVERSY_EVOLVE_THRESHOLD &&
+    countHighRivalryRelationships(personality) >= HIGH_RIVALRY_EVOLVE_COUNT &&
     !hasMemory(personality, "belief_change", "confrontational")
   ) {
     traits.aggression = Math.min(10, traits.aggression + 1);
@@ -51,7 +62,7 @@ export function evolvePersonality(personality: Personality): EvolutionPatch | nu
   }
 
   return {
-    traits: clampTraits(traits),
+    traits,
     stats,
     memory: newMemories,
   };
