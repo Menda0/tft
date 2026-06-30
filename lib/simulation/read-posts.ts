@@ -38,9 +38,15 @@ import type { SimulationWorld } from "./world";
 import { weightedSampleWithoutReplacement } from "./utils";
 import { recordTickStat } from "./tick-stats";
 import { threadingLowViewBoost } from "@/lib/feed/threading-discovery";
+import {
+  canFollowAfterEndorsements,
+  getEndorsementStreak,
+  persistEndorsementStreak,
+  recordAuthorEndorsementOutcome,
+} from "./endorsement-streak";
 
 const READ_POST_COUNT = 2;
-const REPLIES_TO_EVALUATE = 5;
+const REPLIES_TO_EVALUATE = 3;
 const FOLLOWED_AUTHOR_WEIGHT = 3;
 const DEFAULT_AUTHOR_WEIGHT = 1;
 const THREADING_POST_READ_BOOST = 5;
@@ -77,6 +83,51 @@ function getPostReadWeight(
   return baseWeight;
 }
 
+function getCurrentPersonality(
+  world: SimulationWorld,
+  personalityId: string,
+  fallback: Personality,
+): Personality {
+  return (
+    world.personalities.find((personality) => personality.id === personalityId) ??
+    fallback
+  );
+}
+
+async function maybeFollowAfterEndorsements(
+  personality: Personality,
+  author: Personality,
+  post: Post,
+  followingIds: Set<string>,
+  world: SimulationWorld,
+  log: SimulationLogFn,
+  handle: string,
+  shouldFollow: boolean,
+  endorsementStreak: number,
+): Promise<void> {
+  if (
+    !shouldFollow ||
+    !canFollowAfterEndorsements(endorsementStreak) ||
+    followingIds.has(author.id)
+  ) {
+    return;
+  }
+
+  const followed = await followAuthor(personality, author, world);
+
+  if (!followed) {
+    return;
+  }
+
+  followingIds.add(followed.id);
+  await recordFollowEffects(world, personality, author, post);
+  await persistEndorsementStreak(world, personality.id, author.id, 0);
+  recordTickStat(world.tickStats, "follows");
+  log(
+    "success",
+    `${handle} followed @${followed.handle} after ${endorsementStreak} consecutive endorsements (${followed.stats.followers} followers)`,
+  );
+}
 function findAuthor(
   world: SimulationWorld,
   personalityId: string,
@@ -165,11 +216,6 @@ export async function readPostsAndEngage(
 
   log("info", `${handle} reading ${posts.length} posts`);
 
-  const respondQueue: Array<{
-    post: Post;
-    tone: "agree" | "disagree";
-  }> = [];
-
   const disagreeCooldownSince = startOfDisagreeCooldownWindow();
 
   for (const post of posts) {
@@ -182,6 +228,14 @@ export async function readPostsAndEngage(
     );
 
     const author = findAuthor(world, post.author.personalityId);
+    const currentPersonality = getCurrentPersonality(
+      world,
+      personality.id,
+      personality,
+    );
+    const streakBefore = author
+      ? getEndorsementStreak(currentPersonality, author.id)
+      : 0;
     const isThreadingPost = world.threadingPostIds.has(post.id);
     const recentDisagreeCount =
       author && author.id !== personality.id
@@ -192,7 +246,7 @@ export async function readPostsAndEngage(
           )
         : 0;
     const decision = decideEngagement({
-      personality,
+      personality: currentPersonality,
       post,
       author,
       alreadyFollowing: followingIds.has(post.author.personalityId),
@@ -203,7 +257,11 @@ export async function readPostsAndEngage(
       ),
       isThreadingPost,
       recentDisagreeCount,
+      consecutiveEndorsements: streakBefore,
     });
+
+    let endorsed = false;
+    let endorsementBroken = false;
 
     if (decision.like && author) {
       await likePost(personality, post, world);
@@ -216,6 +274,7 @@ export async function readPostsAndEngage(
         author.ownerId,
       );
       log("success", `${handle} liked @${post.author.handle}`);
+      endorsed = true;
     }
 
     if (decision.repost && author) {
@@ -223,20 +282,7 @@ export async function readPostsAndEngage(
       await recordRepostEffects(world, personality, author);
       recordTickStat(world.tickStats, "reposts");
       log("success", `${handle} reposted @${post.author.handle}`);
-    }
-
-    if (decision.follow && author) {
-      const followed = await followAuthor(personality, author, world);
-
-      if (followed) {
-        followingIds.add(followed.id);
-        await recordFollowEffects(world, personality, author, post);
-        recordTickStat(world.tickStats, "follows");
-        log(
-          "success",
-          `${handle} followed @${followed.handle} (${followed.stats.followers} followers)`,
-        );
-      }
+      endorsed = true;
     }
 
     if (decision.unfollow && author) {
@@ -250,11 +296,45 @@ export async function readPostsAndEngage(
           "success",
           `${handle} unfollowed @${unfollowed.handle} after disagreeing`,
         );
+        endorsementBroken = true;
       }
     }
 
-    if (decision.respond && decision.responseTone) {
-      respondQueue.push({ post, tone: decision.responseTone });
+    if (decision.respond && decision.responseTone && author) {
+      log(
+        "info",
+        `${handle} ${decision.responseTone === "agree" ? "agreeing with" : "pushing back on"} @${post.author.handle}...`,
+      );
+
+      const reply = await replyToSpecificPost(personality, post, world, {
+        tone: decision.responseTone,
+        engagementContext: buildReplyEngagementContext(
+          personality,
+          author,
+          decision.responseTone,
+          isMutualFollow(author.id, followingIds, followerIds),
+        ),
+      });
+
+      if (!reply) {
+        log("warn", `${handle} failed to reply to @${post.author.handle}.`);
+        endorsementBroken = true;
+      } else {
+        recordTickStat(world.tickStats, "replies");
+
+        if (decision.responseTone === "agree") {
+          await recordAgreeReplyEffects(world, personality, author, post);
+          endorsed = true;
+        } else {
+          await recordDisagreeReplyEffects(world, personality, author, post);
+          endorsementBroken = true;
+        }
+
+        log(
+          "success",
+          `${handle} ${decision.responseTone === "agree" ? "agreed with" : "pushed back on"} @${post.author.handle}: ${truncateForLog(reply.content)}`,
+        );
+      }
     }
 
     const replies = await getTopRepliesForPost(post.id, REPLIES_TO_EVALUATE);
@@ -293,49 +373,37 @@ export async function readPostsAndEngage(
         `${handle} liked @${reply.author.handle}'s reply: ${truncateForLog(reply.content)}`,
       );
     }
-  }
-
-  for (const { post, tone } of respondQueue) {
-    const author = findAuthor(world, post.author.personalityId);
-
-    log(
-      "info",
-      `${handle} ${tone === "agree" ? "agreeing with" : "pushing back on"} @${post.author.handle}...`,
-    );
-
-    const engagementContext =
-      author
-        ? buildReplyEngagementContext(
-            personality,
-            author,
-            tone,
-            isMutualFollow(author.id, followingIds, followerIds),
-          )
-        : undefined;
-
-    const reply = await replyToSpecificPost(personality, post, world, {
-      tone,
-      engagementContext,
-    });
-
-    if (!reply) {
-      log("warn", `${handle} failed to reply to @${post.author.handle}.`);
-      continue;
-    }
-
-    recordTickStat(world.tickStats, "replies");
 
     if (author) {
-      if (tone === "agree") {
-        await recordAgreeReplyEffects(world, personality, author, post);
-      } else {
-        await recordDisagreeReplyEffects(world, personality, author, post);
-      }
-    }
+      const endorsementStreak = endorsementBroken
+        ? await recordAuthorEndorsementOutcome(
+            world,
+            personality.id,
+            author.id,
+            "broken",
+            streakBefore,
+          )
+        : endorsed
+          ? await recordAuthorEndorsementOutcome(
+              world,
+              personality.id,
+              author.id,
+              "endorsed",
+              streakBefore,
+            )
+          : streakBefore;
 
-    log(
-      "success",
-      `${handle} ${tone === "agree" ? "agreed with" : "pushed back on"} @${post.author.handle}: ${truncateForLog(reply.content)}`,
-    );
+      await maybeFollowAfterEndorsements(
+        personality,
+        author,
+        post,
+        followingIds,
+        world,
+        log,
+        handle,
+        decision.follow,
+        endorsementStreak,
+      );
+    }
   }
 }

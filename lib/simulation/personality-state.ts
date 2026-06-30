@@ -45,6 +45,7 @@ export function defaultRelationship(): Relationship {
     rivalry: 0,
     admiration: 0,
     familiarity: 0,
+    endorsementStreak: 0,
   };
 }
 
@@ -66,6 +67,10 @@ export function applyRelationshipDelta(
       familiarity: clampRelationshipField(
         current.familiarity + (delta.familiarity ?? 0),
       ),
+      endorsementStreak:
+        delta.endorsementStreak !== undefined
+          ? Math.max(0, Math.round(delta.endorsementStreak))
+          : (current.endorsementStreak ?? 0),
     },
   };
 }

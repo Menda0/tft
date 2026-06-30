@@ -42,6 +42,7 @@ export type Relationship = {
   rivalry: number;
   admiration: number;
   familiarity: number;
+  endorsementStreak?: number;
 };
 
 export type MemoryItem = {

@@ -31,13 +31,19 @@ import type { SimulationWorld } from "./world";
 import { weightedRandom, weightedSampleWithoutReplacement } from "./utils";
 import { recordTickStat } from "./tick-stats";
 import { threadingLowViewBoost } from "@/lib/feed/threading-discovery";
+import {
+  canFollowAfterEndorsements,
+  getEndorsementStreak,
+  persistEndorsementStreak,
+  recordAuthorEndorsementOutcome,
+} from "./endorsement-streak";
 
 type RankNpcAction = "like" | "follow" | "reply";
 
 const ACTION_WEIGHTS: Record<RankNpcAction, number> = {
-  like: 62,
-  follow: 22,
-  reply: 8,
+  like: 68,
+  follow: 24,
+  reply: 5,
 };
 
 const THREADING_POST_READ_BOOST = 5;
@@ -118,6 +124,37 @@ function pickAction(): RankNpcAction {
   return weightedRandom(ACTION_WEIGHTS);
 }
 
+async function maybeNpcFollowAfterEndorsements(
+  npc: Personality,
+  author: Personality,
+  world: SimulationWorld,
+  log: SimulationLogFn,
+  npcLabel: string,
+  endorsementStreak: number,
+): Promise<void> {
+  if (
+    !canFollowAfterEndorsements(endorsementStreak) ||
+    (await hasFollow(npc.id, author.id))
+  ) {
+    return;
+  }
+
+  const followed = await followAuthor(npc, author, world);
+
+  if (!followed) {
+    log("warn", `${npcLabel} failed to follow @${author.handle}.`);
+    return;
+  }
+
+  await recordRankNpcFollowEffects(world, npc, author);
+  await persistEndorsementStreak(world, npc.id, author.id, 0);
+  recordTickStat(world.tickStats, "follows");
+  log(
+    "success",
+    `${npcLabel} followed @${author.handle} after ${endorsementStreak} consecutive endorsements`,
+  );
+}
+
 async function engageWithPost(
   npc: Personality,
   post: Post,
@@ -128,15 +165,7 @@ async function engageWithPost(
 ): Promise<void> {
   const realName = getRankNpcRealName(npc);
   const npcLabel = `@${npc.handle} (as ${realName})`;
-
-  if (action === "like") {
-    await likePost(npc, post, world);
-    await recordRankNpcLikeEffects(world, npc, author);
-    recordTickStat(world.tickStats, "likes");
-    void recordLikeReceivedActivity(author.id, npc.id, post, author.ownerId);
-    log("success", `${npcLabel} liked @${author.handle}`);
-    return;
-  }
+  const streakBefore = getEndorsementStreak(npc, author.id);
 
   if (action === "follow") {
     if (await hasFollow(npc.id, author.id)) {
@@ -144,16 +173,43 @@ async function engageWithPost(
       return;
     }
 
-    const followed = await followAuthor(npc, author, world);
-
-    if (!followed) {
-      log("warn", `${npcLabel} failed to follow @${author.handle}.`);
+    if (!canFollowAfterEndorsements(streakBefore)) {
+      action = "like";
+    } else {
+      await maybeNpcFollowAfterEndorsements(
+        npc,
+        author,
+        world,
+        log,
+        npcLabel,
+        streakBefore,
+      );
       return;
     }
+  }
 
-    await recordRankNpcFollowEffects(world, npc, author);
-    recordTickStat(world.tickStats, "follows");
-    log("success", `${npcLabel} followed @${author.handle}`);
+  if (action === "like") {
+    await likePost(npc, post, world);
+    await recordRankNpcLikeEffects(world, npc, author);
+    recordTickStat(world.tickStats, "likes");
+    void recordLikeReceivedActivity(author.id, npc.id, post, author.ownerId);
+    log("success", `${npcLabel} liked @${author.handle}`);
+
+    const endorsementStreak = await recordAuthorEndorsementOutcome(
+      world,
+      npc.id,
+      author.id,
+      "endorsed",
+      streakBefore,
+    );
+    await maybeNpcFollowAfterEndorsements(
+      npc,
+      author,
+      world,
+      log,
+      npcLabel,
+      endorsementStreak,
+    );
     return;
   }
 
@@ -170,6 +226,13 @@ async function engageWithPost(
   } catch (error) {
     console.error(`Rank NPC reply failed for ${npc.handle}:`, error);
     log("warn", `${npcLabel} failed to reply to @${author.handle}.`);
+    await recordAuthorEndorsementOutcome(
+      world,
+      npc.id,
+      author.id,
+      "broken",
+      streakBefore,
+    );
     return;
   }
 
@@ -180,6 +243,13 @@ async function engageWithPost(
 
   if (!reply) {
     log("warn", `${npcLabel} failed to post reply to @${author.handle}.`);
+    await recordAuthorEndorsementOutcome(
+      world,
+      npc.id,
+      author.id,
+      "broken",
+      streakBefore,
+    );
     return;
   }
 
@@ -187,8 +257,30 @@ async function engageWithPost(
 
   if (tone === "agree") {
     await recordRankNpcAgreeReplyEffects(world, npc, author);
+    const endorsementStreak = await recordAuthorEndorsementOutcome(
+      world,
+      npc.id,
+      author.id,
+      "endorsed",
+      streakBefore,
+    );
+    await maybeNpcFollowAfterEndorsements(
+      npc,
+      author,
+      world,
+      log,
+      npcLabel,
+      endorsementStreak,
+    );
   } else {
     await recordRankNpcDisagreeReplyEffects(world, npc, author);
+    await recordAuthorEndorsementOutcome(
+      world,
+      npc.id,
+      author.id,
+      "broken",
+      streakBefore,
+    );
   }
 
   log(

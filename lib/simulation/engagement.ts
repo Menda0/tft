@@ -12,6 +12,7 @@ import {
   getRelationshipTowardAuthor,
 } from "./engagement-intensity";
 import { topicsMatchInterest } from "./topics";
+import { CONSECUTIVE_ENDORSEMENTS_FOR_FOLLOW } from "./endorsement-streak";
 
 export type ResponseTone = "agree" | "disagree";
 
@@ -26,7 +27,7 @@ export type EngagementDecision = {
 
 const MAX_PROBABILITY = 0.85;
 const THREADING_ENGAGEMENT_BOOST = 2.5;
-const THREADING_REPLY_BOOST = 1.5;
+const THREADING_REPLY_BOOST = 1.25;
 
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
@@ -197,6 +198,7 @@ type EngagementContext = {
   mutuallyFollowing: boolean;
   isThreadingPost?: boolean;
   recentDisagreeCount?: number;
+  consecutiveEndorsements?: number;
 };
 
 function applyThreadingBoost(
@@ -224,6 +226,7 @@ export function decideEngagement(context: EngagementContext): EngagementDecision
     mutuallyFollowing,
     isThreadingPost,
     recentDisagreeCount = 0,
+    consecutiveEndorsements = 0,
   } = context;
   const alignment = scorePostAlignment(personality, post, author);
   const traits = personality.traits;
@@ -242,15 +245,15 @@ export function decideEngagement(context: EngagementContext): EngagementDecision
     isThreadingPost,
   );
   let respondAgreeProbability = applyThreadingBoost(
-    0.006 +
-      alignment * 0.07 +
+    0.003 +
+      alignment * 0.035 +
       computeAgreeProbabilityModifiers(relationship, traits, category),
     isThreadingPost,
     THREADING_REPLY_BOOST,
   );
   let respondDisagreeProbability = applyThreadingBoost(
-    0.004 +
-      (1 - alignment) * 0.07 +
+    0.002 +
+      (1 - alignment) * 0.035 +
       computeDisagreeProbabilityModifiers(relationship, traits, author, category),
     isThreadingPost,
     THREADING_REPLY_BOOST,
@@ -298,14 +301,23 @@ export function decideEngagement(context: EngagementContext): EngagementDecision
         traits.negacionist * 0.01
       : 0;
 
+  const liked = !skipLike && roll(likeProbability);
+  const reposted = roll(repostProbability);
+  const willEndorse =
+    liked || reposted || (respond && responseTone === "agree");
+  const followEligible =
+    consecutiveEndorsements >= CONSECUTIVE_ENDORSEMENTS_FOR_FOLLOW - 1 &&
+    willEndorse;
+
   return {
-    like: !skipLike && roll(likeProbability),
-    repost: roll(repostProbability),
+    like: liked,
+    repost: reposted,
     respond,
     responseTone,
     follow:
       !alreadyFollowing &&
       post.author.personalityId !== personality.id &&
+      followEligible &&
       roll(followProbability),
     unfollow: roll(unfollowProbability),
   };
@@ -333,18 +345,18 @@ export function decideReplyLike(context: ReplyLikeContext): boolean {
   const socialScore = replyAuthor?.stats.socialScore ?? 0;
 
   let probability =
-    0.06 +
-    alignment * 0.3 +
-    traits.humor * 0.02 +
-    Math.log1p(socialScore / 500) * 0.03 +
-    Math.log1p(reply.stats.likes) * 0.05;
+    0.025 +
+    alignment * 0.12 +
+    traits.humor * 0.01 +
+    Math.log1p(socialScore / 500) * 0.015 +
+    Math.log1p(reply.stats.likes) * 0.02;
 
   if (
     likedParent &&
     parentPost &&
     scorePostAlignment(reader, parentPost, parentAuthor ?? null) > 0.5
   ) {
-    probability += 0.08;
+    probability += 0.03;
   }
 
   return roll(probability);
