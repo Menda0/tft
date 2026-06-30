@@ -1,6 +1,7 @@
 "use client";
 
 import { AppMenu } from "@/components/layout/app-menu";
+import { APP_BAR_ACTION_BUTTON_CLASS } from "@/components/layout/app-bar-styles";
 import { WalletDropdown } from "@/components/wallet/wallet-dropdown";
 
 type AppBarProps = {
@@ -17,7 +18,7 @@ export function AppBar({ title, onBack }: AppBarProps) {
             <button
               type="button"
               onClick={onBack}
-              className="pixel-border-thin bg-[#7e2553] px-2 py-1 text-[10px] leading-none text-[#fff1e8] transition-transform hover:-translate-y-px active:translate-y-px pixel-heading"
+              className={`${APP_BAR_ACTION_BUTTON_CLASS} bg-[#7e2553] text-[#fff1e8]`}
               aria-label="Back"
             >
               {"<"}

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { LoginDialog } from "@/components/auth/login-dialog";
+import { APP_BAR_ACTION_BUTTON_CLASS } from "@/components/layout/app-bar-styles";
 
 export function AppMenu() {
   const { user, logout } = useAuth();
@@ -43,7 +44,7 @@ export function AppMenu() {
         <button
           type="button"
           onClick={() => setMenuOpen((open) => !open)}
-          className="pixel-border-thin bg-[#1d2b53] px-2 py-1 text-[10px] leading-none text-[#fff1e8] transition-transform hover:-translate-y-px active:translate-y-px pixel-heading"
+          className={`${APP_BAR_ACTION_BUTTON_CLASS} bg-[#1d2b53] text-[#fff1e8]`}
           aria-label="Open menu"
           aria-expanded={menuOpen}
         >
