@@ -32,7 +32,7 @@ function capProbability(value: number): number {
 function applyThreadingBoost(
   probability: number,
   isThreadingPost?: boolean,
-  boost = threadingEngagementBoost,
+  boost: number = threadingEngagementBoost,
 ): number {
   if (!isThreadingPost) {
     return probability;

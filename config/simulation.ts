@@ -1,3 +1,5 @@
+import type { RelationshipCategory } from "@/lib/profile/relationship-category";
+
 /**
  * Central simulation tuning. Adjust values here to change tick cadence,
  * personality sampling, and engagement rates across the feed.
@@ -118,8 +120,9 @@ export const simulationConfig = {
       nemesis: -0.025,
       rival: -0.025,
       hater: -0.025,
+      acquaintance: 0,
       stranger: 0,
-    },
+    } satisfies Record<RelationshipCategory, number>,
     categoryDisagreeNudge: {
       nemesis: 0.025,
       rival: 0.025,
@@ -129,8 +132,9 @@ export const simulationConfig = {
       ally: -0.025,
       friend: -0.025,
       admirer: -0.025,
+      acquaintance: 0,
       stranger: 0,
-    },
+    } satisfies Record<RelationshipCategory, number>,
   },
 
   optionalAction: {

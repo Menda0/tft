@@ -31,20 +31,13 @@ import type { SimulationWorld } from "./world";
 import { weightedRandom, weightedSampleWithoutReplacement } from "./utils";
 import { recordTickStat } from "./tick-stats";
 import { threadingLowViewBoost } from "@/lib/feed/threading-discovery";
-import {
-  canFollowAfterEndorsements,
-  getEndorsementStreak,
-  persistEndorsementStreak,
-  recordAuthorEndorsementOutcome,
-} from "./endorsement-streak";
-
-import {
-  canFollowAfterEndorsements,
-  getEndorsementStreak,
-  persistEndorsementStreak,
-  recordAuthorEndorsementOutcome,
-} from "./endorsement-streak";
 import { simulationConfig } from "./config";
+import {
+  canFollowAfterEndorsements,
+  getEndorsementStreak,
+  persistEndorsementStreak,
+  recordAuthorEndorsementOutcome,
+} from "./endorsement-streak";
 
 type RankNpcAction = "like" | "follow" | "reply";
 
