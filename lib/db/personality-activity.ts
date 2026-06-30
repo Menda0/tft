@@ -193,8 +193,18 @@ export async function deleteActivityForPersonalityIds(
 
   const collection = await getPersonalityActivityCollection();
   const result = await collection.deleteMany({
-    personalityId: { $in: personalityIds },
+    $or: [
+      { personalityId: { $in: personalityIds } },
+      { actorPersonalityId: { $in: personalityIds } },
+      { targetPersonalityId: { $in: personalityIds } },
+    ],
   });
 
+  return result.deletedCount;
+}
+
+export async function deleteAllPersonalityActivity(): Promise<number> {
+  const collection = await getPersonalityActivityCollection();
+  const result = await collection.deleteMany({});
   return result.deletedCount;
 }

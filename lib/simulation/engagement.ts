@@ -193,6 +193,7 @@ type EngagementContext = {
   post: Post;
   author: Personality | null;
   alreadyFollowing: boolean;
+  mutuallyFollowing: boolean;
   isThreadingPost?: boolean;
   recentDisagreeCount?: number;
 };
@@ -215,6 +216,7 @@ export function decideEngagement(context: EngagementContext): EngagementDecision
     post,
     author,
     alreadyFollowing,
+    mutuallyFollowing,
     isThreadingPost,
     recentDisagreeCount = 0,
   } = context;
@@ -224,7 +226,7 @@ export function decideEngagement(context: EngagementContext): EngagementDecision
     personality,
     post.author.personalityId,
   );
-  const category = classifyRelationship(relationship);
+  const category = classifyRelationship(relationship, mutuallyFollowing);
 
   const likeProbability = applyThreadingBoost(
     0.1 + alignment * 0.35 + traits.humor * 0.02,

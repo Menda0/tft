@@ -78,6 +78,23 @@ export async function getFollowingIds(followerId: string): Promise<Set<string>> 
   return new Set(follows.map((follow) => follow.followingId));
 }
 
+export async function getFollowerIds(followingId: string): Promise<Set<string>> {
+  const collection = await getFollowsCollection();
+  const follows = await collection
+    .find({ followingId }, { projection: { followerId: 1 } })
+    .toArray();
+
+  return new Set(follows.map((follow) => follow.followerId));
+}
+
+export function isMutualFollow(
+  targetId: string,
+  followingIds: Set<string>,
+  followerIds: Set<string>,
+): boolean {
+  return followingIds.has(targetId) && followerIds.has(targetId);
+}
+
 export async function getFollowersForPersonality(
   personalityId: string,
   limit = 100,
@@ -107,5 +124,11 @@ export async function deleteFollowsForPersonalityIds(
     ],
   });
 
+  return result.deletedCount;
+}
+
+export async function deleteAllFollows(): Promise<number> {
+  const collection = await getFollowsCollection();
+  const result = await collection.deleteMany({});
   return result.deletedCount;
 }

@@ -109,3 +109,8 @@ export async function updateTrendingTopicsInDb(
 ): Promise<void> {
   await saveWorldState({ trendingTopics: topics });
 }
+
+export async function resetWorldStateToDefault(): Promise<WorldState> {
+  const { id: _id, ...defaults } = createDefaultWorldState();
+  return saveWorldState(defaults);
+}

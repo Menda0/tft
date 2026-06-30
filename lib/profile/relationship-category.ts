@@ -28,6 +28,7 @@ export const RELATIONSHIP_CATEGORY_LABELS: Record<RelationshipCategory, string> 
 
 export function classifyRelationship(
   relationship: Relationship,
+  mutualFollow = false,
 ): RelationshipCategory {
   const { trust, rivalry, admiration, familiarity } = relationship;
 
@@ -55,7 +56,12 @@ export function classifyRelationship(
     return "ally";
   }
 
-  if (trust >= 6 && admiration >= 5 && rivalry <= 5) {
+  if (
+    mutualFollow &&
+    trust >= 6 &&
+    admiration >= 5 &&
+    rivalry <= 5
+  ) {
     return "friend";
   }
 
@@ -170,11 +176,15 @@ export type RelationshipCategoryCount = {
 
 export function buildRelationshipCategoryCounts(
   relationships: Record<string, Relationship>,
+  mutualFollowIds: Set<string> = new Set(),
 ): RelationshipCategoryCount[] {
   const totals = new Map<RelationshipCategory, number>();
 
-  for (const relationship of Object.values(relationships)) {
-    const category = classifyRelationship(relationship);
+  for (const [personalityId, relationship] of Object.entries(relationships)) {
+    const category = classifyRelationship(
+      relationship,
+      mutualFollowIds.has(personalityId),
+    );
     totals.set(category, (totals.get(category) ?? 0) + 1);
   }
 

@@ -1,5 +1,6 @@
 import { getPersonalityDisplayByIds, normalizePersonality } from "@/lib/personalities";
 import { normalizeStoredStats, normalizeStoredStatsRaw } from "@/lib/personalities/stats";
+import { getFollowerIds, getFollowingIds } from "@/lib/db/follows";
 import {
   classifyRelationship,
   compareRelationshipsByCategory,
@@ -38,9 +39,13 @@ type RelationshipEntry = {
 
 function buildRelationshipEntries(
   relationships: Record<string, Relationship>,
+  mutualFollowIds: Set<string>,
 ): RelationshipEntry[] {
   return Object.entries(relationships).map(([personalityId, relationship]) => {
-    const category = classifyRelationship(relationship);
+    const category = classifyRelationship(
+      relationship,
+      mutualFollowIds.has(personalityId),
+    );
 
     return {
       personalityId,
@@ -108,6 +113,7 @@ export function buildProfileMemoriesPage(
 }
 
 export async function buildProfileRelationshipsPage(
+  personalityId: string,
   relationships: Record<string, Relationship>,
   limit: number,
   offset: number,
@@ -116,8 +122,20 @@ export async function buildProfileRelationshipsPage(
   hasMore: boolean;
   categoryCounts: ProfileRelationshipCategoryCount[];
 }> {
-  const categoryCounts = buildRelationshipCategoryCounts(relationships);
-  const sorted = sortRelationshipEntries(buildRelationshipEntries(relationships));
+  const [followingIds, followerIds] = await Promise.all([
+    getFollowingIds(personalityId),
+    getFollowerIds(personalityId),
+  ]);
+  const mutualFollowIds = new Set(
+    [...followingIds].filter((targetId) => followerIds.has(targetId)),
+  );
+  const categoryCounts = buildRelationshipCategoryCounts(
+    relationships,
+    mutualFollowIds,
+  );
+  const sorted = sortRelationshipEntries(
+    buildRelationshipEntries(relationships, mutualFollowIds),
+  );
   const page = paginateItems(sorted, limit, offset);
 
   if (page.items.length === 0) {

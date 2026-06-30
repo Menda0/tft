@@ -49,6 +49,12 @@ export async function deletePostReadsForPersonalityIds(
   return result.deletedCount;
 }
 
+export async function deleteAllPostReads(): Promise<number> {
+  const collection = await getPostReadsCollection();
+  const result = await collection.deleteMany({});
+  return result.deletedCount;
+}
+
 export async function countPostReadsForPosts(
   postIds: string[],
 ): Promise<Map<string, number>> {

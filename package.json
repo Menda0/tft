@@ -13,7 +13,8 @@
     "backfill:social-scores": "npx tsx scripts/backfill-social-scores.ts",
     "test": "npx tsx --test lib/**/*.test.ts",
     "prune:rank-npc-posts": "npx tsx scripts/prune-rank-npc-posts.ts",
-    "prune:player-personalities": "npx tsx scripts/prune-player-personalities.ts"
+    "prune:player-personalities": "npx tsx scripts/prune-player-personalities.ts",
+    "clean-slate:personalities": "npx tsx scripts/clean-slate-personalities.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

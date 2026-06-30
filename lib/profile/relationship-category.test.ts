@@ -42,6 +42,18 @@ describe("classifyRelationship", () => {
     assert.equal(classifyRelationship(rel({ familiarity: 3 })), "acquaintance");
   });
 
+  it("classifies friend only with mutual follow", () => {
+    const friendStats = rel({
+      trust: 6,
+      admiration: 6,
+      rivalry: 4,
+      familiarity: 3,
+    });
+
+    assert.equal(classifyRelationship(friendStats, true), "friend");
+    assert.equal(classifyRelationship(friendStats, false), "acquaintance");
+  });
+
   it("classifies stranger by default", () => {
     assert.equal(classifyRelationship(rel()), "stranger");
   });
@@ -61,11 +73,14 @@ describe("compareRelationshipsByCategory", () => {
 
 describe("buildRelationshipCategoryCounts", () => {
   it("returns counts in display order and omits zero categories", () => {
-    const counts = buildRelationshipCategoryCounts({
-      a1: { trust: 4, rivalry: 6, admiration: 2, familiarity: 3 },
-      a2: { trust: 6, rivalry: 3, admiration: 5, familiarity: 4 },
-      a3: { trust: 5, rivalry: 2, admiration: 8, familiarity: 5 },
-    });
+    const counts = buildRelationshipCategoryCounts(
+      {
+        a1: { trust: 4, rivalry: 6, admiration: 2, familiarity: 3 },
+        a2: { trust: 6, rivalry: 3, admiration: 5, familiarity: 4 },
+        a3: { trust: 5, rivalry: 2, admiration: 8, familiarity: 5 },
+      },
+      new Set(["a2"]),
+    );
 
     assert.deepEqual(
       counts.map((entry) => entry.category),

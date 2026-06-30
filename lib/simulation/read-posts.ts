@@ -1,6 +1,6 @@
 import { getTopLevelOriginalPostsSince, getTopRepliesForPost, countDisagreeRepliesFromToSince } from "@/lib/db/posts";
 import { getReadPostIds, recordPostRead } from "@/lib/db/post-reads";
-import { getFollowingIds } from "@/lib/db/follows";
+import { getFollowingIds, getFollowerIds, isMutualFollow } from "@/lib/db/follows";
 import { recordLikeReceivedActivity } from "@/lib/personality-activity/record";
 import type { ReplyEngagementContext } from "@/lib/openai/post";
 import {
@@ -86,9 +86,10 @@ function buildReplyEngagementContext(
   actor: Personality,
   author: Personality,
   tone: "agree" | "disagree",
+  mutuallyFollowing: boolean,
 ): ReplyEngagementContext {
   const relationship = getRelationshipTowardAuthor(actor, author.id);
-  const category = classifyRelationship(relationship);
+  const category = classifyRelationship(relationship, mutuallyFollowing);
 
   return {
     targetAuthor: {
@@ -144,8 +145,9 @@ export async function readPostsAndEngage(
   log: SimulationLogFn,
 ): Promise<void> {
   const handle = `@${personality.handle}`;
-  const [followingIds, readPostIds] = await Promise.all([
+  const [followingIds, followerIds, readPostIds] = await Promise.all([
     getFollowingIds(personality.id),
+    getFollowerIds(personality.id),
     getReadPostIds(personality.id),
   ]);
   const posts = await pickPostsToRead(personality, followingIds, readPostIds, world);
@@ -187,6 +189,11 @@ export async function readPostsAndEngage(
       post,
       author,
       alreadyFollowing: followingIds.has(post.author.personalityId),
+      mutuallyFollowing: isMutualFollow(
+        post.author.personalityId,
+        followingIds,
+        followerIds,
+      ),
       isThreadingPost,
       recentDisagreeCount,
     });
@@ -285,7 +292,14 @@ export async function readPostsAndEngage(
     );
 
     const engagementContext =
-      author ? buildReplyEngagementContext(personality, author, tone) : undefined;
+      author
+        ? buildReplyEngagementContext(
+            personality,
+            author,
+            tone,
+            isMutualFollow(author.id, followingIds, followerIds),
+          )
+        : undefined;
 
     const reply = await replyToSpecificPost(personality, post, world, {
       tone,

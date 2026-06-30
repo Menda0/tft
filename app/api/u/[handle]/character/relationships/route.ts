@@ -27,6 +27,7 @@ export async function GET(request: Request, context: RouteContext) {
     );
     const offset = parsePositiveInt(searchParams.get("offset"), 0);
     const page = await buildProfileRelationshipsPage(
+      personality.id,
       personality.relationships ?? {},
       limit,
       offset,

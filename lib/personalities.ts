@@ -17,7 +17,10 @@ import {
   normalizePoliticalSwing,
   randomPoliticalSwing,
 } from "./personalities/political-swing";
-import { normalizeStoredTraits } from "./personalities/validation";
+import {
+  defaultStats,
+  normalizeStoredTraits,
+} from "./personalities/validation";
 import { normalizeStoredStats, normalizeStoredStatsRaw } from "./personalities/stats";
 import { isRankNpc } from "./personalities/rank-npc";
 import { COMPETITIVE_FILTER } from "./personalities/competitive-filter";
@@ -341,6 +344,25 @@ export async function getActivePlayerPersonalities(): Promise<Personality[]> {
   const personalities = await collection.find(PLAYER_PERSONALITY_FILTER).toArray();
 
   return personalities.map(normalizePersonality);
+}
+
+export async function resetActivePersonalitiesSocialState(): Promise<number> {
+  const collection = await getPersonalitiesCollection();
+  const result = await collection.updateMany(PLAYER_PERSONALITY_FILTER, {
+    $set: {
+      relationships: {},
+      memory: [],
+      beliefs: {},
+      stats: defaultStats(),
+    },
+    $unset: {
+      "stats.reputation": "",
+    },
+  });
+
+  socialScoreLeaderboardCache = null;
+
+  return result.modifiedCount;
 }
 
 export async function softDeletePersonalities(

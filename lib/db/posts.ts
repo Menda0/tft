@@ -472,6 +472,12 @@ export async function deletePostsByPersonality(
   return result.deletedCount;
 }
 
+export async function deleteAllPosts(): Promise<number> {
+  const collection = await getPostsCollection();
+  const result = await collection.deleteMany({});
+  return result.deletedCount;
+}
+
 export async function getTopLevelOriginalPostsSince(
   since: Date,
   limit = 500,

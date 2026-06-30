@@ -9,7 +9,7 @@ import {
   streamSimulationTickRequest,
   type StreamTickEvent,
 } from "@/lib/simulation/client";
-import { prunePlayerPersonalitiesRequest } from "@/lib/personalities/admin-client";
+import { cleanSlatePersonalitySocialRequest, prunePlayerPersonalitiesRequest } from "@/lib/personalities/admin-client";
 import { pruneRankNpcPostsRequest, streamSeedRankNpcsAdminRequest } from "@/lib/rank-npcs/client";
 import type { TickLogLevel } from "@/lib/simulation/logger";
 
@@ -26,6 +26,7 @@ const HELP_TEXT = [
   "  seed npc — reconcile, sync, and seed parody NPCs (once per day)",
   "  prune npc — delete all mirrored parody NPC posts",
   "  prune personalities — soft-delete all player personalities and their posts",
+  "  clean slate — wipe all social data, clout, heat, and world tick progress (keeps personalities)",
   "  clear   — clear the console",
   "  help    — show this message",
   "",
@@ -319,6 +320,34 @@ export function AdminConsole({ open, onClose }: AdminConsoleProps) {
     }
   }, [appendLine, running, token]);
 
+  const cleanSlate = useCallback(async () => {
+    if (!token || running) {
+      return;
+    }
+
+    setRunning(true);
+    appendLine(
+      "system",
+      `[${formatTime()}] Cleaning slate: posts, follows, clout, heat, relationships, world ticks...`,
+    );
+
+    try {
+      const result = await cleanSlatePersonalitySocialRequest(token);
+
+      if (!result.ok) {
+        appendLine("error", result.error);
+        return;
+      }
+
+      appendLine(
+        "success",
+        `Clean slate complete: ${result.data.posts} post(s), ${result.data.follows} follow(s), ${result.data.postReads} read(s), ${result.data.activities} activit(ies), ${result.data.personalitiesReset} player(s) reset, ${result.data.npcsReset} NPC(s) reset${result.data.worldReset ? ", world tick progress cleared" : ""}.`,
+      );
+    } finally {
+      setRunning(false);
+    }
+  }, [appendLine, running, token]);
+
   const handleCommand = useCallback(
     async (raw: string) => {
       const command = raw.trim().toLowerCase();
@@ -364,9 +393,14 @@ export function AdminConsole({ open, onClose }: AdminConsoleProps) {
         return;
       }
 
+      if (command === "clean slate") {
+        await cleanSlate();
+        return;
+      }
+
       appendLine("error", `Unknown command: ${raw.trim()}. Type \`help\` for options.`);
     },
-    [appendLine, pruneNpcPosts, prunePersonalities, refreshTrends, runTick, seedNpcs],
+    [appendLine, cleanSlate, pruneNpcPosts, prunePersonalities, refreshTrends, runTick, seedNpcs],
   );
 
   function handleSubmit(event: React.FormEvent) {
