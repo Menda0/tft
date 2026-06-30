@@ -94,6 +94,65 @@ function RelationshipCategoryBadge({
   );
 }
 
+function RelationshipListItem({
+  relationship,
+  expanded,
+  onToggle,
+}: {
+  relationship: ProfileRelationship;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <li className="border-2 border-foreground bg-[#1d2b53]">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        className="flex w-full items-center gap-3 p-2.5 text-left transition-colors hover:bg-[#29366f]/50"
+      >
+        <PersonalityAvatar
+          personality={{
+            name: relationship.name,
+            handle: relationship.handle,
+            avatarUrl: relationship.avatarUrl,
+            avatarStatus: relationship.avatarUrl ? "ready" : "pending",
+          }}
+          size="sm"
+        />
+        <p className="min-w-0 flex-1 truncate text-sm font-bold text-[#ffa300]">
+          {relationship.name}
+        </p>
+        <RelationshipCategoryBadge
+          label={relationship.categoryLabel}
+          category={relationship.category}
+        />
+        <span className="pixel-heading text-[10px] text-[#83769a]">
+          {expanded ? "−" : "+"}
+        </span>
+      </button>
+      {expanded ? (
+        <div className="space-y-2 border-t border-foreground/30 px-3 pb-3 pt-2">
+          <Link
+            href={`/u/${relationship.handle}`}
+            className="text-xs text-[#29adff] hover:underline"
+          >
+            @{relationship.handle}
+          </Link>
+          {RELATIONSHIP_FIELDS.map(({ key, label, color }) => (
+            <RelationshipBar
+              key={key}
+              label={label}
+              value={relationship[key]}
+              color={color}
+            />
+          ))}
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
 type ProfileCharacterSheetProps = {
   handle: string;
   character: ProfileCharacterSheet;
@@ -267,6 +326,9 @@ export function ProfileCharacterSheetView({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [expandedRelationshipId, setExpandedRelationshipId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     setMemoriesPage(0);
@@ -274,7 +336,12 @@ export function ProfileCharacterSheetView({
 
   useEffect(() => {
     setRelationshipsPage(0);
+    setExpandedRelationshipId(null);
   }, [handle]);
+
+  useEffect(() => {
+    setExpandedRelationshipId(null);
+  }, [relationshipsPage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -499,51 +566,20 @@ export function ProfileCharacterSheetView({
         ) : relationships.length === 0 ? (
           <p className="mt-3 text-sm text-[#83769a]">No relationships yet.</p>
         ) : (
-          <ul className="mt-3 space-y-3">
+          <ul className="mt-3 space-y-2">
             {relationships.map((relationship) => (
-              <li
+              <RelationshipListItem
                 key={relationship.personalityId}
-                className="border-2 border-foreground bg-[#1d2b53] p-3"
-              >
-                <Link
-                  href={`/u/${relationship.handle}`}
-                  className="flex items-center gap-3 hover:opacity-90"
-                >
-                  <PersonalityAvatar
-                    personality={{
-                      name: relationship.name,
-                      handle: relationship.handle,
-                      avatarUrl: relationship.avatarUrl,
-                      avatarStatus: relationship.avatarUrl ? "ready" : "pending",
-                    }}
-                    size="sm"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate text-sm font-bold text-[#ffa300]">
-                        {relationship.name}
-                      </p>
-                      <RelationshipCategoryBadge
-                        label={relationship.categoryLabel}
-                        category={relationship.category}
-                      />
-                    </div>
-                    <p className="truncate text-xs text-[#83769a]">
-                      @{relationship.handle}
-                    </p>
-                  </div>
-                </Link>
-                <div className="mt-3 space-y-2">
-                  {RELATIONSHIP_FIELDS.map(({ key, label, color }) => (
-                    <RelationshipBar
-                      key={key}
-                      label={label}
-                      value={relationship[key]}
-                      color={color}
-                    />
-                  ))}
-                </div>
-              </li>
+                relationship={relationship}
+                expanded={expandedRelationshipId === relationship.personalityId}
+                onToggle={() =>
+                  setExpandedRelationshipId((current) =>
+                    current === relationship.personalityId
+                      ? null
+                      : relationship.personalityId,
+                  )
+                }
+              />
             ))}
           </ul>
         )}

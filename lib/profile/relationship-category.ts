@@ -118,18 +118,36 @@ export function getRelationshipCategoryDisagreeNudge(
   }
 }
 
+// Profile list order: haters, friends, admirers, then remaining categories.
 const CATEGORY_SORT_WEIGHT: Record<RelationshipCategory, number> = {
-  nemesis: 100,
-  frenemy: 90,
-  rival: 80,
-  hater: 70,
-  admirer: 60,
-  ally: 55,
-  friend: 50,
-  skeptic: 40,
-  acquaintance: 20,
+  hater: 100,
+  friend: 90,
+  admirer: 80,
+  nemesis: 75,
+  rival: 74,
+  frenemy: 73,
+  skeptic: 72,
+  ally: 65,
+  acquaintance: 40,
   stranger: 10,
 };
+
+export function compareRelationshipsByCategory(
+  leftCategory: RelationshipCategory,
+  rightCategory: RelationshipCategory,
+  leftName = "",
+  rightName = "",
+): number {
+  const weightDiff =
+    relationshipCategorySortWeight(rightCategory) -
+    relationshipCategorySortWeight(leftCategory);
+
+  if (weightDiff !== 0) {
+    return weightDiff;
+  }
+
+  return leftName.localeCompare(rightName);
+}
 
 export function relationshipCategorySortWeight(
   category: RelationshipCategory,

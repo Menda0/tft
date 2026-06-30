@@ -2,8 +2,8 @@ import { getPersonalitiesByIds, normalizePersonality } from "@/lib/personalities
 import { normalizeStoredStats, normalizeStoredStatsRaw } from "@/lib/personalities/stats";
 import {
   classifyRelationship,
+  compareRelationshipsByCategory,
   getRelationshipCategoryLabel,
-  relationshipCategorySortWeight,
 } from "@/lib/profile/relationship-category";
 import { resolvePersonalitySocialRank } from "@/lib/profile/social-rank";
 import { getCloutBreakdown } from "@/lib/scoring/social-score";
@@ -22,18 +22,6 @@ function sortMemoriesByImportance<T extends { importance: number }>(
 
 function getMemoriesRecentFirst(personality: Personality): MemoryItem[] {
   return [...(normalizePersonality(personality).memory ?? [])].reverse();
-}
-
-function relationshipInteractionScore(
-  relationship: ProfileRelationship,
-): number {
-  return (
-    relationshipCategorySortWeight(relationship.category) * 10 +
-    relationship.trust +
-    relationship.rivalry +
-    relationship.admiration +
-    relationship.familiarity
-  );
 }
 
 function buildAllRelationships(
@@ -69,8 +57,8 @@ function buildAllRelationships(
       };
     })
     .filter((entry): entry is ProfileRelationship => entry !== null)
-    .sort(
-      (a, b) => relationshipInteractionScore(b) - relationshipInteractionScore(a),
+    .sort((a, b) =>
+      compareRelationshipsByCategory(a.category, b.category, a.name, b.name),
     );
 }
 

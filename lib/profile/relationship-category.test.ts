@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   classifyRelationship,
+  compareRelationshipsByCategory,
   getRelationshipCategoryLabel,
 } from "@/lib/profile/relationship-category";
 import type { Relationship } from "@/lib/types/personality";
@@ -42,6 +43,18 @@ describe("classifyRelationship", () => {
 
   it("classifies stranger by default", () => {
     assert.equal(classifyRelationship(rel()), "stranger");
+  });
+});
+
+describe("compareRelationshipsByCategory", () => {
+  it("sorts haters before friends and admirers", () => {
+    assert.ok(compareRelationshipsByCategory("hater", "friend") < 0);
+    assert.ok(compareRelationshipsByCategory("friend", "admirer") < 0);
+    assert.ok(compareRelationshipsByCategory("admirer", "stranger") < 0);
+  });
+
+  it("breaks ties by name", () => {
+    assert.ok(compareRelationshipsByCategory("friend", "friend", "Amy", "Zoe") < 0);
   });
 });
 
