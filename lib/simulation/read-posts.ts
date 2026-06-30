@@ -204,6 +204,12 @@ export async function readPostsAndEngage(
 
       await likePost(personality, reply, world);
       await recordLikeEffects(world, personality, replyAuthor);
+      void recordLikeReceivedActivity(
+        replyAuthor.id,
+        personality.id,
+        reply,
+        replyAuthor.ownerId,
+      );
       log(
         "success",
         `${handle} liked @${reply.author.handle}'s reply: ${truncateForLog(reply.content)}`,

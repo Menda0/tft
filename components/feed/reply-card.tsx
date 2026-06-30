@@ -1,5 +1,10 @@
+"use client";
+
+import { useState } from "react";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitials } from "@/components/feed/post-author";
+import { PostLikesDialog } from "@/components/feed/post-likes-dialog";
 import { ProfileLink } from "@/components/profile/profile-link";
 import { getPixelAvatarColor } from "@/lib/pixel-theme";
 import type { FeedReply } from "@/lib/types/post";
@@ -17,6 +22,8 @@ function formatCount(n: number): string {
 }
 
 export function ReplyCard({ reply, isLast = false }: ReplyCardProps) {
+  const [likesOpen, setLikesOpen] = useState(false);
+
   return (
     <article className="relative flex gap-3 px-4 py-3">
       <div className="relative flex w-10 shrink-0 flex-col items-center">
@@ -66,12 +73,23 @@ export function ReplyCard({ reply, isLast = false }: ReplyCardProps) {
           {reply.content}
         </p>
         <div className="mt-2">
-          <span className="inline-flex items-center gap-1.5 pixel-border-thin bg-[#29366f] px-2 py-1 text-xs text-[#c2c3c7]">
+          <button
+            type="button"
+            onClick={() => setLikesOpen(true)}
+            className="inline-flex items-center gap-1.5 pixel-border-thin bg-[#29366f] px-2 py-1 text-xs text-[#c2c3c7] transition-colors hover:bg-[#ff004d] hover:text-[#1d2b53]"
+          >
             <span>♥</span>
             <span className="tabular-nums">{formatCount(reply.likes)}</span>
-          </span>
+          </button>
         </div>
       </div>
+
+      <PostLikesDialog
+        postId={reply.id}
+        likeCount={reply.likes}
+        open={likesOpen}
+        onOpenChange={setLikesOpen}
+      />
     </article>
   );
 }
