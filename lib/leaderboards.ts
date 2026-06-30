@@ -7,6 +7,7 @@ import {
   netCloutAddFieldsStages,
 } from "@/lib/leaderboards/aggregation";
 import {
+  getGlobalSocialScoreLeaderboard,
   getPersonalitiesCollection,
   normalizePersonality,
 } from "@/lib/personalities";
@@ -54,8 +55,47 @@ type RankedPersonalityRow = {
   avatarUrl?: string | null;
   stats: Personality["stats"];
   score: number;
-  rank: number;
 };
+
+const HEAT_LEADERBOARD_TTL_MS = 60_000;
+
+let heatLeaderboardCache:
+  | { entries: Array<{ id: string; score: number }>; fetchedAt: number }
+  | null = null;
+
+async function getGlobalHeatLeaderboard(): Promise<
+  Array<{ id: string; score: number }>
+> {
+  const now = Date.now();
+
+  if (
+    heatLeaderboardCache &&
+    now - heatLeaderboardCache.fetchedAt < HEAT_LEADERBOARD_TTL_MS
+  ) {
+    return heatLeaderboardCache.entries;
+  }
+
+  const collection = await getPersonalitiesCollection();
+  const rows = await collection
+    .aggregate<{ id: string; score: number }>([
+      competitiveMatchStage(),
+      heatScoreAddFieldsStage(),
+      { $sort: { _heatScore: -1, id: 1 } },
+      { $project: { _id: 0, id: 1, score: "$_heatScore" } },
+    ])
+    .toArray();
+
+  heatLeaderboardCache = { entries: rows, fetchedAt: now };
+  return rows;
+}
+
+function rankFromLeaderboard(
+  leaderboard: Array<{ id: string }>,
+  id: string,
+): number {
+  const index = leaderboard.findIndex((entry) => entry.id === id);
+  return index === -1 ? leaderboard.length + 1 : index + 1;
+}
 
 async function hydratePersonalityLeaderboardPage(
   rows: RankedPersonalityRow[],
@@ -255,13 +295,6 @@ export async function getMyPersonalityLeaderboardEntries(
     tab === "clout-personality"
       ? [
           ...netCloutAddFieldsStages(),
-          { $sort: { _netClout: -1, id: 1 } },
-          {
-            $setWindowFields: {
-              sortBy: { _netClout: -1, id: 1 },
-              output: { rank: { $rank: {} } },
-            },
-          },
           {
             $project: {
               _id: 0,
@@ -272,19 +305,11 @@ export async function getMyPersonalityLeaderboardEntries(
               avatarUrl: 1,
               stats: 1,
               score: "$_netClout",
-              rank: 1,
             },
           },
         ]
       : [
           heatScoreAddFieldsStage(),
-          { $sort: { _heatScore: -1, id: 1 } },
-          {
-            $setWindowFields: {
-              sortBy: { _heatScore: -1, id: 1 },
-              output: { rank: { $rank: {} } },
-            },
-          },
           {
             $project: {
               _id: 0,
@@ -295,18 +320,22 @@ export async function getMyPersonalityLeaderboardEntries(
               avatarUrl: 1,
               stats: 1,
               score: "$_heatScore",
-              rank: 1,
             },
           },
         ];
 
-  const rows = await collection
-    .aggregate<RankedPersonalityRow>([
-      competitiveMatchStage(),
-      ...scoreStages,
-      { $match: { ownerId } },
-    ])
-    .toArray();
+  const [rows, globalLeaderboard] = await Promise.all([
+    collection
+      .aggregate<RankedPersonalityRow>([
+        competitiveMatchStage(),
+        { $match: { ownerId } },
+        ...scoreStages,
+      ])
+      .toArray(),
+    tab === "clout-personality"
+      ? getGlobalSocialScoreLeaderboard()
+      : getGlobalHeatLeaderboard(),
+  ]);
 
   if (rows.length === 0) {
     return [];
@@ -326,7 +355,7 @@ export async function getMyPersonalityLeaderboardEntries(
     return toPersonalityEntry(
       personality,
       row.score,
-      row.rank,
+      rankFromLeaderboard(globalLeaderboard, personality.id),
       ownerUsername,
       rankInfo?.rank ?? "novice",
       rankInfo?.label ?? "Novice",
@@ -339,67 +368,64 @@ async function queryMyFarmerLeaderboardEntry(
   metric: "clout" | "heat",
 ): Promise<FarmerLeaderboardEntry | null> {
   const collection = await getPersonalitiesCollection();
-  const scoreStages =
+  const personalityScoreStages =
     metric === "clout"
-      ? [
-          ...netCloutAddFieldsStages(),
-          {
-            $group: {
-              _id: "$ownerId",
-              score: { $sum: "$_netClout" },
-              botCount: { $sum: 1 },
-            },
-          },
-        ]
-      : [
-          heatScoreAddFieldsStage(),
-          {
-            $group: {
-              _id: "$ownerId",
-              score: { $sum: "$_heatScore" },
-              botCount: { $sum: 1 },
-            },
-          },
-        ];
+      ? netCloutAddFieldsStages()
+      : [heatScoreAddFieldsStage()];
+  const scoreField = metric === "clout" ? "$_netClout" : "$_heatScore";
 
-  const rows = await collection
-    .aggregate<FarmerAggregateRow>([
+  const myRows = await collection
+    .aggregate<{ score: number; botCount: number }>([
       farmerMatchStage(),
-      ...scoreStages,
-      { $sort: { score: -1, _id: 1 } },
+      { $match: { ownerId: userId } },
+      ...personalityScoreStages,
       {
-        $setWindowFields: {
-          sortBy: { score: -1, _id: 1 },
-          output: { rank: { $rank: {} } },
+        $group: {
+          _id: "$ownerId",
+          score: { $sum: scoreField },
+          botCount: { $sum: 1 },
         },
       },
-      { $match: { _id: userId } },
-      {
-        $project: {
-          _id: 0,
-          userId: "$_id",
-          score: 1,
-          botCount: 1,
-          rank: 1,
-        },
-      },
+      { $project: { _id: 0, score: 1, botCount: 1 } },
     ])
     .toArray();
 
-  const entry = rows[0];
+  const mine = myRows[0];
 
-  if (!entry) {
+  if (!mine) {
     return null;
   }
+
+  const aheadRows = await collection
+    .aggregate<{ count: number }>([
+      farmerMatchStage(),
+      ...personalityScoreStages,
+      {
+        $group: {
+          _id: "$ownerId",
+          score: { $sum: scoreField },
+        },
+      },
+      {
+        $match: {
+          $or: [
+            { score: { $gt: mine.score } },
+            { score: mine.score, _id: { $lt: userId } },
+          ],
+        },
+      },
+      { $count: "count" },
+    ])
+    .toArray();
 
   const user = await findUserById(userId);
 
   return {
-    rank: entry.rank,
-    userId: entry.userId,
+    rank: (aheadRows[0]?.count ?? 0) + 1,
+    userId,
     username: user?.username ?? "Unknown",
-    score: entry.score,
-    botCount: entry.botCount,
+    score: mine.score,
+    botCount: mine.botCount,
   };
 }
 

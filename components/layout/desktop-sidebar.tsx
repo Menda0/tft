@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { getInitials } from "@/components/feed/post-author";
-import { LeaderboardsSection } from "@/components/layout/leaderboard-panel";
+import { DesktopOverviewLeaderboard } from "@/components/layout/desktop-overview-leaderboard";
 import {
   ActivityPanel,
   MyPersonalitiesPanel,
@@ -154,7 +154,7 @@ function CommunityPanel({
         )}
       </section>
 
-      <LeaderboardsSection />
+      <DesktopOverviewLeaderboard />
     </div>
   );
 }
