@@ -35,11 +35,16 @@ export type SimulationTickResult =
     }
   | {
       ok: false;
+      skipped: true;
+      error: string;
+      lastTickAt: Date | null;
+      intervalMs: number;
+    }
+  | {
+      ok: false;
       status: number;
       error: string;
       cancelled?: boolean;
-      lastTickAt?: Date | null;
-      intervalMs?: number;
     };
 
 export async function runSimulationTick(
@@ -77,7 +82,7 @@ export async function runSimulationTick(
       log("warn", "Tick skipped: interval has not elapsed yet.");
       return {
         ok: false,
-        status: 429,
+        skipped: true,
         error: "Simulation tick interval has not elapsed yet.",
         lastTickAt: world.state.lastTickAt,
         intervalMs: getSimulationTickIntervalMs(),

@@ -23,13 +23,18 @@ export async function GET(request: Request) {
     const result = await runSimulationTick(false);
 
     if (!result.ok) {
-      return Response.json(
-        {
-          error: result.error,
+      if ("skipped" in result && result.skipped) {
+        return Response.json({
+          skipped: true,
+          message: result.error,
           lastTickAt: result.lastTickAt,
           intervalMs: result.intervalMs,
-        },
-        { status: result.status },
+        });
+      }
+
+      return Response.json(
+        { error: result.error },
+        { status: "status" in result ? result.status : 409 },
       );
     }
 

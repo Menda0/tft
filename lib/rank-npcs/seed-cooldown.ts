@@ -100,6 +100,7 @@ export async function tryBeginRankNpcSeed(): Promise<RankNpcSeedStatus> {
   }
 
   await ensureWorldStateIndexes();
+  await getWorldState();
   const cutoff = new Date(Date.now() - getRankNpcSeedWindowMs());
   const acquired = await tryAcquireRankNpcSeedLock(cutoff);
 

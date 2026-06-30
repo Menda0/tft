@@ -48,7 +48,7 @@ export async function POST(request: Request) {
           formatSse({
             type: "error",
             message: result.error,
-            status: result.status,
+            status: "status" in result ? result.status : 409,
           }),
         );
         return;

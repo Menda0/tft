@@ -260,12 +260,13 @@ export async function findPublicPersonalityByHandle(
 
 export async function findPublicPersonalityRelationshipsByHandle(
   handle: string,
-): Promise<Pick<Personality, "relationships"> | null> {
+): Promise<Pick<Personality, "id" | "relationships"> | null> {
   const collection = await getPersonalitiesCollection();
   const personality = await collection.findOne(
     mergeNotDeleted({ handle }),
     {
       projection: {
+        id: 1,
         relationships: 1,
         role: 1,
         rankNpcActive: 1,
@@ -282,6 +283,7 @@ export async function findPublicPersonalityRelationshipsByHandle(
   }
 
   return {
+    id: personality.id,
     relationships: normalizeRelationships(personality.relationships),
   };
 }

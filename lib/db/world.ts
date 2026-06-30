@@ -34,25 +34,35 @@ export async function ensureWorldStateIndexes(): Promise<void> {
 
 export async function getWorldState(): Promise<WorldState> {
   const collection = await getWorldStateCollection();
-  const existing = await collection.findOne({ id: GLOBAL_ID });
-
-  if (existing) {
-    return existing;
-  }
-
   const initial = createDefaultWorldState();
-  await collection.insertOne(initial);
-  return initial;
+  const result = await collection.findOneAndUpdate(
+    { id: GLOBAL_ID },
+    { $setOnInsert: initial },
+    { upsert: true, returnDocument: "after" },
+  );
+
+  return result ?? initial;
 }
 
 export async function saveWorldState(
   updates: Partial<Omit<WorldState, "id">>,
 ): Promise<WorldState> {
   const collection = await getWorldStateCollection();
-  const result = await collection.findOneAndUpdate(
+  let result = await collection.findOneAndUpdate(
     { id: GLOBAL_ID },
     { $set: updates },
-    { upsert: true, returnDocument: "after" },
+    { returnDocument: "after" },
+  );
+
+  if (result) {
+    return result;
+  }
+
+  await getWorldState();
+  result = await collection.findOneAndUpdate(
+    { id: GLOBAL_ID },
+    { $set: updates },
+    { returnDocument: "after" },
   );
 
   return result ?? { ...createDefaultWorldState(), ...updates };
@@ -63,7 +73,7 @@ export async function tryAcquireWorldLock(): Promise<WorldState | null> {
   const result = await collection.findOneAndUpdate(
     { id: GLOBAL_ID, isRunning: false },
     { $set: { isRunning: true } },
-    { upsert: true, returnDocument: "after" },
+    { returnDocument: "after" },
   );
 
   return result;
@@ -98,7 +108,7 @@ export async function tryAcquireRankNpcSeedLock(
       ],
     },
     { $set: { rankNpcSeedInProgress: true } },
-    { upsert: true, returnDocument: "after" },
+    { returnDocument: "after" },
   );
 
   return result;

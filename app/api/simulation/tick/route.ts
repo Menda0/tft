@@ -29,12 +29,8 @@ export async function POST(request: Request) {
 
     if (!result.ok) {
       return Response.json(
-        {
-          error: result.error,
-          lastTickAt: result.lastTickAt,
-          intervalMs: result.intervalMs,
-        },
-        { status: result.status },
+        { error: result.error },
+        { status: "status" in result ? result.status : 409 },
       );
     }
 
