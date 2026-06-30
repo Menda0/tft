@@ -117,7 +117,7 @@ export async function createPost(
     });
 
     world.posts.unshift(post);
-    void recordAuthoredPostActivity(personality.id, post);
+    void recordAuthoredPostActivity(personality.id, post, personality.ownerId);
     return { ok: true, post };
   } catch (error) {
     console.error(`createPost failed for ${personality.handle}:`, error);
@@ -153,7 +153,12 @@ export async function repostSpecificPost(
   await incrementPostStat(target.id, "reposts");
   syncPostStat(world, target.id, "reposts");
   world.posts.unshift(repost);
-  void recordAuthoredRepostActivity(personality.id, repost, target);
+  void recordAuthoredRepostActivity(
+    personality.id,
+    repost,
+    target,
+    personality.ownerId,
+  );
   await refreshGrossCloutInWorld(world, target.author.personalityId);
   return repost;
 }
@@ -192,7 +197,12 @@ export async function replyToSpecificPost(
       tone === "disagree" ? "disagreeReplies" : "agreeReplies",
     );
     world.posts.unshift(reply);
-    void recordAuthoredReplyActivity(personality.id, reply, target);
+    void recordAuthoredReplyActivity(
+      personality.id,
+      reply,
+      target,
+      personality.ownerId,
+    );
     await refreshGrossCloutInWorld(world, target.author.personalityId);
     return reply;
   } catch (error) {
@@ -228,7 +238,13 @@ export async function followAuthor(
     await refreshGrossCloutInWorld(world, target.id);
   }
 
-  void recordFollowActivityPair(personality.id, target.id, follow.createdAt);
+  void recordFollowActivityPair(
+    personality.id,
+    target.id,
+    follow.createdAt,
+    personality.ownerId,
+    target.ownerId,
+  );
 
   return target;
 }

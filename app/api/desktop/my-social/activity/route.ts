@@ -1,4 +1,5 @@
-import { buildMySocialActivity } from "@/lib/desktop/build-my-social";
+import { buildMySocialActivity } from "@/lib/desktop/build-my-social-activity";
+import { ensurePersonalityActivityIndexes } from "@/lib/db/personality-activity";
 import { getAuthUser } from "@/lib/auth/server";
 import { authError } from "@/lib/auth/responses";
 import { PAGE_SIZE, parsePositiveInt } from "@/lib/pagination";
@@ -14,6 +15,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const limit = parsePositiveInt(searchParams.get("limit"), PAGE_SIZE);
     const offset = parsePositiveInt(searchParams.get("offset"), 0);
+    await ensurePersonalityActivityIndexes();
     const payload = await buildMySocialActivity(authUser.id, offset, limit);
 
     return Response.json(payload);

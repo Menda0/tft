@@ -117,6 +117,8 @@ export type MySocialActivityItem = {
   personalityId: string;
   personalityName: string;
   personalityHandle: string;
+  personalityAvatarUrl: string | null;
+  personalityAvatarColor: string;
   type:
     | "post"
     | "reply"

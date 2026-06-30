@@ -6,14 +6,13 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { getInitials } from "@/components/feed/post-author";
 import { ProfileLink } from "@/components/profile/profile-link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { fetchMySocial, fetchMySocialActivity } from "@/lib/desktop/client";
+import { fetchMySocialActivity } from "@/lib/desktop/client";
 import { formatRelativeTime } from "@/lib/feed/format";
 import { PAGE_SIZE } from "@/lib/pagination";
 import { getPixelAvatarColor } from "@/lib/pixel-theme";
 import type {
   MySocialActivityItem,
   MySocialActivityPayload,
-  MySocialPersonalityEntry,
 } from "@/lib/types/desktop";
 import { cn } from "@/lib/utils";
 
@@ -56,15 +55,7 @@ function activityMessage(item: MySocialActivityItem): string {
   }
 }
 
-function DesktopActivityRow({
-  item,
-  personalityById,
-}: {
-  item: MySocialActivityItem;
-  personalityById: Map<string, MySocialPersonalityEntry>;
-}) {
-  const owner = personalityById.get(item.personalityId);
-
+function DesktopActivityRow({ item }: { item: MySocialActivityItem }) {
   return (
     <li className="border-b-2 border-[#29366f] py-2 last:border-b-0">
       <div className="flex items-start gap-2">
@@ -76,13 +67,13 @@ function DesktopActivityRow({
             size="sm"
             className="size-7 rounded-none after:rounded-none after:border-2 after:border-[#1d2b53]"
           >
-            {owner?.avatarUrl ? (
-              <AvatarImage src={owner.avatarUrl} alt={item.personalityName} />
+            {item.personalityAvatarUrl ? (
+              <AvatarImage src={item.personalityAvatarUrl} alt={item.personalityName} />
             ) : null}
             <AvatarFallback
               className={cn(
                 "rounded-none text-[8px] font-bold text-[#1d2b53] pixel-heading",
-                getPixelAvatarColor(owner?.avatarColor ?? "bg-sky-500"),
+                getPixelAvatarColor(item.personalityAvatarColor),
               )}
             >
               {getInitials(item.personalityName)}
@@ -162,20 +153,12 @@ function DesktopActivityPagination({
 export function DesktopActivityLog() {
   const { token } = useAuth();
   const [page, setPage] = useState(0);
-  const [personalities, setPersonalities] = useState<MySocialPersonalityEntry[]>(
-    [],
-  );
   const [activity, setActivity] = useState<MySocialActivityPayload>(EMPTY_ACTIVITY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const personalityById = new Map(
-    personalities.map((entry) => [entry.id, entry]),
-  );
-
   const loadActivity = useCallback(async () => {
     if (!token) {
-      setPersonalities([]);
       setActivity(EMPTY_ACTIVITY);
       setError(null);
       setLoading(false);
@@ -184,28 +167,18 @@ export function DesktopActivityLog() {
 
     setLoading(true);
 
-    const [socialResult, activityResult] = await Promise.all([
-      fetchMySocial(token),
-      fetchMySocialActivity(token, {
-        offset: page * PAGE_SIZE,
-        limit: PAGE_SIZE,
-      }),
-    ]);
+    const result = await fetchMySocialActivity(token, {
+      offset: page * PAGE_SIZE,
+      limit: PAGE_SIZE,
+    });
 
-    if (!socialResult.ok) {
-      setError(socialResult.error);
+    if (!result.ok) {
+      setError(result.error);
       setLoading(false);
       return;
     }
 
-    if (!activityResult.ok) {
-      setError(activityResult.error);
-      setLoading(false);
-      return;
-    }
-
-    setPersonalities(socialResult.payload.personalities);
-    setActivity(activityResult.payload);
+    setActivity(result.payload);
     setError(null);
     setLoading(false);
   }, [token, page]);
@@ -248,11 +221,7 @@ export function DesktopActivityLog() {
           <>
             <ul>
               {activity.items.map((item) => (
-                <DesktopActivityRow
-                  key={item.id}
-                  item={item}
-                  personalityById={personalityById}
-                />
+                <DesktopActivityRow key={item.id} item={item} />
               ))}
             </ul>
 

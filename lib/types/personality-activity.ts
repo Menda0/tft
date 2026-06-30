@@ -9,6 +9,7 @@ export type PersonalityActivityType =
 export type PersonalityActivity = {
   id: string;
   personalityId: string;
+  ownerId?: string;
   type: PersonalityActivityType;
   at: Date;
   actorPersonalityId?: string;

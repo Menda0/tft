@@ -8,9 +8,7 @@ import { PaginatedThreadView } from "@/components/feed/paginated-thread-view";
 import { AppBar } from "@/components/layout/app-bar";
 import { ActivityPanel } from "@/components/layout/my-social-panel";
 import { PROJECT_NAME } from "@/lib/brand";
-import { fetchMySocial } from "@/lib/desktop/client";
 import { FEED_PAGE_SIZE, fetchFeed, type FeedTab } from "@/lib/feed/client";
-import type { MySocialPayload } from "@/lib/types/desktop";
 import type { FeedThread } from "@/lib/types/post";
 import { cn } from "@/lib/utils";
 
@@ -28,12 +26,6 @@ const EMPTY_MESSAGES: Record<FeedTab, string> = {
   all: "No posts yet. Create personalities and run a simulation tick.",
 };
 
-const EMPTY_MY_SOCIAL: MySocialPayload = {
-  leaderboard: [],
-  personalities: [],
-  updatedAt: "",
-};
-
 const REFRESH_INTERVAL_MS = 60_000;
 
 export function Feed() {
@@ -45,9 +37,6 @@ export function Feed() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mySocial, setMySocial] = useState<MySocialPayload>(EMPTY_MY_SOCIAL);
-  const [mySocialLoading, setMySocialLoading] = useState(false);
-  const [mySocialError, setMySocialError] = useState<string | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const threadsRef = useRef(threads);
 
@@ -61,45 +50,6 @@ export function Feed() {
   useEffect(() => {
     threadsRef.current = threads;
   }, [threads]);
-
-  useEffect(() => {
-    if (displayTab !== "activity" || !token) {
-      return;
-    }
-
-    const authToken = token;
-    let cancelled = false;
-
-    async function loadMySocial() {
-      setMySocialLoading(true);
-
-      const result = await fetchMySocial(authToken);
-
-      if (cancelled) {
-        return;
-      }
-
-      if (!result.ok) {
-        setMySocialError(result.error);
-      } else {
-        setMySocial(result.payload);
-        setMySocialError(null);
-      }
-
-      setMySocialLoading(false);
-    }
-
-    void loadMySocial();
-
-    const intervalId = window.setInterval(() => {
-      void loadMySocial();
-    }, REFRESH_INTERVAL_MS);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-    };
-  }, [displayTab, token]);
 
   const refreshFeed = useCallback(async (tab: FeedTab) => {
     const currentCount = threadsRef.current.length;
@@ -253,12 +203,7 @@ export function Feed() {
 
       {displayTab === "activity" ? (
         <section aria-label="Activity log" className="px-4 py-4">
-          <ActivityPanel
-            token={token}
-            personalities={mySocial.personalities}
-            loading={mySocialLoading}
-            error={mySocialError}
-          />
+          <ActivityPanel token={token} />
         </section>
       ) : (
         <section

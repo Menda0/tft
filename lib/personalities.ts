@@ -20,6 +20,11 @@ import {
 import { normalizeStoredTraits } from "./personalities/validation";
 import { normalizeStoredStats, normalizeStoredStatsRaw } from "./personalities/stats";
 import { isRankNpc } from "./personalities/rank-npc";
+import { COMPETITIVE_FILTER } from "./personalities/competitive-filter";
+import {
+  competitiveMatchStage,
+  netCloutAddFieldsStages,
+} from "./leaderboards/aggregation";
 import type {
   AvatarStatus,
   DescriptionStatus,
@@ -34,7 +39,7 @@ import type { SocialRank } from "./scoring/ranks";
 
 const COLLECTION = "personalities";
 
-export { COMPETITIVE_FILTER } from "./personalities/competitive-filter";
+export { COMPETITIVE_FILTER };
 
 let archetypeMigrationDone = false;
 
@@ -281,12 +286,6 @@ export async function getAllRankNpcs(): Promise<Personality[]> {
   return personalities.map(normalizePersonality);
 }
 
-import { COMPETITIVE_FILTER } from "./personalities/competitive-filter";
-import {
-  competitiveMatchStage,
-  netCloutAddFieldsStages,
-} from "./leaderboards/aggregation";
-
 const PLAYER_PERSONALITY_FILTER = mergeNotDeleted({
   $or: [
     { role: { $exists: false } },
@@ -407,6 +406,31 @@ export async function getPersonalitiesByIds(
 
   const collection = await getPersonalitiesCollection();
   return collection.find({ id: { $in: ids } }).toArray();
+}
+
+export type PersonalityDisplay = Pick<
+  Personality,
+  "id" | "name" | "handle" | "avatarUrl"
+>;
+
+export async function getPersonalityDisplayByIds(
+  ids: string[],
+): Promise<PersonalityDisplay[]> {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const collection = await getPersonalitiesCollection();
+  const rows = await collection
+    .find({ id: { $in: ids } }, { projection: { id: 1, name: 1, handle: 1, avatarUrl: 1 } })
+    .toArray();
+
+  return rows.map((personality) => ({
+    id: personality.id,
+    name: personality.name ?? "Unknown",
+    handle: personality.handle ?? "unknown",
+    avatarUrl: personality.avatarUrl ?? null,
+  }));
 }
 
 export async function insertPersonality(

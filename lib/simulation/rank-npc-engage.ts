@@ -114,7 +114,7 @@ async function engageWithPost(
   if (action === "like") {
     await likePost(npc, post, world);
     await recordRankNpcLikeEffects(world, npc, author);
-    void recordLikeReceivedActivity(author.id, npc.id, post);
+    void recordLikeReceivedActivity(author.id, npc.id, post, author.ownerId);
     log("success", `${npcLabel} liked @${author.handle}`);
     return;
   }

@@ -215,15 +215,7 @@ function activityMessage(item: MySocialActivityItem): string {
   }
 }
 
-function ActivityRow({
-  item,
-  personalityById,
-}: {
-  item: MySocialActivityItem;
-  personalityById: Map<string, MySocialPersonalityEntry>;
-}) {
-  const owner = personalityById.get(item.personalityId);
-
+function ActivityRow({ item }: { item: MySocialActivityItem }) {
   return (
     <li className="border-b-2 border-[#29366f] py-2 last:border-b-0">
       <div className="flex items-start gap-2">
@@ -233,8 +225,8 @@ function ActivityRow({
         >
           <PersonalityAvatarSmall
             name={item.personalityName}
-            avatarUrl={owner?.avatarUrl ?? null}
-            avatarColor={owner?.avatarColor ?? "bg-sky-500"}
+            avatarUrl={item.personalityAvatarUrl}
+            avatarColor={item.personalityAvatarColor}
           />
         </ProfileLink>
 
@@ -307,21 +299,11 @@ function ActivityPagination({
   );
 }
 
-function ActivityLogPanel({
-  token,
-  personalities,
-}: {
-  token: string;
-  personalities: MySocialPersonalityEntry[];
-}) {
+function ActivityLogPanel({ token }: { token: string }) {
   const [page, setPage] = useState(0);
   const [activity, setActivity] = useState<MySocialActivityPayload>(EMPTY_ACTIVITY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const personalityById = new Map(
-    personalities.map((entry) => [entry.id, entry]),
-  );
 
   const loadActivity = useCallback(async () => {
     setLoading(true);
@@ -372,11 +354,7 @@ function ActivityLogPanel({
     <>
       <ul>
         {activity.items.map((item) => (
-          <ActivityRow
-            key={item.id}
-            item={item}
-            personalityById={personalityById}
-          />
+          <ActivityRow key={item.id} item={item} />
         ))}
       </ul>
 
@@ -458,32 +436,14 @@ export function MyPersonalitiesPanel({
   );
 }
 
-export function ActivityPanel({
-  token,
-  personalities,
-  loading,
-  error,
-}: {
-  token: string | null;
-  personalities: MySocialPersonalityEntry[];
-  loading?: boolean;
-  error?: string | null;
-}) {
-  if (loading) {
-    return <p className="text-xs text-[#83769a]">Loading...</p>;
-  }
-
-  if (error) {
-    return <p className="text-xs text-[#ff004d]">{error}</p>;
-  }
-
+export function ActivityPanel({ token }: { token: string | null }) {
   if (!token) {
     return <p className="text-xs text-[#83769a]">Log in to view activity.</p>;
   }
 
   return (
     <section aria-label="Activity log" className="w-full">
-      <ActivityLogPanel token={token} personalities={personalities} />
+      <ActivityLogPanel token={token} />
     </section>
   );
 }

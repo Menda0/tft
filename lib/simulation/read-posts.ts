@@ -135,7 +135,12 @@ export async function readPostsAndEngage(
     if (decision.like && author) {
       await likePost(personality, post, world);
       await recordLikeEffects(world, personality, author);
-      void recordLikeReceivedActivity(author.id, personality.id, post);
+      void recordLikeReceivedActivity(
+        author.id,
+        personality.id,
+        post,
+        author.ownerId,
+      );
       log("success", `${handle} liked @${post.author.handle}`);
     }
 

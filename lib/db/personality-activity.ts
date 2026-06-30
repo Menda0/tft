@@ -17,11 +17,20 @@ export async function getPersonalityActivityCollection(): Promise<
   return db.collection<PersonalityActivity>(COLLECTION);
 }
 
+let personalityActivityIndexesReady: Promise<void> | null = null;
+
 export async function ensurePersonalityActivityIndexes(): Promise<void> {
-  const collection = await getPersonalityActivityCollection();
-  await collection.createIndex({ id: 1 }, { unique: true });
-  await collection.createIndex({ personalityId: 1, at: -1 });
-  await collection.createIndex({ type: 1, postId: 1, at: -1 });
+  if (!personalityActivityIndexesReady) {
+    personalityActivityIndexesReady = (async () => {
+      const collection = await getPersonalityActivityCollection();
+      await collection.createIndex({ id: 1 }, { unique: true });
+      await collection.createIndex({ personalityId: 1, at: -1 });
+      await collection.createIndex({ ownerId: 1, at: -1 });
+      await collection.createIndex({ type: 1, postId: 1, at: -1 });
+    })();
+  }
+
+  return personalityActivityIndexesReady;
 }
 
 export type PostLikerRow = {
@@ -65,6 +74,7 @@ export async function getPostLikersPage(
 
 export type RecordActivityInput = {
   personalityId: string;
+  ownerId?: string;
   type: PersonalityActivityType;
   at?: Date;
   actorPersonalityId?: string;
@@ -79,6 +89,7 @@ function toActivityDocument(input: RecordActivityInput): PersonalityActivity {
     personalityId: input.personalityId,
     type: input.type,
     at: input.at ?? new Date(),
+    ...(input.ownerId ? { ownerId: input.ownerId } : {}),
     ...(input.actorPersonalityId
       ? { actorPersonalityId: input.actorPersonalityId }
       : {}),
@@ -121,6 +132,37 @@ export async function getRecentActivityForPersonalities(
     .find({ personalityId: { $in: personalityIds } })
     .sort({ at: -1 })
     .limit(limit)
+    .toArray();
+}
+
+export async function getActivityPageForOwner(
+  ownerId: string,
+  personalityIds: string[],
+  limit: number,
+  offset: number,
+): Promise<PersonalityActivity[]> {
+  if (personalityIds.length === 0) {
+    return [];
+  }
+
+  const collection = await getPersonalityActivityCollection();
+  return collection
+    .aggregate<PersonalityActivity>([
+      {
+        $match: {
+          $or: [
+            { ownerId },
+            {
+              ownerId: { $exists: false },
+              personalityId: { $in: personalityIds },
+            },
+          ],
+        },
+      },
+      { $sort: { at: -1 } },
+      { $skip: offset },
+      { $limit: limit },
+    ])
     .toArray();
 }
 
