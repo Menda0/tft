@@ -1,5 +1,6 @@
 export const MAX_POSTS_PER_PERSONALITY_PER_DAY = 1;
 export const SIMULATION_PERSONALITY_SAMPLE_RATE = 0.1;
+export const SIMULATION_PERSONALITY_MIN_BATCH = 10;
 const DISAGREE_COOLDOWN_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const DEFAULT_TRENDING_TOPICS_TTL_MS = 6 * 60 * 60 * 1000;
@@ -61,13 +62,24 @@ export function getSimulationPersonalitySampleRate(): number {
   return SIMULATION_PERSONALITY_SAMPLE_RATE;
 }
 
+export function getSimulationMinBatchSize(): number {
+  const raw = process.env.SIMULATION_PERSONALITY_MIN_BATCH?.trim();
+  const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
+
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
+  }
+
+  return SIMULATION_PERSONALITY_MIN_BATCH;
+}
+
 export function getSimulationBatchSize(eligibleCount: number): number {
   if (eligibleCount <= 0) {
     return 0;
   }
 
-  return Math.max(
-    1,
-    Math.round(eligibleCount * getSimulationPersonalitySampleRate()),
-  );
+  const sampled = Math.round(eligibleCount * getSimulationPersonalitySampleRate());
+  const minimum = getSimulationMinBatchSize();
+
+  return Math.min(eligibleCount, Math.max(minimum, sampled));
 }
