@@ -6,6 +6,8 @@ import {
 } from "@/lib/personalities";
 import { getAuthUser } from "@/lib/auth/server";
 import { authError } from "@/lib/auth/responses";
+import { getWalletAuthContext } from "@/lib/nft/auth-context";
+import { canManagePersonality } from "@/lib/nft/ownership";
 import {
   DescriptionGenerationError,
   generateProfileDescription,
@@ -25,8 +27,16 @@ export async function POST(request: Request, context: RouteContext) {
 
     const { id } = await context.params;
     const existing = await getPersonalityById(id);
+    const walletContext = await getWalletAuthContext(authUser);
 
-    if (!existing || existing.ownerId !== authUser.id) {
+    if (
+      !existing ||
+      !canManagePersonality(
+        walletContext.user,
+        existing,
+        walletContext.linkedWallets,
+      )
+    ) {
       return authError("Personality not found.", 404);
     }
 

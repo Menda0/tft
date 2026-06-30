@@ -57,6 +57,15 @@ export type DescriptionStatus = AvatarStatus;
 
 export type PersonalityRole = "player" | "rank_npc";
 
+export type PersonalityNft = {
+  chainId: number;
+  contractAddress: string;
+  tokenId: string;
+  metadataUri: string;
+  mintTxHash: string;
+  mintedAt: Date;
+};
+
 export type XSyncState = {
   xHandle: string;
   xUserId: string | null;
@@ -91,4 +100,7 @@ export type Personality = {
   xSync?: XSyncState;
   fixedSocialRank?: SocialRank;
   deletedAt?: Date | null;
+  nft?: PersonalityNft;
+  nftOwnerAddress?: string;
+  importedViaNft?: boolean;
 };

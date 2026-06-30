@@ -2,6 +2,7 @@ import {
   countActivePersonalitiesByOwner,
   ensurePersonalityIndexes,
   findPersonalityByHandleIncludingDeleted,
+  findPersonalitiesForUser,
   getPersonalitiesCollection,
   insertPersonality,
   normalizePersonality,
@@ -11,6 +12,7 @@ import { MAX_PERSONALITIES_PER_USER } from "@/lib/personalities/limits";
 import { attachSocialRanksToPersonalities } from "@/lib/profile/social-rank";
 import { getAuthUser } from "@/lib/auth/server";
 import { authError } from "@/lib/auth/responses";
+import { getWalletAuthContext } from "@/lib/nft/auth-context";
 import {
   createPersonalityId,
   defaultStats,
@@ -87,20 +89,30 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const authUser = await getAuthUser(request);
-    const collection = await getPersonalitiesCollection();
-    const filter = authUser
-      ? mergeNotDeleted({ ownerId: authUser.id })
-      : mergeNotDeleted({});
-    const personalities = await collection
-      .find(filter)
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .toArray();
+
+    if (!authUser) {
+      const collection = await getPersonalitiesCollection();
+      const personalities = await collection
+        .find(mergeNotDeleted({}))
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .toArray();
+
+      return Response.json({
+        personalities: await attachSocialRanksToPersonalities(
+          personalities.map(normalizePersonality),
+        ),
+      });
+    }
+
+    const walletContext = await getWalletAuthContext(authUser);
+    const personalities = await findPersonalitiesForUser({
+      userId: authUser.id,
+      linkedWalletAddresses: walletContext.linkedWalletAddresses,
+    });
 
     return Response.json({
-      personalities: await attachSocialRanksToPersonalities(
-        personalities.map(normalizePersonality),
-      ),
+      personalities: await attachSocialRanksToPersonalities(personalities),
     });
   } catch (error) {
     console.error("List personalities failed:", error);

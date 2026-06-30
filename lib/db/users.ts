@@ -1,10 +1,18 @@
 import { Collection, ObjectId } from "mongodb";
+import { getAddress } from "viem";
 
 import { getDb } from "@/lib/mongodb";
 
 import { roleForUsername, type UserRole } from "@/lib/auth/admin";
+import { getDefaultChainId } from "@/lib/nft/config";
 
 const COLLECTION = "users";
+
+export type LinkedWallet = {
+  address: string;
+  chainId: number;
+  linkedAt: Date;
+};
 
 export type UserDocument = {
   _id?: ObjectId;
@@ -12,6 +20,7 @@ export type UserDocument = {
   passwordHash: string;
   createdAt: Date;
   isBootstrap?: boolean;
+  linkedWallets?: LinkedWallet[];
 };
 
 export type { UserRole };
@@ -105,4 +114,102 @@ export function toPublicUser(user: UserDocument): PublicUser {
 export async function getUserCount(): Promise<number> {
   const collection = await getUsersCollection();
   return collection.countDocuments();
+}
+
+function normalizeLinkedWallet(wallet: LinkedWallet): LinkedWallet {
+  return {
+    address: getAddress(wallet.address),
+    chainId: wallet.chainId,
+    linkedAt:
+      wallet.linkedAt instanceof Date
+        ? wallet.linkedAt
+        : new Date(wallet.linkedAt),
+  };
+}
+
+export function normalizeLinkedWallets(
+  wallets: LinkedWallet[] | undefined,
+): LinkedWallet[] {
+  if (!Array.isArray(wallets)) {
+    return [];
+  }
+
+  return wallets.map(normalizeLinkedWallet);
+}
+
+export async function linkWalletForUser(
+  userId: string,
+  address: string,
+  chainId = getDefaultChainId(),
+): Promise<LinkedWallet[] | null> {
+  if (!ObjectId.isValid(userId)) {
+    return null;
+  }
+
+  const normalizedAddress = getAddress(address);
+  const collection = await getUsersCollection();
+  const user = await collection.findOne({ _id: new ObjectId(userId) });
+
+  if (!user) {
+    return null;
+  }
+
+  const existing = normalizeLinkedWallets(user.linkedWallets);
+  const alreadyLinked = existing.some(
+    (wallet) =>
+      wallet.address.toLowerCase() === normalizedAddress.toLowerCase() &&
+      wallet.chainId === chainId,
+  );
+
+  if (alreadyLinked) {
+    return existing;
+  }
+
+  const linkedWallet: LinkedWallet = {
+    address: normalizedAddress,
+    chainId,
+    linkedAt: new Date(),
+  };
+
+  await collection.updateOne(
+    { _id: new ObjectId(userId) },
+    { $push: { linkedWallets: linkedWallet } },
+  );
+
+  return [...existing, linkedWallet];
+}
+
+export async function unlinkWalletForUser(
+  userId: string,
+  address: string,
+): Promise<LinkedWallet[] | null> {
+  if (!ObjectId.isValid(userId)) {
+    return null;
+  }
+
+  const normalizedAddress = getAddress(address).toLowerCase();
+  const collection = await getUsersCollection();
+  const user = await collection.findOne({ _id: new ObjectId(userId) });
+
+  if (!user) {
+    return null;
+  }
+
+  const remaining = normalizeLinkedWallets(user.linkedWallets).filter(
+    (wallet) => wallet.address.toLowerCase() !== normalizedAddress,
+  );
+
+  await collection.updateOne(
+    { _id: new ObjectId(userId) },
+    { $set: { linkedWallets: remaining } },
+  );
+
+  return remaining;
+}
+
+export async function getLinkedWalletsForUser(
+  userId: string,
+): Promise<LinkedWallet[]> {
+  const user = await findUserById(userId);
+  return normalizeLinkedWallets(user?.linkedWallets);
 }

@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { deletePersonalityRequest } from "@/lib/personalities/client";
+import { MintPersonalityDialog } from "@/components/wallet/mint-personality-dialog";
 import {
   fetchProfileCharacterMemories,
   fetchProfileCharacterRelationships,
@@ -185,7 +186,10 @@ type ProfileCharacterSheetProps = {
   handle: string;
   character: ProfileCharacterSheet;
   personalityId: string;
+  personalityName: string;
   isOwner: boolean;
+  hasNft?: boolean;
+  openSeaUrl?: string | null;
 };
 
 function StatCard({
@@ -335,7 +339,10 @@ export function ProfileCharacterSheetView({
   handle,
   character,
   personalityId,
+  personalityName,
   isOwner,
+  hasNft = false,
+  openSeaUrl = null,
 }: ProfileCharacterSheetProps) {
   const router = useRouter();
   const { token } = useAuth();
@@ -360,6 +367,10 @@ export function ProfileCharacterSheetView({
   const [expandedRelationshipId, setExpandedRelationshipId] = useState<
     string | null
   >(null);
+  const [mintDialogOpen, setMintDialogOpen] = useState(false);
+  const [mintedOpenSeaUrl, setMintedOpenSeaUrl] = useState<string | null>(
+    openSeaUrl,
+  );
 
   useEffect(() => {
     setMemoriesPage(0);
@@ -640,6 +651,56 @@ export function ProfileCharacterSheetView({
       </section>
 
       {isOwner ? (
+        <section>
+          <SectionTitle>NFT</SectionTitle>
+          {hasNft || mintedOpenSeaUrl ? (
+            <div className="mt-3 space-y-2">
+              <p className="text-sm text-[#00e756]">
+                Minted on Base. Ownership follows your wallet when traded.
+              </p>
+              {mintedOpenSeaUrl ? (
+                <a
+                  href={mintedOpenSeaUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-block text-sm text-[#29adff] underline"
+                >
+                  View on OpenSea
+                </a>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <p className="mt-3 text-sm leading-relaxed text-[#83769a]">
+                Mint this bot as an ERC-721 on Base. List it on OpenSea; the
+                project receives royalties on secondary sales.
+              </p>
+              <button
+                type="button"
+                onClick={() => setMintDialogOpen(true)}
+                className="mt-4 w-full pixel-border-thin bg-[#29adff] px-3 py-2 text-[10px] text-[#1d2b53] pixel-heading hover:bg-[#00e436]"
+              >
+                MINT AS NFT
+              </button>
+            </>
+          )}
+        </section>
+      ) : null}
+
+      {isOwner && !hasNft ? (
+        <MintPersonalityDialog
+          personalityId={personalityId}
+          personalityName={personalityName}
+          open={mintDialogOpen}
+          onOpenChange={setMintDialogOpen}
+          onMinted={(url) => {
+            setMintedOpenSeaUrl(url);
+            setMintDialogOpen(false);
+          }}
+        />
+      ) : null}
+
+      {isOwner && !hasNft ? (
         <section>
           <SectionTitle>REMOVE BOT</SectionTitle>
           <p className="mt-3 text-sm leading-relaxed text-[#83769a]">

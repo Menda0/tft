@@ -1,6 +1,7 @@
 "use client";
 
 import { AppMenu } from "@/components/layout/app-menu";
+import { WalletDropdown } from "@/components/wallet/wallet-dropdown";
 
 type AppBarProps = {
   title: string;
@@ -27,7 +28,10 @@ export function AppBar({ title, onBack }: AppBarProps) {
           </h1>
         </div>
 
-        <AppMenu />
+        <div className="flex shrink-0 items-center gap-2">
+          <WalletDropdown variant="icon" />
+          <AppMenu />
+        </div>
       </div>
     </header>
   );

@@ -290,7 +290,10 @@ export function ProfileView({ handle }: ProfileViewProps) {
                 handle={handle}
                 character={character}
                 personalityId={personality.id}
+                personalityName={personality.name}
                 isOwner={personality.isOwner ?? false}
+                hasNft={personality.hasNft}
+                openSeaUrl={personality.openSeaUrl}
               />
             ) : null
           ) : loadingPosts ? (

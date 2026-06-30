@@ -22,6 +22,9 @@ export type PublicPersonality = {
   politicalSwing: PoliticalSwing;
   isRankNpc: boolean;
   isOwner?: boolean;
+  hasNft?: boolean;
+  nftTokenId?: string | null;
+  openSeaUrl?: string | null;
   socialRank?: SocialRank;
   socialRankLabel?: string;
 };

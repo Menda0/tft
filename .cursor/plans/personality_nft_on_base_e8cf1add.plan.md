@@ -4,25 +4,25 @@ overview: Add ERC-721 personality NFTs on Base with MetaMask wallet linking, EIP
 todos:
   - id: contract
     content: Create ERC-721 + ERC-2981 Foundry contract, deploy scripts, ABI export for Base/Base Sepolia
-    status: pending
+    status: completed
   - id: nft-lib
     content: Add lib/nft/ (metadata builder, viem chain client, ownership helper, SIWE verification)
-    status: pending
+    status: completed
   - id: db-model
     content: Extend User and Personality types + MongoDB indexes for linkedWallets and nft fields
-    status: pending
+    status: completed
   - id: api-routes
     content: Implement wallet link, mint prepare/confirm, import, and Alchemy transfer webhook routes
-    status: pending
+    status: completed
   - id: ownership-refactor
     content: Replace ownerId-only checks across personality mutate routes and desktop/social builders
-    status: pending
+    status: completed
   - id: wallet-ui
     content: Add wagmi provider, MetaMask connect, mint dialog, and import panel in personalities UI
-    status: pending
+    status: completed
   - id: env-deploy
     content: Add env vars, deploy contract, configure Alchemy webhook, document OpenSea listing steps
-    status: pending
+    status: completed
 isProject: false
 ---
 

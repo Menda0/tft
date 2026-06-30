@@ -1,11 +1,12 @@
-import { mergeNotDeleted } from "@/lib/db/active-filters";
 import { ensurePersonalityActivityIndexes } from "@/lib/db/personality-activity";
 import { aggregatePersonalityEngagementStats } from "@/lib/db/personality-stats";
 import { avatarColorForHandle } from "@/lib/feed/format";
 import {
-  getPersonalitiesCollection,
+  findPersonalitiesForUser,
   normalizePersonality,
 } from "@/lib/personalities";
+import { getLinkedWalletsForUser } from "@/lib/db/users";
+import { userLinkedWalletAddresses } from "@/lib/nft/ownership";
 import { normalizeStoredStats } from "@/lib/personalities/stats";
 import {
   resolveSocialRanksForPersonalities,
@@ -90,11 +91,11 @@ function buildPersonalityEntries(
 export async function buildMySocial(ownerId: string): Promise<MySocialPayload> {
   await ensurePersonalityActivityIndexes();
 
-  const collection = await getPersonalitiesCollection();
-  const rawPersonalities = await collection
-    .find(mergeNotDeleted({ ownerId }))
-    .sort({ createdAt: -1 })
-    .toArray();
+  const linkedWallets = await getLinkedWalletsForUser(ownerId);
+  const rawPersonalities = await findPersonalitiesForUser({
+    userId: ownerId,
+    linkedWalletAddresses: userLinkedWalletAddresses(linkedWallets),
+  });
 
   const normalized = rawPersonalities.map(normalizePersonality);
   const rankById = await resolveSocialRanksForPersonalities(normalized);

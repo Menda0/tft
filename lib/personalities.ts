@@ -1,4 +1,5 @@
 import { Collection } from "mongodb";
+import { getAddress } from "viem";
 
 import { getDb } from "./mongodb";
 import { mergeNotDeleted } from "./db/active-filters";
@@ -33,6 +34,7 @@ import type {
   DescriptionStatus,
   MemoryItem,
   Personality,
+  PersonalityNft,
   PersonalityRole,
   Relationship,
   Stats,
@@ -146,6 +148,44 @@ function normalizeFixedSocialRank(
   return undefined;
 }
 
+function normalizePersonalityNft(
+  nft: PersonalityNft | undefined,
+): PersonalityNft | undefined {
+  if (!nft || typeof nft !== "object") {
+    return undefined;
+  }
+
+  if (
+    !nft.contractAddress ||
+    !nft.tokenId ||
+    !nft.metadataUri ||
+    !nft.mintTxHash
+  ) {
+    return undefined;
+  }
+
+  return {
+    chainId: typeof nft.chainId === "number" ? nft.chainId : 8453,
+    contractAddress: nft.contractAddress,
+    tokenId: String(nft.tokenId),
+    metadataUri: nft.metadataUri,
+    mintTxHash: nft.mintTxHash,
+    mintedAt:
+      nft.mintedAt instanceof Date ? nft.mintedAt : new Date(nft.mintedAt),
+  };
+}
+
+function normalizeNftOwnerAddress(
+  value: string | undefined,
+): string | undefined {
+  if (!value || typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
 export function normalizePersonality(
   personality: Personality,
 ): Personality {
@@ -203,6 +243,9 @@ export function normalizePersonality(
     xSync: normalizeXSync(personality.xSync),
     fixedSocialRank: normalizeFixedSocialRank(personality.fixedSocialRank),
     deletedAt: normalizeDeletedAt(personality.deletedAt),
+    nft: normalizePersonalityNft(personality.nft),
+    nftOwnerAddress: normalizeNftOwnerAddress(personality.nftOwnerAddress),
+    importedViaNft: personality.importedViaNft === true,
   };
 }
 
@@ -339,6 +382,98 @@ export async function countActivePersonalitiesByOwner(
       ],
     }),
   );
+}
+
+function normalizeWalletAddresses(addresses: string[]): string[] {
+  return [...new Set(addresses.map((address) => getAddress(address)))];
+}
+
+export async function findPersonalitiesForUser(input: {
+  userId: string;
+  linkedWalletAddresses: string[];
+}): Promise<Personality[]> {
+  const collection = await getPersonalitiesCollection();
+  const walletAddresses = normalizeWalletAddresses(input.linkedWalletAddresses);
+
+  const orFilters: Record<string, unknown>[] = [
+    {
+      ownerId: input.userId,
+      $or: [{ nft: { $exists: false } }, { nft: null }],
+    },
+  ];
+
+  if (walletAddresses.length > 0) {
+    orFilters.push({
+      ownerId: input.userId,
+      nftOwnerAddress: { $in: walletAddresses },
+    });
+    orFilters.push({
+      importedViaNft: true,
+      nftOwnerAddress: { $in: walletAddresses },
+    });
+  }
+
+  const personalities = await collection
+    .find(
+      mergeNotDeleted({
+        $or: orFilters,
+        $and: [
+          {
+            $or: [
+              { role: { $exists: false } },
+              { role: "player" as const },
+            ],
+          },
+        ],
+      }),
+    )
+    .sort({ createdAt: -1 })
+    .toArray();
+
+  const seen = new Set<string>();
+  const unique: Personality[] = [];
+
+  for (const personality of personalities.map(normalizePersonality)) {
+    if (seen.has(personality.id)) {
+      continue;
+    }
+    seen.add(personality.id);
+    unique.push(personality);
+  }
+
+  return unique;
+}
+
+export async function findPersonalityByNftTokenId(
+  tokenId: string,
+): Promise<Personality | null> {
+  const collection = await getPersonalitiesCollection();
+  const personality = await collection.findOne(
+    mergeNotDeleted({ "nft.tokenId": tokenId }),
+  );
+  return personality ? normalizePersonality(personality) : null;
+}
+
+export async function findMintedPersonalitiesForWallets(
+  walletAddresses: string[],
+): Promise<Personality[]> {
+  if (walletAddresses.length === 0) {
+    return [];
+  }
+
+  const normalized = normalizeWalletAddresses(walletAddresses);
+  const collection = await getPersonalitiesCollection();
+  const personalities = await collection
+    .find(
+      mergeNotDeleted({
+        nft: { $exists: true },
+        nftOwnerAddress: { $in: normalized },
+      }),
+    )
+    .sort({ createdAt: -1 })
+    .toArray();
+
+  return personalities.map(normalizePersonality);
 }
 
 export async function getActivePlayerPersonalities(): Promise<Personality[]> {
@@ -626,5 +761,7 @@ export async function ensurePersonalityIndexes(): Promise<void> {
   await collection.createIndex({ role: 1 });
   await collection.createIndex({ "xSync.xHandle": 1 });
   await collection.createIndex({ deletedAt: 1 });
+  await collection.createIndex({ "nft.tokenId": 1 }, { sparse: true });
+  await collection.createIndex({ nftOwnerAddress: 1 }, { sparse: true });
   await migrateInvalidPersonalityArchetypes();
 }

@@ -2,6 +2,8 @@ import { findPublicPersonalityByHandle } from "@/lib/personalities";
 import { isRankNpc } from "@/lib/personalities/rank-npc";
 import { toPublicPersonality } from "@/lib/profile/build-profile";
 import { getAuthUser } from "@/lib/auth/server";
+import { getWalletAuthContext } from "@/lib/nft/auth-context";
+import { canManagePersonality } from "@/lib/nft/ownership";
 import { normalizeHandle } from "@/lib/personalities/validation";
 
 type RouteContext = {
@@ -20,6 +22,9 @@ export async function GET(request: Request, context: RouteContext) {
 
     const authUser = await getAuthUser(request);
     const publicPersonality = await toPublicPersonality(personality);
+    const walletContext = authUser
+      ? await getWalletAuthContext(authUser)
+      : null;
 
     return Response.json({
       personality: {
@@ -27,7 +32,12 @@ export async function GET(request: Request, context: RouteContext) {
         isOwner: Boolean(
           authUser &&
             !isRankNpc(personality) &&
-            personality.ownerId === authUser.id,
+            walletContext &&
+            canManagePersonality(
+              walletContext.user,
+              personality,
+              walletContext.linkedWallets,
+            ),
         ),
       },
     });

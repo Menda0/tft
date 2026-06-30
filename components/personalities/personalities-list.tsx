@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { PersonalityAvatar } from "@/components/personalities/personality-avatar";
 import { ProfileLink } from "@/components/profile/profile-link";
+import { ImportNftPanel } from "@/components/wallet/import-nft-panel";
 import { PROJECT_NAME } from "@/lib/brand";
 import { profileKindUsesIdentity } from "@/lib/avatars/page-kind";
 import { formatArchetypeLabel } from "@/lib/personalities/archetypes";
@@ -162,8 +163,16 @@ export function PersonalitiesList() {
   const generationStarted = useRef(new Set<string>());
   const descriptionStarted = useRef(new Set<string>());
 
-  const atPersonalityLimit =
-    personalities.length >= MAX_PERSONALITIES_PER_USER;
+  const createdCount = useMemo(
+    () =>
+      personalities.filter(
+        (personality) =>
+          personality.ownerId === user?.id && personality.importedViaNft !== true,
+      ).length,
+    [personalities, user?.id],
+  );
+
+  const atPersonalityLimit = createdCount >= MAX_PERSONALITIES_PER_USER;
 
   const loadPersonalities = useCallback(async () => {
     if (!token) return;
@@ -294,6 +303,8 @@ export function PersonalitiesList() {
           <FarmSummary personalities={personalities} />
         ) : null}
 
+        <ImportNftPanel />
+
         {error ? (
           <p className="pixel-border-thin bg-[#7e2553] px-3 py-2 text-sm text-[#fff1e8]">
             {error}
@@ -354,6 +365,16 @@ export function PersonalitiesList() {
                       @{personality.handle}
                     </ProfileLink>
                   </p>
+                  {personality.nft ? (
+                    <p className="mt-1 text-[10px] font-bold text-[#29adff]">
+                      NFT #{personality.nft.tokenId}
+                    </p>
+                  ) : null}
+                  {personality.importedViaNft ? (
+                    <p className="mt-1 text-[10px] text-[#00e756]">
+                      Imported via wallet
+                    </p>
+                  ) : null}
                   {profileKindUsesIdentity(personality.kind) ? (
                     <p className="mt-1 text-xs text-[#83769a]">
                       {formatGenderLabel(personality.gender)} ·{" "}

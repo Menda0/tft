@@ -8,6 +8,11 @@ import { formatRelativeTime } from "@/lib/feed/format";
 import { normalizePersonality } from "@/lib/personalities";
 import { isRankNpc } from "@/lib/personalities/rank-npc";
 import { resolvePersonalitySocialRank } from "@/lib/profile/social-rank";
+import {
+  getDefaultChainId,
+  getNftContractAddress,
+  getOpenSeaAssetUrl,
+} from "@/lib/nft/config";
 import type { Personality } from "@/lib/types/personality";
 import type { Post } from "@/lib/types/post";
 import type {
@@ -21,6 +26,9 @@ export async function toPublicPersonality(
 ): Promise<PublicPersonality> {
   const normalized = normalizePersonality(personality);
   const { rank, label } = await resolvePersonalitySocialRank(normalized);
+  const contractAddress = getNftContractAddress();
+  const chainId = getDefaultChainId();
+  const tokenId = normalized.nft?.tokenId ?? null;
 
   return {
     id: normalized.id,
@@ -35,6 +43,12 @@ export async function toPublicPersonality(
     stats: normalized.stats,
     politicalSwing: normalized.politicalSwing,
     isRankNpc: isRankNpc(normalized),
+    hasNft: Boolean(normalized.nft),
+    nftTokenId: tokenId,
+    openSeaUrl:
+      tokenId && contractAddress
+        ? getOpenSeaAssetUrl(chainId, contractAddress, tokenId)
+        : null,
     socialRank: rank,
     socialRankLabel: label,
   };

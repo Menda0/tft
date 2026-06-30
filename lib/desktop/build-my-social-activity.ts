@@ -3,10 +3,11 @@ import {
 } from "@/lib/db/personality-activity";
 import { avatarColorForHandle } from "@/lib/feed/format";
 import {
-  getPersonalitiesCollection,
+  findPersonalitiesForUser,
   getPersonalityDisplayByIds,
 } from "@/lib/personalities";
-import { mergeNotDeleted } from "@/lib/db/active-filters";
+import { getLinkedWalletsForUser } from "@/lib/db/users";
+import { userLinkedWalletAddresses } from "@/lib/nft/ownership";
 import type {
   MySocialActivityItem,
   MySocialActivityPayload,
@@ -57,12 +58,13 @@ function buildActivityItems(
 }
 
 async function getOwnerPersonalityIds(ownerId: string): Promise<string[]> {
-  const collection = await getPersonalitiesCollection();
-  const rows = await collection
-    .find(mergeNotDeleted({ ownerId }), { projection: { id: 1 } })
-    .toArray();
+  const linkedWallets = await getLinkedWalletsForUser(ownerId);
+  const personalities = await findPersonalitiesForUser({
+    userId: ownerId,
+    linkedWalletAddresses: userLinkedWalletAddresses(linkedWallets),
+  });
 
-  return rows.map((personality) => personality.id);
+  return personalities.map((personality) => personality.id);
 }
 
 function collectRelatedPersonalityIds(
