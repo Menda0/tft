@@ -1,13 +1,15 @@
-import { mergeNotDeleted } from "@/lib/db/active-filters";
-import { findUserById } from "@/lib/db/users";
+import { findUserById, findUsersByIds } from "@/lib/db/users";
 import { avatarColorForHandle } from "@/lib/feed/format";
 import {
+  competitiveMatchStage,
+  farmerMatchStage,
+  heatScoreAddFieldsStage,
+  netCloutAddFieldsStages,
+} from "@/lib/leaderboards/aggregation";
+import {
   getPersonalitiesCollection,
-  isPersonalityDeleted,
   normalizePersonality,
 } from "@/lib/personalities";
-import { isRankNpc } from "@/lib/personalities/rank-npc";
-import { normalizeStoredStats } from "@/lib/personalities/stats";
 import { resolveSocialRanksForPersonalities } from "@/lib/profile/social-rank";
 import type { SocialRank } from "@/lib/scoring/ranks";
 import type { Personality } from "@/lib/types/personality";
@@ -44,62 +46,53 @@ type LeaderboardPage<T> = {
   hasMore: boolean;
 };
 
-async function sortPersonalitiesByScore(
-  personalities: Personality[],
-  getScore: (personality: Personality) => number,
+type RankedPersonalityRow = {
+  id: string;
+  ownerId?: string | null;
+  name: string;
+  handle: string;
+  avatarUrl?: string | null;
+  stats: Personality["stats"];
+  score: number;
+  rank: number;
+};
+
+async function hydratePersonalityLeaderboardPage(
+  rows: RankedPersonalityRow[],
   offset: number,
   limit: number,
 ): Promise<LeaderboardPage<PersonalityLeaderboardEntry>> {
-  const sorted = personalities
-    .map((raw) => {
-      const personality = normalizePersonality(raw);
-      return {
-        personality,
-        score: getScore(personality),
-      };
-    })
-    .sort((a, b) => {
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
+  const hasMore = rows.length > limit;
+  const items = hasMore ? rows.slice(0, limit) : rows;
 
-      return a.personality.id.localeCompare(b.personality.id);
-    });
-
-  const page = sorted.slice(offset, offset + limit + 1);
-  const hasMore = page.length > limit;
-  const items = hasMore ? page.slice(0, limit) : page;
+  if (items.length === 0) {
+    return { entries: [], hasMore };
+  }
 
   const ownerIds = [
     ...new Set(
       items
-        .map((entry) => entry.personality.ownerId)
+        .map((entry) => entry.ownerId)
         .filter((ownerId): ownerId is string => Boolean(ownerId)),
     ),
   ];
-
-  const users = await Promise.all(ownerIds.map((ownerId) => findUserById(ownerId)));
-  const usernameByOwnerId = new Map(
-    ownerIds.map((ownerId, index) => [
-      ownerId,
-      users[index]?.username ?? "Unknown",
-    ]),
+  const usersById = await findUsersByIds(ownerIds);
+  const personalities = items.map((row) =>
+    normalizePersonality(row as unknown as Personality),
   );
-
-  const socialRanks = await resolveSocialRanksForPersonalities(
-    items.map((entry) => entry.personality),
-  );
+  const socialRanks = await resolveSocialRanksForPersonalities(personalities);
 
   return {
-    entries: items.map((entry, index) => {
-      const rankInfo = socialRanks.get(entry.personality.id);
+    entries: personalities.map((personality, index) => {
+      const row = items[index]!;
+      const rankInfo = socialRanks.get(personality.id);
 
       return toPersonalityEntry(
-        entry.personality,
-        entry.score,
+        personality,
+        row.score,
         offset + index + 1,
-        entry.personality.ownerId
-          ? (usernameByOwnerId.get(entry.personality.ownerId) ?? "Unknown")
+        row.ownerId
+          ? (usersById.get(row.ownerId)?.username ?? "Unknown")
           : "Unknown",
         rankInfo?.rank ?? "novice",
         rankInfo?.label ?? "Novice",
@@ -114,23 +107,29 @@ export async function getTopPersonalitiesByClout(
   limit = LEADERBOARD_LIMIT,
 ): Promise<LeaderboardPage<PersonalityLeaderboardEntry>> {
   const collection = await getPersonalitiesCollection();
-  const personalities = await collection
-    .find(
-      mergeNotDeleted({
-        $or: [
-          { role: { $exists: false } },
-          { role: { $ne: "rank_npc" as const } },
-        ],
-      }),
-    )
+  const rows = await collection
+    .aggregate<RankedPersonalityRow>([
+      competitiveMatchStage(),
+      ...netCloutAddFieldsStages(),
+      { $sort: { _netClout: -1, id: 1 } },
+      { $skip: offset },
+      { $limit: limit + 1 },
+      {
+        $project: {
+          _id: 0,
+          id: 1,
+          ownerId: 1,
+          name: 1,
+          handle: 1,
+          avatarUrl: 1,
+          stats: 1,
+          score: "$_netClout",
+        },
+      },
+    ])
     .toArray();
 
-  return sortPersonalitiesByScore(
-    personalities,
-    (personality) => normalizeStoredStats(personality.stats).socialScore,
-    offset,
-    limit,
-  );
+  return hydratePersonalityLeaderboardPage(rows, offset, limit);
 }
 
 export async function getTopPersonalitiesByHeat(
@@ -138,76 +137,96 @@ export async function getTopPersonalitiesByHeat(
   limit = LEADERBOARD_LIMIT,
 ): Promise<LeaderboardPage<PersonalityLeaderboardEntry>> {
   const collection = await getPersonalitiesCollection();
-  const personalities = await collection
-    .find(
-      mergeNotDeleted({
-        $or: [
-          { role: { $exists: false } },
-          { role: { $ne: "rank_npc" as const } },
-        ],
-      }),
-    )
+  const rows = await collection
+    .aggregate<RankedPersonalityRow>([
+      competitiveMatchStage(),
+      heatScoreAddFieldsStage(),
+      { $sort: { _heatScore: -1, id: 1 } },
+      { $skip: offset },
+      { $limit: limit + 1 },
+      {
+        $project: {
+          _id: 0,
+          id: 1,
+          ownerId: 1,
+          name: 1,
+          handle: 1,
+          avatarUrl: 1,
+          stats: 1,
+          score: "$_heatScore",
+        },
+      },
+    ])
     .toArray();
 
-  return sortPersonalitiesByScore(
-    personalities,
-    (personality) => normalizeStoredStats(personality.stats).controversy,
-    offset,
-    limit,
-  );
+  return hydratePersonalityLeaderboardPage(rows, offset, limit);
 }
 
-async function getTopFarmersByMetric(
-  getScore: (personality: Personality) => number,
+type FarmerAggregateRow = {
+  userId: string;
+  score: number;
+  botCount: number;
+  rank: number;
+};
+
+async function queryFarmerLeaderboardPage(
+  metric: "clout" | "heat",
   offset: number,
   limit: number,
 ): Promise<LeaderboardPage<FarmerLeaderboardEntry>> {
   const collection = await getPersonalitiesCollection();
-  const personalities = await collection.find().toArray();
+  const scoreStages =
+    metric === "clout"
+      ? [...netCloutAddFieldsStages(), { $group: {
+            _id: "$ownerId",
+            score: { $sum: "$_netClout" },
+            botCount: { $sum: 1 },
+          } }]
+      : [
+          heatScoreAddFieldsStage(),
+          {
+            $group: {
+              _id: "$ownerId",
+              score: { $sum: "$_heatScore" },
+              botCount: { $sum: 1 },
+            },
+          },
+        ];
 
-  const farmTotals = new Map<string, { score: number; botCount: number }>();
+  const rows = await collection
+    .aggregate<FarmerAggregateRow>([
+      farmerMatchStage(),
+      ...scoreStages,
+      { $sort: { score: -1, _id: 1 } },
+      { $skip: offset },
+      { $limit: limit + 1 },
+      {
+        $project: {
+          _id: 0,
+          userId: "$_id",
+          score: 1,
+          botCount: 1,
+        },
+      },
+    ])
+    .toArray();
 
-  for (const raw of personalities) {
-    const personality = normalizePersonality(raw);
+  const hasMore = rows.length > limit;
+  const items = hasMore ? rows.slice(0, limit) : rows;
 
-    if (isRankNpc(personality) || !personality.ownerId || isPersonalityDeleted(personality)) {
-      continue;
-    }
-
-    const score = getScore(personality);
-    const existing = farmTotals.get(personality.ownerId);
-
-    if (existing) {
-      existing.score += score;
-      existing.botCount += 1;
-    } else {
-      farmTotals.set(personality.ownerId, { score, botCount: 1 });
-    }
+  if (items.length === 0) {
+    return { entries: [], hasMore };
   }
 
-  const sorted = [...farmTotals.entries()].sort((a, b) => {
-    if (b[1].score !== a[1].score) {
-      return b[1].score - a[1].score;
-    }
-
-    return a[0].localeCompare(b[0]);
-  });
-
-  const page = sorted.slice(offset, offset + limit + 1);
-  const hasMore = page.length > limit;
-  const items = hasMore ? page.slice(0, limit) : page;
-
-  const users = await Promise.all(
-    items.map(([userId]) => findUserById(userId)),
-  );
+  const usersById = await findUsersByIds(items.map((entry) => entry.userId));
 
   return {
-    entries: items.map(([userId, totals], index) => ({
+    entries: items.map((entry, index) => ({
       rank: offset + index + 1,
-      userId,
-      username: users[index]?.username ?? "Unknown",
-      score: totals.score,
-      botCount: totals.botCount,
+      userId: entry.userId,
+      username: usersById.get(entry.userId)?.username ?? "Unknown",
+      score: entry.score,
+      botCount: entry.botCount,
     })),
     hasMore,
   };
@@ -217,87 +236,97 @@ export async function getTopFarmersByClout(
   offset = 0,
   limit = LEADERBOARD_LIMIT,
 ): Promise<LeaderboardPage<FarmerLeaderboardEntry>> {
-  return getTopFarmersByMetric(
-    (personality) => normalizeStoredStats(personality.stats).socialScore,
-    offset,
-    limit,
-  );
+  return queryFarmerLeaderboardPage("clout", offset, limit);
 }
 
 export async function getTopFarmersByHeat(
   offset = 0,
   limit = LEADERBOARD_LIMIT,
 ): Promise<LeaderboardPage<FarmerLeaderboardEntry>> {
-  return getTopFarmersByMetric(
-    (personality) => normalizeStoredStats(personality.stats).controversy,
-    offset,
-    limit,
-  );
-}
-
-async function getCompetitivePersonalities(): Promise<Personality[]> {
-  const collection = await getPersonalitiesCollection();
-  const personalities = await collection
-    .find(
-      mergeNotDeleted({
-        $or: [
-          { role: { $exists: false } },
-          { role: { $ne: "rank_npc" as const } },
-        ],
-      }),
-    )
-    .toArray();
-
-  return personalities.map(normalizePersonality);
+  return queryFarmerLeaderboardPage("heat", offset, limit);
 }
 
 export async function getMyPersonalityLeaderboardEntries(
   ownerId: string,
   tab: "clout-personality" | "heat-personality",
 ): Promise<PersonalityLeaderboardEntry[]> {
-  const getScore =
+  const collection = await getPersonalitiesCollection();
+  const scoreStages =
     tab === "clout-personality"
-      ? (personality: Personality) =>
-          normalizeStoredStats(personality.stats).socialScore
-      : (personality: Personality) =>
-          normalizeStoredStats(personality.stats).controversy;
+      ? [
+          ...netCloutAddFieldsStages(),
+          { $sort: { _netClout: -1, id: 1 } },
+          {
+            $setWindowFields: {
+              sortBy: { _netClout: -1, id: 1 },
+              output: { rank: { $rank: {} } },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              id: 1,
+              ownerId: 1,
+              name: 1,
+              handle: 1,
+              avatarUrl: 1,
+              stats: 1,
+              score: "$_netClout",
+              rank: 1,
+            },
+          },
+        ]
+      : [
+          heatScoreAddFieldsStage(),
+          { $sort: { _heatScore: -1, id: 1 } },
+          {
+            $setWindowFields: {
+              sortBy: { _heatScore: -1, id: 1 },
+              output: { rank: { $rank: {} } },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              id: 1,
+              ownerId: 1,
+              name: 1,
+              handle: 1,
+              avatarUrl: 1,
+              stats: 1,
+              score: "$_heatScore",
+              rank: 1,
+            },
+          },
+        ];
 
-  const personalities = await getCompetitivePersonalities();
-  const sorted = personalities
-    .map((personality) => ({
-      personality,
-      score: getScore(personality),
-    }))
-    .sort((a, b) => {
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
+  const rows = await collection
+    .aggregate<RankedPersonalityRow>([
+      competitiveMatchStage(),
+      ...scoreStages,
+      { $match: { ownerId } },
+    ])
+    .toArray();
 
-      return a.personality.id.localeCompare(b.personality.id);
-    });
-
-  const ownerUser = await findUserById(ownerId);
-  const ownerUsername = ownerUser?.username ?? "Unknown";
-
-  const myItems = sorted
-    .map((entry, index) => ({ ...entry, rank: index + 1 }))
-    .filter((entry) => entry.personality.ownerId === ownerId);
-
-  if (myItems.length === 0) {
+  if (rows.length === 0) {
     return [];
   }
 
-  const socialRanks = await resolveSocialRanksForPersonalities(
-    myItems.map((entry) => entry.personality),
+  const ownerUser = await findUserById(ownerId);
+  const ownerUsername = ownerUser?.username ?? "Unknown";
+  const personalities = rows.map((row) =>
+    normalizePersonality(row as unknown as Personality),
   );
+  const socialRanks = await resolveSocialRanksForPersonalities(personalities);
 
-  return myItems.map((entry) => {
-    const rankInfo = socialRanks.get(entry.personality.id);
+  return personalities.map((personality, index) => {
+    const row = rows[index]!;
+    const rankInfo = socialRanks.get(personality.id);
 
     return toPersonalityEntry(
-      entry.personality,
-      entry.score,
-      entry.rank,
+      personality,
+      row.score,
+      row.rank,
       ownerUsername,
       rankInfo?.rank ?? "novice",
       rankInfo?.label ?? "Novice",
@@ -305,67 +334,81 @@ export async function getMyPersonalityLeaderboardEntries(
   });
 }
 
-async function buildFullFarmerLeaderboard(
-  getScore: (personality: Personality) => number,
-): Promise<FarmerLeaderboardEntry[]> {
+async function queryMyFarmerLeaderboardEntry(
+  userId: string,
+  metric: "clout" | "heat",
+): Promise<FarmerLeaderboardEntry | null> {
   const collection = await getPersonalitiesCollection();
-  const personalities = await collection.find().toArray();
-  const farmTotals = new Map<string, { score: number; botCount: number }>();
+  const scoreStages =
+    metric === "clout"
+      ? [
+          ...netCloutAddFieldsStages(),
+          {
+            $group: {
+              _id: "$ownerId",
+              score: { $sum: "$_netClout" },
+              botCount: { $sum: 1 },
+            },
+          },
+        ]
+      : [
+          heatScoreAddFieldsStage(),
+          {
+            $group: {
+              _id: "$ownerId",
+              score: { $sum: "$_heatScore" },
+              botCount: { $sum: 1 },
+            },
+          },
+        ];
 
-  for (const raw of personalities) {
-    const personality = normalizePersonality(raw);
+  const rows = await collection
+    .aggregate<FarmerAggregateRow>([
+      farmerMatchStage(),
+      ...scoreStages,
+      { $sort: { score: -1, _id: 1 } },
+      {
+        $setWindowFields: {
+          sortBy: { score: -1, _id: 1 },
+          output: { rank: { $rank: {} } },
+        },
+      },
+      { $match: { _id: userId } },
+      {
+        $project: {
+          _id: 0,
+          userId: "$_id",
+          score: 1,
+          botCount: 1,
+          rank: 1,
+        },
+      },
+    ])
+    .toArray();
 
-    if (
-      isRankNpc(personality) ||
-      !personality.ownerId ||
-      isPersonalityDeleted(personality)
-    ) {
-      continue;
-    }
+  const entry = rows[0];
 
-    const score = getScore(personality);
-    const existing = farmTotals.get(personality.ownerId);
-
-    if (existing) {
-      existing.score += score;
-      existing.botCount += 1;
-    } else {
-      farmTotals.set(personality.ownerId, { score, botCount: 1 });
-    }
+  if (!entry) {
+    return null;
   }
 
-  const sorted = [...farmTotals.entries()].sort((a, b) => {
-    if (b[1].score !== a[1].score) {
-      return b[1].score - a[1].score;
-    }
+  const user = await findUserById(userId);
 
-    return a[0].localeCompare(b[0]);
-  });
-
-  const users = await Promise.all(
-    sorted.map(([userId]) => findUserById(userId)),
-  );
-
-  return sorted.map(([userId, totals], index) => ({
-    rank: index + 1,
-    userId,
-    username: users[index]?.username ?? "Unknown",
-    score: totals.score,
-    botCount: totals.botCount,
-  }));
+  return {
+    rank: entry.rank,
+    userId: entry.userId,
+    username: user?.username ?? "Unknown",
+    score: entry.score,
+    botCount: entry.botCount,
+  };
 }
 
 export async function getMyFarmerLeaderboardEntry(
   userId: string,
   tab: "clout-farmers" | "heat-farmers",
 ): Promise<FarmerLeaderboardEntry | null> {
-  const getScore =
-    tab === "clout-farmers"
-      ? (personality: Personality) =>
-          normalizeStoredStats(personality.stats).socialScore
-      : (personality: Personality) =>
-          normalizeStoredStats(personality.stats).controversy;
-
-  const entries = await buildFullFarmerLeaderboard(getScore);
-  return entries.find((entry) => entry.userId === userId) ?? null;
+  return queryMyFarmerLeaderboardEntry(
+    userId,
+    tab === "clout-farmers" ? "clout" : "heat",
+  );
 }

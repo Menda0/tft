@@ -56,6 +56,27 @@ export async function findUserById(id: string): Promise<UserDocument | null> {
   return collection.findOne({ _id: new ObjectId(id) });
 }
 
+export async function findUsersByIds(
+  ids: string[],
+): Promise<Map<string, UserDocument>> {
+  const objectIds = [...new Set(ids)]
+    .filter((id) => ObjectId.isValid(id))
+    .map((id) => new ObjectId(id));
+
+  if (objectIds.length === 0) {
+    return new Map();
+  }
+
+  const collection = await getUsersCollection();
+  const users = await collection.find({ _id: { $in: objectIds } }).toArray();
+
+  return new Map(
+    users
+      .filter((user) => user._id)
+      .map((user) => [user._id!.toString(), user]),
+  );
+}
+
 export async function createUser(
   username: string,
   passwordHash: string,

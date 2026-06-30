@@ -34,6 +34,8 @@ import type { SocialRank } from "./scoring/ranks";
 
 const COLLECTION = "personalities";
 
+export { COMPETITIVE_FILTER } from "./personalities/competitive-filter";
+
 let archetypeMigrationDone = false;
 
 function clampImportance(value: number): number {
@@ -279,12 +281,11 @@ export async function getAllRankNpcs(): Promise<Personality[]> {
   return personalities.map(normalizePersonality);
 }
 
-const COMPETITIVE_FILTER = mergeNotDeleted({
-  $or: [
-    { role: { $exists: false } },
-    { role: { $ne: "rank_npc" as const } },
-  ],
-});
+import { COMPETITIVE_FILTER } from "./personalities/competitive-filter";
+import {
+  competitiveMatchStage,
+  netCloutAddFieldsStages,
+} from "./leaderboards/aggregation";
 
 const PLAYER_PERSONALITY_FILTER = mergeNotDeleted({
   $or: [
@@ -352,26 +353,36 @@ export async function getCompetitivePersonalityCount(): Promise<number> {
   return collection.countDocuments(COMPETITIVE_FILTER);
 }
 
+const SOCIAL_SCORE_LEADERBOARD_TTL_MS = 60_000;
+
+let socialScoreLeaderboardCache:
+  | { entries: Array<{ id: string; socialScore: number }>; fetchedAt: number }
+  | null = null;
+
 export async function getGlobalSocialScoreLeaderboard(): Promise<
   Array<{ id: string; socialScore: number }>
 > {
+  const now = Date.now();
+
+  if (
+    socialScoreLeaderboardCache &&
+    now - socialScoreLeaderboardCache.fetchedAt < SOCIAL_SCORE_LEADERBOARD_TTL_MS
+  ) {
+    return socialScoreLeaderboardCache.entries;
+  }
+
   const collection = await getPersonalitiesCollection();
-  const personalities = await collection
-    .find(COMPETITIVE_FILTER, { projection: { id: 1, stats: 1 } })
+  const rows = await collection
+    .aggregate<{ id: string; socialScore: number }>([
+      competitiveMatchStage(),
+      ...netCloutAddFieldsStages(),
+      { $sort: { _netClout: -1, id: 1 } },
+      { $project: { _id: 0, id: 1, socialScore: "$_netClout" } },
+    ])
     .toArray();
 
-  return personalities
-    .map((personality) => ({
-      id: personality.id,
-      socialScore: normalizeStoredStats(personality.stats).socialScore,
-    }))
-    .sort((a, b) => {
-      if (b.socialScore !== a.socialScore) {
-        return b.socialScore - a.socialScore;
-      }
-
-      return a.id.localeCompare(b.id);
-    });
+  socialScoreLeaderboardCache = { entries: rows, fetchedAt: now };
+  return rows;
 }
 
 export async function getSocialScoreGlobalRank(

@@ -24,25 +24,33 @@ export async function getPostsCollection(): Promise<Collection<Post>> {
   return db.collection<Post>(COLLECTION);
 }
 
+let postIndexesReady: Promise<void> | null = null;
+
 export async function ensurePostIndexes(): Promise<void> {
-  const collection = await getPostsCollection();
-  await collection.createIndex({ id: 1 }, { unique: true });
-  await collection.createIndex({ createdAt: -1 });
-  await collection.createIndex({ replyToPostId: 1 });
-  await collection.createIndex({ replyToPostId: 1, "stats.likes": -1 });
-  await collection.createIndex({ "author.personalityId": 1 });
-  await collection.createIndex({
-    "author.personalityId": 1,
-    createdAt: -1,
-    replyToPostId: 1,
-    repostOfPostId: 1,
-  });
-  await collection.createIndex(
-    { externalId: 1 },
-    { unique: true, sparse: true },
-  );
-  await collection.createIndex({ mediaStatus: 1 });
-  await collection.createIndex({ deletedAt: 1 });
+  if (!postIndexesReady) {
+    postIndexesReady = (async () => {
+      const collection = await getPostsCollection();
+      await collection.createIndex({ id: 1 }, { unique: true });
+      await collection.createIndex({ createdAt: -1 });
+      await collection.createIndex({ replyToPostId: 1 });
+      await collection.createIndex({ replyToPostId: 1, "stats.likes": -1 });
+      await collection.createIndex({ "author.personalityId": 1 });
+      await collection.createIndex({
+        "author.personalityId": 1,
+        createdAt: -1,
+        replyToPostId: 1,
+        repostOfPostId: 1,
+      });
+      await collection.createIndex(
+        { externalId: 1 },
+        { unique: true, sparse: true },
+      );
+      await collection.createIndex({ mediaStatus: 1 });
+      await collection.createIndex({ deletedAt: 1 });
+    })();
+  }
+
+  return postIndexesReady;
 }
 
 export async function softDeletePostsByPersonalityIds(
@@ -558,6 +566,30 @@ export async function getTopRepliesForPost(
   limit = 5,
 ): Promise<Post[]> {
   return getRepliesForPost(postId, limit);
+}
+
+export async function getTopPreviewRepliesForPosts(
+  postIds: string[],
+): Promise<Map<string, Post>> {
+  if (postIds.length === 0) {
+    return new Map();
+  }
+
+  const collection = await getPostsCollection();
+  const rows = await collection
+    .aggregate<{ _id: string; reply: Post }>([
+      { $match: mergeNotDeletedPost({ replyToPostId: { $in: postIds } }) },
+      { $sort: { "stats.likes": -1, createdAt: -1 } },
+      {
+        $group: {
+          _id: "$replyToPostId",
+          reply: { $first: "$$ROOT" },
+        },
+      },
+    ])
+    .toArray();
+
+  return new Map(rows.map((row) => [row._id, row.reply]));
 }
 
 export async function getRepliesForPosts(postIds: string[]): Promise<Post[]> {

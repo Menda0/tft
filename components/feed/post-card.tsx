@@ -12,7 +12,8 @@ type PostCardProps = {
 };
 
 export function PostCard({ thread, onOpen }: PostCardProps) {
-  const previewReply = thread.replies[thread.replies.length - 1];
+  const previewReply = thread.replies[0];
+  const replyCount = thread.stats.replies;
 
   return (
     <article>
@@ -43,8 +44,8 @@ export function PostCard({ thread, onOpen }: PostCardProps) {
                     <div className="flex items-center gap-1.5 text-xs text-[#29adff]">
                       <span>💬</span>
                       <span>
-                        {thread.replies.length}{" "}
-                        {thread.replies.length === 1 ? "REPLY" : "REPLIES"}
+                        {replyCount}{" "}
+                        {replyCount === 1 ? "REPLY" : "REPLIES"}
                       </span>
                     </div>
                     <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-[#c2c3c7]">
