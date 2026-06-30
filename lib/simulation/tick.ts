@@ -32,6 +32,7 @@ import {
   recordTickStat,
   type SimulationTickStats,
 } from "./tick-stats";
+import { simulationConfig } from "./config";
 
 export type { SimulationLogFn, TickLogEntry, TickLogLevel } from "./logger";
 export { createSimulationLogger, noopSimulationLog } from "./logger";
@@ -199,7 +200,7 @@ export async function simulationTick(
 
   await runWithConcurrency(
     personalities,
-    3,
+    simulationConfig.tick.concurrency,
     async (personality) => {
       await simulatePersonality(personality, world, log);
     },
@@ -252,14 +253,7 @@ export async function simulationTick(
 }
 
 export function getSimulationTickIntervalMs(): number {
-  const raw = process.env.SIMULATION_TICK_INTERVAL_MS?.trim();
-  const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
-
-  if (Number.isFinite(parsed) && parsed > 0) {
-    return parsed;
-  }
-
-  return 15 * 60 * 1000;
+  return simulationConfig.tick.intervalMs;
 }
 
 export function shouldRunTick(lastTickAt: Date | null, now = Date.now()): boolean {

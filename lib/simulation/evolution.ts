@@ -1,13 +1,16 @@
 import type { MemoryItem, Personality } from "@/lib/types/personality";
 import type { SocialRank } from "@/lib/scoring/ranks";
 
+import { simulationConfig } from "./config";
 import { hasMemory } from "./memory";
 
-export const EVOLVE_CHANCE = 0.15;
-export const CONTROVERSY_EVOLVE_THRESHOLD = 200;
-export const CELEBRITY_FOLLOWERS_THRESHOLD = 10000;
-const HIGH_RIVALRY_EVOLVE_MIN = 6;
-const HIGH_RIVALRY_EVOLVE_COUNT = 2;
+export const EVOLVE_CHANCE = simulationConfig.evolution.chance;
+export const CONTROVERSY_EVOLVE_THRESHOLD =
+  simulationConfig.evolution.controversyThreshold;
+export const CELEBRITY_FOLLOWERS_THRESHOLD =
+  simulationConfig.evolution.celebrityFollowersThreshold;
+const HIGH_RIVALRY_EVOLVE_MIN = simulationConfig.evolution.highRivalryMin;
+const HIGH_RIVALRY_EVOLVE_COUNT = simulationConfig.evolution.highRivalryCount;
 
 export type EvolutionPatch = {
   traits?: Personality["traits"];

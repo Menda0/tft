@@ -4,6 +4,7 @@ import { decayControversy } from "@/lib/scoring/controversy";
 
 import type { SimulationLogFn } from "./logger";
 import { applyPersonalityUpdate } from "./personality-state";
+import { simulationConfig } from "./config";
 import type { SimulationWorld } from "./world";
 
 export async function runHeatDecayPass(
@@ -59,14 +60,7 @@ export async function heatDecayTick(
 }
 
 export function getHeatDecayTickIntervalMs(): number {
-  const raw = process.env.HEAT_DECAY_TICK_INTERVAL_MS?.trim();
-  const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
-
-  if (Number.isFinite(parsed) && parsed > 0) {
-    return parsed;
-  }
-
-  return 30 * 60 * 1000;
+  return simulationConfig.heatDecay.tickIntervalMs;
 }
 
 export function shouldRunHeatDecayTick(

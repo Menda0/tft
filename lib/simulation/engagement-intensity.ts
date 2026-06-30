@@ -1,9 +1,9 @@
 import type { RelationshipCategory } from "@/lib/profile/relationship-category";
-import {
-  getRelationshipCategoryAgreeNudge,
-  getRelationshipCategoryDisagreeNudge,
-} from "@/lib/profile/relationship-category";
 import type { Personality, Relationship } from "@/lib/types/personality";
+
+import { simulationConfig } from "./config";
+
+const relationshipModifiers = simulationConfig.relationshipModifiers;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -28,12 +28,17 @@ export function computeAgreeProbabilityModifiers(
   traits: Personality["traits"],
   category?: RelationshipCategory,
 ): number {
-  const admirationAgreeBoost = (relationship.admiration / 10) * 0.1;
-  const trustAgreeBoost = (relationship.trust / 10) * 0.05;
+  const admirationAgreeBoost =
+    (relationship.admiration / 10) *
+    relationshipModifiers.admirationAgreePerPoint;
+  const trustAgreeBoost =
+    (relationship.trust / 10) * relationshipModifiers.trustAgreePerPoint;
   const agreeTraitPull =
-    traits.humor * 0.015 + traits.woke * 0.01 + traits.radical * 0.005;
+    traits.humor * relationshipModifiers.humorAgree +
+    traits.woke * relationshipModifiers.wokeAgree +
+    traits.radical * relationshipModifiers.radicalAgree;
   const categoryNudge = category
-    ? getRelationshipCategoryAgreeNudge(category)
+    ? relationshipModifiers.categoryAgreeNudge[category]
     : 0;
 
   return admirationAgreeBoost + trustAgreeBoost + agreeTraitPull + categoryNudge;
@@ -45,16 +50,20 @@ export function computeDisagreeProbabilityModifiers(
   author: Personality | null,
   category?: RelationshipCategory,
 ): number {
-  const rivalryDisagreeBoost = (relationship.rivalry / 10) * 0.12;
-  const admirationDisagreeDrag = (relationship.admiration / 10) * 0.08;
+  const rivalryDisagreeBoost =
+    (relationship.rivalry / 10) *
+    relationshipModifiers.rivalryDisagreePerPoint;
+  const admirationDisagreeDrag =
+    (relationship.admiration / 10) *
+    relationshipModifiers.admirationDisagreeDragPerPoint;
   const disagreeTraitPull =
-    traits.aggression * 0.018 +
-    traits.troll * 0.015 +
-    traits.negacionist * 0.012 +
-    traits.radical * 0.008;
+    traits.aggression * relationshipModifiers.aggressionDisagree +
+    traits.troll * relationshipModifiers.trollDisagree +
+    traits.negacionist * relationshipModifiers.negacionistDisagree +
+    traits.radical * relationshipModifiers.radicalDisagree;
   const authorHeatPull = computeAuthorHeatPull(author);
   const categoryNudge = category
-    ? getRelationshipCategoryDisagreeNudge(category)
+    ? relationshipModifiers.categoryDisagreeNudge[category]
     : 0;
 
   return (
@@ -67,12 +76,22 @@ export function computeDisagreeProbabilityModifiers(
 }
 
 export function computeAuthorHeatPull(author: Personality | null): number {
-  if (!author || author.stats.controversy <= 80) {
+  if (
+    !author ||
+    author.stats.controversy <=
+      relationshipModifiers.authorHeatControversyThreshold
+  ) {
     return 0;
   }
 
-  const heatExcess = (author.stats.controversy - 80) / 400;
-  return Math.min(0.03, heatExcess) * (1 + author.traits.radical / 20);
+  const heatExcess =
+    (author.stats.controversy -
+      relationshipModifiers.authorHeatControversyThreshold) /
+    400;
+  return (
+    Math.min(relationshipModifiers.authorHeatMaxPull, heatExcess) *
+    (1 + author.traits.radical / 20)
+  );
 }
 
 export function computeDisagreeCooldownMultiplier(

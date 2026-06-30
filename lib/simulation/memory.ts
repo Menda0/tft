@@ -11,12 +11,13 @@ import {
   computeExchangeImportance,
   computeAgreeIntensity,
 } from "./engagement-intensity";
+import { simulationConfig } from "./config";
 
 export const MAX_STORED_MEMORIES = 25;
 export const MAX_PROMPT_MEMORIES = 6;
 
 export const RIVALRY_THRESHOLD = 7;
-const FRIENDSHIP_THRESHOLD = 7;
+const FRIENDSHIP_THRESHOLD = simulationConfig.memory.friendshipThreshold;
 
 function clampImportance(value: number): number {
   return Math.min(10, Math.max(1, Math.round(value)));

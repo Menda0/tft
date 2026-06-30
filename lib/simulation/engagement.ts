@@ -1,7 +1,7 @@
 import type { Post } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
-import { CONSECUTIVE_ENDORSEMENTS_FOR_FOLLOW } from "./endorsement-streak";
+import { simulationConfig } from "./config";
 import {
   computeEngagementProbabilities,
   type EngagementProbabilityContext,
@@ -27,10 +27,17 @@ export type EngagementDecision = {
   unfollow: boolean;
 };
 
-const MAX_PROBABILITY = 0.85;
+const {
+  maxProbability,
+  disagreeAlignmentThreshold,
+  disagreeUnfollowMultiplier,
+} = simulationConfig.engagement;
+const replyLikeConfig = simulationConfig.replyLike;
+const CONSECUTIVE_ENDORSEMENTS_FOR_FOLLOW =
+  simulationConfig.endorsement.consecutiveForFollow;
 
 function capProbability(value: number): number {
-  return Math.min(MAX_PROBABILITY, value);
+  return Math.min(maxProbability, value);
 }
 
 function roll(probability: number): boolean {
@@ -82,12 +89,15 @@ export function decideEngagement(context: EngagementContext): EngagementDecision
 
   const skipLike = responseTone === "disagree";
 
-  const disagrees = responseTone === "disagree" || alignment < 0.4;
+  const disagrees =
+    responseTone === "disagree" || alignment < disagreeAlignmentThreshold;
   let unfollowProbability =
     alreadyFollowing && disagrees ? probabilities.unfollow : 0;
 
   if (alreadyFollowing && responseTone === "disagree") {
-    unfollowProbability = capProbability(unfollowProbability * 1.5);
+    unfollowProbability = capProbability(
+      unfollowProbability * disagreeUnfollowMultiplier,
+    );
   }
 
   const liked = !skipLike && roll(probabilities.like);
@@ -134,18 +144,20 @@ export function decideReplyLike(context: ReplyLikeContext): boolean {
   const socialScore = replyAuthor?.stats.socialScore ?? 0;
 
   let probability =
-    0.025 +
-    alignment * 0.12 +
-    traits.humor * 0.01 +
-    Math.log1p(socialScore / 500) * 0.015 +
-    Math.log1p(reply.stats.likes) * 0.02;
+    replyLikeConfig.base +
+    alignment * replyLikeConfig.alignment +
+    traits.humor * replyLikeConfig.humor +
+    Math.log1p(socialScore / replyLikeConfig.socialScoreDivisor) *
+      replyLikeConfig.socialScoreLog +
+    Math.log1p(reply.stats.likes) * replyLikeConfig.replyLikesLog;
 
   if (
     likedParent &&
     parentPost &&
-    scorePostAlignment(reader, parentPost, parentAuthor ?? null) > 0.5
+    scorePostAlignment(reader, parentPost, parentAuthor ?? null) >
+      replyLikeConfig.likedParentAlignmentThreshold
   ) {
-    probability += 0.03;
+    probability += replyLikeConfig.likedParentBonus;
   }
 
   return roll(probability);

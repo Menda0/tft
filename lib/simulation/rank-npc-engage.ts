@@ -38,25 +38,22 @@ import {
   recordAuthorEndorsementOutcome,
 } from "./endorsement-streak";
 
+import {
+  canFollowAfterEndorsements,
+  getEndorsementStreak,
+  persistEndorsementStreak,
+  recordAuthorEndorsementOutcome,
+} from "./endorsement-streak";
+import { simulationConfig } from "./config";
+
 type RankNpcAction = "like" | "follow" | "reply";
 
-const ACTION_WEIGHTS: Record<RankNpcAction, number> = {
-  like: 68,
-  follow: 24,
-  reply: 5,
-};
-
-const THREADING_POST_READ_BOOST = 5;
+const rankNpcConfig = simulationConfig.rankNpc;
+const ACTION_WEIGHTS: Record<RankNpcAction, number> = rankNpcConfig.actionWeights;
+const THREADING_POST_READ_BOOST = rankNpcConfig.threadingPostReadBoost;
 
 function getRankNpcEngageChance(): number {
-  const raw = process.env.RANK_NPC_ENGAGE_CHANCE?.trim();
-  const parsed = raw ? Number.parseFloat(raw) : Number.NaN;
-
-  if (Number.isFinite(parsed) && parsed > 0 && parsed <= 1) {
-    return parsed;
-  }
-
-  return 0.015;
+  return rankNpcConfig.engageChance;
 }
 
 function postSelectionWeight(
@@ -65,13 +62,16 @@ function postSelectionWeight(
   threadingPostIds: Set<string>,
 ): number {
   const clout = author?.stats.socialScore ?? 0;
+  const weights = rankNpcConfig.postSelectionWeights;
   const engagement =
-    post.stats.likes * 2 +
-    post.stats.reposts * 3 +
-    post.stats.replies * 4 +
-    post.stats.views * 0.05;
+    post.stats.likes * weights.likes +
+    post.stats.reposts * weights.reposts +
+    post.stats.replies * weights.replies +
+    post.stats.views * weights.views;
 
-  const baseWeight = (1 + Math.log1p(engagement)) * (1 + Math.log1p(clout / 500));
+  const baseWeight =
+    (1 + Math.log1p(engagement)) *
+    (1 + Math.log1p(clout / rankNpcConfig.cloutDivisor));
 
   if (threadingPostIds.has(post.id)) {
     return (
@@ -213,7 +213,8 @@ async function engageWithPost(
     return;
   }
 
-  const tone = Math.random() < 0.6 ? "agree" : "disagree";
+  const tone =
+    Math.random() < rankNpcConfig.replyToneAgreeChance ? "agree" : "disagree";
   log(
     "info",
     `${npcLabel} ${tone === "agree" ? "agreeing with" : "pushing back on"} @${author.handle}...`,
@@ -339,7 +340,8 @@ export async function rankNpcEngagementPass(
     let action = pickAction();
 
     if (action === "follow" && (await hasFollow(npc.id, picked.author.id))) {
-      action = Math.random() < 0.55 ? "like" : "reply";
+      action =
+        Math.random() < rankNpcConfig.followFallbackLikeChance ? "like" : "reply";
     }
 
     await engageWithPost(npc, picked.post, picked.author, action, world, log);

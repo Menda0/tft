@@ -44,18 +44,27 @@ import {
   persistEndorsementStreak,
   recordAuthorEndorsementOutcome,
 } from "./endorsement-streak";
+import { simulationConfig } from "./config";
 
-const READ_POST_COUNT = 2;
-const REPLIES_TO_EVALUATE = 3;
-const FOLLOWED_AUTHOR_WEIGHT = 5;
-const DEFAULT_AUTHOR_WEIGHT = 1;
-const THREADING_POST_READ_BOOST = 5;
+const readPostsConfig = simulationConfig.readPosts;
+const {
+  postsPerPersonality: READ_POST_COUNT,
+  repliesToEvaluate: REPLIES_TO_EVALUATE,
+  followedAuthorWeight: FOLLOWED_AUTHOR_WEIGHT,
+  defaultAuthorWeight: DEFAULT_AUTHOR_WEIGHT,
+  threadingPostReadBoost: THREADING_POST_READ_BOOST,
+  engagementScoreWeights,
+  fameBoostDivisor,
+} = readPostsConfig;
 
 function engagementReadWeight(post: Post, authorSocialScore = 0): number {
   const { replies, views, reposts, likes } = post.stats;
   const engagementScore =
-    replies * 4 + likes * 2 + reposts * 3 + views * 0.05;
-  const fameBoost = 1 + Math.log1p(authorSocialScore / 500);
+    replies * engagementScoreWeights.replies +
+    likes * engagementScoreWeights.likes +
+    reposts * engagementScoreWeights.reposts +
+    views * engagementScoreWeights.views;
+  const fameBoost = 1 + Math.log1p(authorSocialScore / fameBoostDivisor);
 
   return (1 + Math.log1p(engagementScore)) * fameBoost;
 }

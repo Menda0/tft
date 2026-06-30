@@ -3,6 +3,7 @@ import type { Personality } from "@/lib/types/personality";
 
 import { classifyRelationship } from "@/lib/profile/relationship-category";
 
+import { simulationConfig } from "./config";
 import {
   computeAgreeProbabilityModifiers,
   computeDisagreeCooldownMultiplier,
@@ -11,18 +12,27 @@ import {
 } from "./engagement-intensity";
 import { scorePostAlignment, scorePostRevelatory } from "./engagement-scoring";
 
-const MAX_PROBABILITY = 0.85;
-const THREADING_ENGAGEMENT_BOOST = 2.5;
-const THREADING_REPLY_BOOST = 1.25;
+const {
+  maxProbability,
+  threadingEngagementBoost,
+  threadingReplyBoost,
+  disagreeAlignmentThreshold,
+  like,
+  repost,
+  respondAgree,
+  respondDisagree,
+  follow,
+  unfollow,
+} = simulationConfig.engagement;
 
 function capProbability(value: number): number {
-  return Math.min(MAX_PROBABILITY, value);
+  return Math.min(maxProbability, value);
 }
 
 function applyThreadingBoost(
   probability: number,
   isThreadingPost?: boolean,
-  boost = THREADING_ENGAGEMENT_BOOST,
+  boost = threadingEngagementBoost,
 ): number {
   if (!isThreadingPost) {
     return probability;
@@ -70,17 +80,19 @@ export function computeEngagementProbabilities(
   );
   const category = classifyRelationship(relationship, mutuallyFollowing);
 
-  const followingLikeBonus = alreadyFollowing ? 0.08 : 0;
-  const followingAgreeBonus = alreadyFollowing ? 0.012 : 0;
-  const followingDisagreeDrag = alreadyFollowing ? 0.008 : 0;
+  const followingLikeBonus = alreadyFollowing ? like.followingBonus : 0;
+  const followingAgreeBonus = alreadyFollowing ? respondAgree.followingBonus : 0;
+  const followingDisagreeDrag = alreadyFollowing
+    ? respondDisagree.followingDrag
+    : 0;
 
   let respondDisagreeProbability = applyThreadingBoost(
-    0.002 +
-      (1 - alignment) * 0.035 +
+    respondDisagree.base +
+      (1 - alignment) * respondDisagree.misalignment +
       computeDisagreeProbabilityModifiers(relationship, traits, author, category) -
       followingDisagreeDrag,
     isThreadingPost,
-    THREADING_REPLY_BOOST,
+    threadingReplyBoost,
   );
   respondDisagreeProbability *= computeDisagreeCooldownMultiplier(
     recentDisagreeCount,
@@ -88,43 +100,50 @@ export function computeEngagementProbabilities(
   );
 
   const revelatory = scorePostRevelatory(personality, post, author);
-  const disagrees = alignment < 0.4;
+  const disagrees = alignment < disagreeAlignmentThreshold;
   const unfollowProbability =
     alreadyFollowing && disagrees
-      ? 0.02 +
-        (1 - alignment) * 0.1 +
-        revelatory * 0.3 +
-        traits.aggression * 0.01 +
-        traits.negacionist * 0.01
+      ? unfollow.base +
+        (1 - alignment) * unfollow.misalignment +
+        revelatory * unfollow.revelatory +
+        traits.aggression * unfollow.aggression +
+        traits.negacionist * unfollow.negacionist
       : 0;
 
   return {
     like: capProbability(
       applyThreadingBoost(
-        0.1 + alignment * 0.35 + traits.humor * 0.02 + followingLikeBonus,
+        like.base +
+          alignment * like.alignment +
+          traits.humor * like.humor +
+          followingLikeBonus,
         isThreadingPost,
       ),
     ),
     repost: capProbability(
       applyThreadingBoost(
-        0.012 + alignment * 0.18 + traits.radical * 0.015,
+        repost.base +
+          alignment * repost.alignment +
+          traits.radical * repost.radical,
         isThreadingPost,
       ),
     ),
     respondAgree: capProbability(
       applyThreadingBoost(
-        0.003 +
-          alignment * 0.035 +
+        respondAgree.base +
+          alignment * respondAgree.alignment +
           computeAgreeProbabilityModifiers(relationship, traits, category) +
           followingAgreeBonus,
         isThreadingPost,
-        THREADING_REPLY_BOOST,
+        threadingReplyBoost,
       ),
     ),
     respondDisagree: capProbability(respondDisagreeProbability),
     follow: capProbability(
       applyThreadingBoost(
-        0.015 + alignment * 0.12 + traits.negacionist * 0.01,
+        follow.base +
+          alignment * follow.alignment +
+          traits.negacionist * follow.negacionist,
         isThreadingPost,
       ),
     ),

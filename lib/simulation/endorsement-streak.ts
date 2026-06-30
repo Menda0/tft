@@ -1,10 +1,12 @@
 import { updatePersonality } from "@/lib/personalities";
 import type { Personality } from "@/lib/types/personality";
 
+import { simulationConfig } from "./config";
 import { defaultRelationship } from "./personality-state";
 import type { SimulationWorld } from "./world";
 
-export const CONSECUTIVE_ENDORSEMENTS_FOR_FOLLOW = 3;
+export const CONSECUTIVE_ENDORSEMENTS_FOR_FOLLOW =
+  simulationConfig.endorsement.consecutiveForFollow;
 
 export function getEndorsementStreak(
   personality: Pick<Personality, "relationships">,
