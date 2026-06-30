@@ -4,11 +4,9 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { getInitials } from "@/components/feed/post-author";
+import { DesktopActivityLog } from "@/components/layout/desktop-activity-log";
 import { DesktopOverviewLeaderboard } from "@/components/layout/desktop-overview-leaderboard";
-import {
-  ActivityPanel,
-  MyPersonalitiesPanel,
-} from "@/components/layout/my-social-panel";
+import { MyPersonalitiesPanel } from "@/components/layout/my-social-panel";
 import { ProfileLink } from "@/components/profile/profile-link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -208,10 +206,7 @@ export function DesktopSidebar() {
   }, []);
 
   useEffect(() => {
-    if (
-      (activeTab !== "my-personalities" && activeTab !== "activity") ||
-      !token
-    ) {
+    if (activeTab !== "my-personalities" || !token) {
       return;
     }
 
@@ -298,12 +293,7 @@ export function DesktopSidebar() {
           error={mySocialError}
         />
       ) : (
-        <ActivityPanel
-          token={token}
-          personalities={mySocial.personalities}
-          loading={mySocialLoading}
-          error={mySocialError}
-        />
+        <DesktopActivityLog />
       )}
     </aside>
   );
