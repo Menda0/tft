@@ -355,9 +355,6 @@ export async function resetActivePersonalitiesSocialState(): Promise<number> {
       beliefs: {},
       stats: defaultStats(),
     },
-    $unset: {
-      "stats.reputation": "",
-    },
   });
 
   socialScoreLeaderboardCache = null;

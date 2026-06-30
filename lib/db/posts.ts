@@ -543,12 +543,32 @@ export async function getTrendingTopLevelPostsSince(
               "$stats.views",
             ],
           },
+          discoveryBonus: {
+            $divide: [
+              35,
+              {
+                $add: [
+                  1,
+                  {
+                    $ln: {
+                      $add: [{ $ifNull: ["$stats.views", 0] }, 1],
+                    },
+                  },
+                ],
+              },
+            ],
+          },
         },
       },
-      { $sort: { engagementScore: -1, createdAt: -1 } },
+      {
+        $addFields: {
+          rankScore: { $add: ["$engagementScore", "$discoveryBonus"] },
+        },
+      },
+      { $sort: { rankScore: -1, createdAt: -1 } },
       { $skip: skip },
       { $limit: limit },
-      { $project: { engagementScore: 0 } },
+      { $project: { engagementScore: 0, discoveryBonus: 0, rankScore: 0 } },
     ])
     .toArray();
 }

@@ -9,6 +9,7 @@ import {
   streamSimulationTickRequest,
   type StreamTickEvent,
 } from "@/lib/simulation/client";
+import { formatTickStatsSummary } from "@/lib/simulation/tick-stats";
 import { cleanSlatePersonalitySocialRequest, prunePlayerPersonalitiesRequest } from "@/lib/personalities/admin-client";
 import { pruneRankNpcPostsRequest, streamSeedRankNpcsAdminRequest } from "@/lib/rank-npcs/client";
 import type { TickLogLevel } from "@/lib/simulation/logger";
@@ -149,7 +150,11 @@ export function AdminConsole({ open, onClose }: AdminConsoleProps) {
           if (event.type === "done") {
             appendLine(
               "success",
-              `Tick #${event.tickNumber} finished (simulated ${event.simulatedPersonalityCount}/${event.eligiblePersonalityCount} personalities, ${event.postCount} posts tracked).`,
+              `Tick #${event.tickNumber} finished (simulated ${event.simulatedPersonalityCount}/${event.eligiblePersonalityCount} personalities).`,
+            );
+            appendLine(
+              "success",
+              `Tick totals: ${formatTickStatsSummary(event.stats)}`,
             );
           }
         },

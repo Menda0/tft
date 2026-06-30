@@ -46,6 +46,7 @@ export async function POST(request: Request) {
       postCount: result.postCount,
       simulatedPersonalityCount: result.simulatedPersonalityCount,
       eligiblePersonalityCount: result.eligiblePersonalityCount,
+      stats: result.stats,
     });
   } catch (error) {
     console.error("Simulation dev tick failed:", error);

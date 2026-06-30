@@ -29,13 +29,15 @@ import {
 } from "./posts";
 import type { SimulationWorld } from "./world";
 import { weightedRandom, weightedSampleWithoutReplacement } from "./utils";
+import { recordTickStat } from "./tick-stats";
+import { threadingLowViewBoost } from "@/lib/feed/threading-discovery";
 
 type RankNpcAction = "like" | "follow" | "reply";
 
 const ACTION_WEIGHTS: Record<RankNpcAction, number> = {
-  like: 45,
-  follow: 25,
-  reply: 25,
+  like: 62,
+  follow: 22,
+  reply: 8,
 };
 
 const THREADING_POST_READ_BOOST = 5;
@@ -48,7 +50,7 @@ function getRankNpcEngageChance(): number {
     return parsed;
   }
 
-  return 0.03;
+  return 0.015;
 }
 
 function postSelectionWeight(
@@ -66,7 +68,11 @@ function postSelectionWeight(
   const baseWeight = (1 + Math.log1p(engagement)) * (1 + Math.log1p(clout / 500));
 
   if (threadingPostIds.has(post.id)) {
-    return baseWeight * THREADING_POST_READ_BOOST;
+    return (
+      baseWeight *
+      THREADING_POST_READ_BOOST *
+      threadingLowViewBoost(post.stats.views)
+    );
   }
 
   return baseWeight;
@@ -126,6 +132,7 @@ async function engageWithPost(
   if (action === "like") {
     await likePost(npc, post, world);
     await recordRankNpcLikeEffects(world, npc, author);
+    recordTickStat(world.tickStats, "likes");
     void recordLikeReceivedActivity(author.id, npc.id, post, author.ownerId);
     log("success", `${npcLabel} liked @${author.handle}`);
     return;
@@ -145,6 +152,7 @@ async function engageWithPost(
     }
 
     await recordRankNpcFollowEffects(world, npc, author);
+    recordTickStat(world.tickStats, "follows");
     log("success", `${npcLabel} followed @${author.handle}`);
     return;
   }
@@ -174,6 +182,8 @@ async function engageWithPost(
     log("warn", `${npcLabel} failed to post reply to @${author.handle}.`);
     return;
   }
+
+  recordTickStat(world.tickStats, "replies");
 
   if (tone === "agree") {
     await recordRankNpcAgreeReplyEffects(world, npc, author);

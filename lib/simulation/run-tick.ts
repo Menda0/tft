@@ -19,6 +19,7 @@ import {
 import { isTickCancelled } from "@/lib/simulation/cancel";
 import { noopSimulationLog } from "@/lib/simulation/logger";
 import { loadSimulationWorld } from "@/lib/simulation/world";
+import type { SimulationTickStats } from "@/lib/simulation/tick-stats";
 
 export type SimulationTickResult =
   | {
@@ -30,6 +31,7 @@ export type SimulationTickResult =
       postCount: number;
       simulatedPersonalityCount: number;
       eligiblePersonalityCount: number;
+      stats: SimulationTickStats;
     }
   | {
       ok: false;
@@ -93,6 +95,7 @@ export async function runSimulationTick(
       postCount: result.world.posts.length,
       simulatedPersonalityCount: result.simulatedPersonalityCount,
       eligiblePersonalityCount: result.eligiblePersonalityCount,
+      stats: result.stats,
     };
   } catch (error) {
     if (isTickCancelled(error) || signal?.aborted) {

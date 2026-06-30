@@ -68,9 +68,6 @@ async function resetRankNpcSocialStateFromConfig(): Promise<number> {
             lastSyncedAt: null,
           },
         },
-        $unset: {
-          "stats.reputation": "",
-        },
       },
     );
     resetNpcs += 1;

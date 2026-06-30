@@ -1,4 +1,5 @@
 import type { TickLogEntry, TickLogLevel } from "@/lib/simulation/logger";
+import type { SimulationTickStats } from "@/lib/simulation/tick-stats";
 
 export type StreamTickEvent =
   | ({ type: "log" } & TickLogEntry)
@@ -11,6 +12,7 @@ export type StreamTickEvent =
       postCount: number;
       simulatedPersonalityCount: number;
       eligiblePersonalityCount: number;
+      stats: SimulationTickStats;
     }
   | {
       type: "cancelled";

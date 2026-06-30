@@ -36,8 +36,10 @@ import {
 } from "./posts";
 import type { SimulationWorld } from "./world";
 import { weightedSampleWithoutReplacement } from "./utils";
+import { recordTickStat } from "./tick-stats";
+import { threadingLowViewBoost } from "@/lib/feed/threading-discovery";
 
-const READ_POST_COUNT = 5;
+const READ_POST_COUNT = 2;
 const REPLIES_TO_EVALUATE = 5;
 const FOLLOWED_AUTHOR_WEIGHT = 3;
 const DEFAULT_AUTHOR_WEIGHT = 1;
@@ -65,7 +67,11 @@ function getPostReadWeight(
   const baseWeight = followWeight * engagementReadWeight(post, authorSocialScore);
 
   if (threadingPostIds.has(post.id)) {
-    return baseWeight * THREADING_POST_READ_BOOST;
+    return (
+      baseWeight *
+      THREADING_POST_READ_BOOST *
+      threadingLowViewBoost(post.stats.views)
+    );
   }
 
   return baseWeight;
@@ -169,6 +175,7 @@ export async function readPostsAndEngage(
   for (const post of posts) {
     await recordPostView(post, world);
     await recordPostRead(personality.id, post.id);
+    recordTickStat(world.tickStats, "postsRead");
     log(
       "info",
       `${handle} read @${post.author.handle}: ${truncateForLog(post.content)}`,
@@ -201,6 +208,7 @@ export async function readPostsAndEngage(
     if (decision.like && author) {
       await likePost(personality, post, world);
       await recordLikeEffects(world, personality, author);
+      recordTickStat(world.tickStats, "likes");
       void recordLikeReceivedActivity(
         author.id,
         personality.id,
@@ -213,6 +221,7 @@ export async function readPostsAndEngage(
     if (decision.repost && author) {
       await repostSpecificPost(personality, post, world);
       await recordRepostEffects(world, personality, author);
+      recordTickStat(world.tickStats, "reposts");
       log("success", `${handle} reposted @${post.author.handle}`);
     }
 
@@ -222,6 +231,7 @@ export async function readPostsAndEngage(
       if (followed) {
         followingIds.add(followed.id);
         await recordFollowEffects(world, personality, author, post);
+        recordTickStat(world.tickStats, "follows");
         log(
           "success",
           `${handle} followed @${followed.handle} (${followed.stats.followers} followers)`,
@@ -235,6 +245,7 @@ export async function readPostsAndEngage(
       if (unfollowed) {
         followingIds.delete(unfollowed.id);
         await recordUnfollowEffects(world, personality, author, post);
+        recordTickStat(world.tickStats, "unfollows");
         log(
           "success",
           `${handle} unfollowed @${unfollowed.handle} after disagreeing`,
@@ -270,6 +281,7 @@ export async function readPostsAndEngage(
 
       await likePost(personality, reply, world);
       await recordLikeEffects(world, personality, replyAuthor);
+      recordTickStat(world.tickStats, "replyLikes");
       void recordLikeReceivedActivity(
         replyAuthor.id,
         personality.id,
@@ -310,6 +322,8 @@ export async function readPostsAndEngage(
       log("warn", `${handle} failed to reply to @${post.author.handle}.`);
       continue;
     }
+
+    recordTickStat(world.tickStats, "replies");
 
     if (author) {
       if (tone === "agree") {

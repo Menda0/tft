@@ -5,11 +5,14 @@ import type { Post } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 import type { TrendingTopic, WorldState } from "@/lib/types/world";
 
+import type { SimulationTickStats } from "./tick-stats";
+
 export type SimulationWorld = {
   state: WorldState;
   personalities: Personality[];
   posts: Post[];
   threadingPostIds: Set<string>;
+  tickStats: SimulationTickStats | null;
 };
 
 export async function loadSimulationWorld(): Promise<SimulationWorld> {
@@ -26,6 +29,7 @@ export async function loadSimulationWorld(): Promise<SimulationWorld> {
       .filter((personality) => !isPersonalityDeleted(personality)),
     posts,
     threadingPostIds: new Set(),
+    tickStats: null,
   };
 }
 

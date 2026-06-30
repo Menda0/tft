@@ -26,6 +26,7 @@ export type EngagementDecision = {
 
 const MAX_PROBABILITY = 0.85;
 const THREADING_ENGAGEMENT_BOOST = 2.5;
+const THREADING_REPLY_BOOST = 1.5;
 
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
@@ -198,12 +199,16 @@ type EngagementContext = {
   recentDisagreeCount?: number;
 };
 
-function applyThreadingBoost(probability: number, isThreadingPost?: boolean): number {
+function applyThreadingBoost(
+  probability: number,
+  isThreadingPost?: boolean,
+  boost = THREADING_ENGAGEMENT_BOOST,
+): number {
   if (!isThreadingPost) {
     return probability;
   }
 
-  return probability * THREADING_ENGAGEMENT_BOOST;
+  return probability * boost;
 }
 
 function roll(probability: number): boolean {
@@ -237,23 +242,25 @@ export function decideEngagement(context: EngagementContext): EngagementDecision
     isThreadingPost,
   );
   let respondAgreeProbability = applyThreadingBoost(
-    0.03 +
-      alignment * 0.28 +
+    0.006 +
+      alignment * 0.07 +
       computeAgreeProbabilityModifiers(relationship, traits, category),
     isThreadingPost,
+    THREADING_REPLY_BOOST,
   );
   let respondDisagreeProbability = applyThreadingBoost(
-    0.02 +
-      (1 - alignment) * 0.28 +
+    0.004 +
+      (1 - alignment) * 0.07 +
       computeDisagreeProbabilityModifiers(relationship, traits, author, category),
     isThreadingPost,
+    THREADING_REPLY_BOOST,
   );
   respondDisagreeProbability *= computeDisagreeCooldownMultiplier(
     recentDisagreeCount,
     relationship.rivalry,
   );
   const followProbability = applyThreadingBoost(
-    0.04 + alignment * 0.3 + traits.negacionist * 0.02,
+    0.015 + alignment * 0.12 + traits.negacionist * 0.01,
     isThreadingPost,
   );
 

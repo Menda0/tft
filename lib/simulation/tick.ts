@@ -25,6 +25,12 @@ import { runWithConcurrency, shuffle } from "./utils";
 import { isRankNpc } from "@/lib/personalities/rank-npc";
 import type { Personality } from "@/lib/types/personality";
 import { getThreadingPosts } from "@/lib/feed/threading";
+import {
+  createTickStats,
+  formatTickStatsSummary,
+  recordTickStat,
+  type SimulationTickStats,
+} from "./tick-stats";
 
 export type { SimulationLogFn, TickLogEntry, TickLogLevel } from "./logger";
 export { createSimulationLogger, noopSimulationLog } from "./logger";
@@ -77,6 +83,7 @@ async function simulatePersonality(
       "success",
       `${handle} posted about "${result.post.topic ?? "general"}": ${truncateForLog(result.post.content)}`,
     );
+    recordTickStat(world.tickStats, "posts");
     return;
   }
 
@@ -135,6 +142,7 @@ export type SimulationTickOutput = {
   world: SimulationWorld;
   simulatedPersonalityCount: number;
   eligiblePersonalityCount: number;
+  stats: SimulationTickStats;
 };
 
 export async function simulationTick(
@@ -143,6 +151,7 @@ export async function simulationTick(
   signal?: AbortSignal,
 ): Promise<SimulationTickOutput> {
   const nextTick = world.state.tickNumber + 1;
+  world.tickStats = createTickStats();
   log("info", `--- Tick #${nextTick} starting ---`);
   log("info", `${world.personalities.length} personalities in world.`);
 
@@ -220,11 +229,16 @@ export async function simulationTick(
   });
 
   log("success", `--- Tick #${nextTick} complete ---`);
+  log("success", `Tick activity: ${formatTickStatsSummary(world.tickStats)}`);
+
+  const stats = world.tickStats;
+  world.tickStats = null;
 
   return {
     world,
     simulatedPersonalityCount: personalities.length,
     eligiblePersonalityCount: eligible.length,
+    stats,
   };
 }
 
