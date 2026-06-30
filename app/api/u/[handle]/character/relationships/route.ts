@@ -1,4 +1,4 @@
-import { findPublicPersonalityByHandle } from "@/lib/personalities";
+import { findPublicPersonalityRelationshipsByHandle } from "@/lib/personalities";
 import { buildProfileRelationshipsPage } from "@/lib/profile/build-character";
 import { normalizeHandle } from "@/lib/personalities/validation";
 import {
@@ -14,7 +14,7 @@ export async function GET(request: Request, context: RouteContext) {
   try {
     const { handle: rawHandle } = await context.params;
     const handle = normalizeHandle(rawHandle);
-    const personality = await findPublicPersonalityByHandle(handle);
+    const personality = await findPublicPersonalityRelationshipsByHandle(handle);
 
     if (!personality) {
       return Response.json({ error: "Profile not found." }, { status: 404 });
@@ -26,7 +26,11 @@ export async function GET(request: Request, context: RouteContext) {
       CHARACTER_SECTION_PAGE_SIZE,
     );
     const offset = parsePositiveInt(searchParams.get("offset"), 0);
-    const page = await buildProfileRelationshipsPage(personality, limit, offset);
+    const page = await buildProfileRelationshipsPage(
+      personality.relationships ?? {},
+      limit,
+      offset,
+    );
 
     return Response.json(page);
   } catch (error) {

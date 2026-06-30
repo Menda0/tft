@@ -255,6 +255,34 @@ export async function findPublicPersonalityByHandle(
   return normalized;
 }
 
+export async function findPublicPersonalityRelationshipsByHandle(
+  handle: string,
+): Promise<Pick<Personality, "relationships"> | null> {
+  const collection = await getPersonalitiesCollection();
+  const personality = await collection.findOne(
+    mergeNotDeleted({ handle }),
+    {
+      projection: {
+        relationships: 1,
+        role: 1,
+        rankNpcActive: 1,
+      },
+    },
+  );
+
+  if (!personality) {
+    return null;
+  }
+
+  if (personality.role === "rank_npc" && personality.rankNpcActive === false) {
+    return null;
+  }
+
+  return {
+    relationships: normalizeRelationships(personality.relationships),
+  };
+}
+
 export async function findRankNpcByXHandle(
   xHandle: string,
 ): Promise<Personality | null> {
@@ -422,7 +450,10 @@ export async function getPersonalityDisplayByIds(
 
   const collection = await getPersonalitiesCollection();
   const rows = await collection
-    .find({ id: { $in: ids } }, { projection: { id: 1, name: 1, handle: 1, avatarUrl: 1 } })
+    .find(
+      mergeNotDeleted({ id: { $in: ids } }),
+      { projection: { id: 1, name: 1, handle: 1, avatarUrl: 1 } },
+    )
     .toArray();
 
   return rows.map((personality) => ({

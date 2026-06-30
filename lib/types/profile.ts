@@ -50,6 +50,12 @@ export type ProfileRelationship = {
   categoryLabel: string;
 };
 
+export type ProfileRelationshipCategoryCount = {
+  category: RelationshipCategory;
+  label: string;
+  count: number;
+};
+
 export type ProfileCharacterSheet = {
   traits: Traits;
   stats: Stats;

@@ -1,17 +1,19 @@
-import { getPersonalitiesByIds, normalizePersonality } from "@/lib/personalities";
+import { getPersonalityDisplayByIds, normalizePersonality } from "@/lib/personalities";
 import { normalizeStoredStats, normalizeStoredStatsRaw } from "@/lib/personalities/stats";
 import {
   classifyRelationship,
   compareRelationshipsByCategory,
+  buildRelationshipCategoryCounts,
   getRelationshipCategoryLabel,
 } from "@/lib/profile/relationship-category";
 import { resolvePersonalitySocialRank } from "@/lib/profile/social-rank";
 import { getCloutBreakdown } from "@/lib/scoring/social-score";
 import { filterEvolutionMemories } from "@/lib/simulation/memory";
-import type { MemoryItem, Personality } from "@/lib/types/personality";
+import type { MemoryItem, Personality, Relationship } from "@/lib/types/personality";
 import type {
   ProfileCharacterSheet,
   ProfileRelationship,
+  ProfileRelationshipCategoryCount,
 } from "@/lib/types/profile";
 
 function sortMemoriesByImportance<T extends { importance: number }>(
@@ -24,42 +26,43 @@ function getMemoriesRecentFirst(personality: Personality): MemoryItem[] {
   return [...(normalizePersonality(personality).memory ?? [])].reverse();
 }
 
-function buildAllRelationships(
-  personality: Personality,
-  relatedPersonalities: Personality[],
-): ProfileRelationship[] {
-  const normalized = normalizePersonality(personality);
-  const relatedById = new Map(
-    relatedPersonalities.map((entry) => [entry.id, normalizePersonality(entry)]),
+type RelationshipEntry = {
+  personalityId: string;
+  trust: number;
+  rivalry: number;
+  admiration: number;
+  familiarity: number;
+  category: ProfileRelationship["category"];
+  categoryLabel: string;
+};
+
+function buildRelationshipEntries(
+  relationships: Record<string, Relationship>,
+): RelationshipEntry[] {
+  return Object.entries(relationships).map(([personalityId, relationship]) => {
+    const category = classifyRelationship(relationship);
+
+    return {
+      personalityId,
+      trust: relationship.trust,
+      rivalry: relationship.rivalry,
+      admiration: relationship.admiration,
+      familiarity: relationship.familiarity,
+      category,
+      categoryLabel: getRelationshipCategoryLabel(category),
+    };
+  });
+}
+
+function sortRelationshipEntries(entries: RelationshipEntry[]): RelationshipEntry[] {
+  return [...entries].sort((a, b) =>
+    compareRelationshipsByCategory(
+      a.category,
+      b.category,
+      a.personalityId,
+      b.personalityId,
+    ),
   );
-
-  return Object.entries(normalized.relationships ?? {})
-    .map(([personalityId, relationship]) => {
-      const related = relatedById.get(personalityId);
-
-      if (!related) {
-        return null;
-      }
-
-      const category = classifyRelationship(relationship);
-
-      return {
-        personalityId,
-        name: related.name,
-        handle: related.handle,
-        avatarUrl: related.avatarUrl,
-        trust: relationship.trust,
-        rivalry: relationship.rivalry,
-        admiration: relationship.admiration,
-        familiarity: relationship.familiarity,
-        category,
-        categoryLabel: getRelationshipCategoryLabel(category),
-      };
-    })
-    .filter((entry): entry is ProfileRelationship => entry !== null)
-    .sort((a, b) =>
-      compareRelationshipsByCategory(a.category, b.category, a.name, b.name),
-    );
 }
 
 function paginateItems<T>(
@@ -105,16 +108,51 @@ export function buildProfileMemoriesPage(
 }
 
 export async function buildProfileRelationshipsPage(
-  personality: Personality,
+  relationships: Record<string, Relationship>,
   limit: number,
   offset: number,
-): Promise<{ items: ProfileRelationship[]; hasMore: boolean }> {
-  const normalized = normalizePersonality(personality);
-  const relatedIds = Object.keys(normalized.relationships ?? {});
-  const relatedPersonalities = await getPersonalitiesByIds(relatedIds);
-  const relationships = buildAllRelationships(normalized, relatedPersonalities);
+): Promise<{
+  items: ProfileRelationship[];
+  hasMore: boolean;
+  categoryCounts: ProfileRelationshipCategoryCount[];
+}> {
+  const categoryCounts = buildRelationshipCategoryCounts(relationships);
+  const sorted = sortRelationshipEntries(buildRelationshipEntries(relationships));
+  const page = paginateItems(sorted, limit, offset);
 
-  return paginateItems(relationships, limit, offset);
+  if (page.items.length === 0) {
+    return { items: [], hasMore: page.hasMore, categoryCounts };
+  }
+
+  const displays = await getPersonalityDisplayByIds(
+    page.items.map((entry) => entry.personalityId),
+  );
+  const displayById = new Map(displays.map((entry) => [entry.id, entry]));
+
+  const items = page.items
+    .map((entry) => {
+      const display = displayById.get(entry.personalityId);
+
+      if (!display) {
+        return null;
+      }
+
+      return {
+        personalityId: entry.personalityId,
+        name: display.name,
+        handle: display.handle,
+        avatarUrl: display.avatarUrl,
+        trust: entry.trust,
+        rivalry: entry.rivalry,
+        admiration: entry.admiration,
+        familiarity: entry.familiarity,
+        category: entry.category,
+        categoryLabel: entry.categoryLabel,
+      };
+    })
+    .filter((entry): entry is ProfileRelationship => entry !== null);
+
+  return { items, hasMore: page.hasMore, categoryCounts };
 }
 
 export async function loadProfileCharacterSheet(

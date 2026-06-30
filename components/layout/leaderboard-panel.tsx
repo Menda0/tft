@@ -24,7 +24,7 @@ import type {
 } from "@/lib/types/desktop";
 import { cn } from "@/lib/utils";
 
-const TABS: {
+export const LEADERBOARD_TABS: {
   id: LeaderboardTab;
   label: string;
   scoreLabel: string;
@@ -333,9 +333,9 @@ function LeaderboardPagination({
   );
 }
 
-function panelPropsFromPayload(
+export function panelPropsFromPayload(
   payload: LeaderboardPagePayload,
-  config: (typeof TABS)[number],
+  config: (typeof LEADERBOARD_TABS)[number],
 ): LeaderboardPanelProps {
   if (payload.kind === "personality") {
     return {
@@ -414,7 +414,7 @@ function MyLeaderboardEntries({
   error,
 }: {
   activeTab: LeaderboardTab;
-  activeConfig: (typeof TABS)[number];
+  activeConfig: (typeof LEADERBOARD_TABS)[number];
   payload: LeaderboardPagePayload | null;
   myEntries: MyLeaderboardEntriesPayload | null;
   loading?: boolean;
@@ -513,7 +513,7 @@ export function LeaderboardsSection() {
   const [myLoading, setMyLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [myError, setMyError] = useState<string | null>(null);
-  const activeConfig = TABS.find((tab) => tab.id === activeTab)!;
+  const activeConfig = LEADERBOARD_TABS.find((tab) => tab.id === activeTab)!;
 
   const loadLeaderboard = useCallback(async () => {
     setLoading(true);
@@ -592,7 +592,7 @@ export function LeaderboardsSection() {
   return (
     <section aria-label="Leaderboards" className="w-full">
       <div className="flex flex-wrap border-b-2 border-[#29366f]">
-        {TABS.map((tab) => (
+        {LEADERBOARD_TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"

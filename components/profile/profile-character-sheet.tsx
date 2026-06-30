@@ -26,6 +26,7 @@ import type { MemoryItem, MemoryType, Traits } from "@/lib/types/personality";
 import type {
   ProfileCharacterSheet,
   ProfileRelationship,
+  ProfileRelationshipCategoryCount,
 } from "@/lib/types/profile";
 import { cn } from "@/lib/utils";
 
@@ -91,6 +92,33 @@ function RelationshipCategoryBadge({
     >
       {label}
     </span>
+  );
+}
+
+function RelationshipCategorySummary({
+  counts,
+}: {
+  counts: ProfileRelationshipCategoryCount[];
+}) {
+  if (counts.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {counts.map((entry) => (
+        <span
+          key={entry.category}
+          className={cn(
+            "inline-flex items-center gap-1.5 border border-foreground/40 px-2 py-1 text-[10px] font-bold",
+            RELATIONSHIP_CATEGORY_COLORS[entry.category],
+          )}
+        >
+          <span>{entry.label}</span>
+          <span className="opacity-80">{entry.count}</span>
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -313,6 +341,9 @@ export function ProfileCharacterSheetView({
   const { token } = useAuth();
   const [memories, setMemories] = useState<MemoryItem[]>([]);
   const [relationships, setRelationships] = useState<ProfileRelationship[]>([]);
+  const [relationshipCategoryCounts, setRelationshipCategoryCounts] = useState<
+    ProfileRelationshipCategoryCount[]
+  >([]);
   const [memoriesPage, setMemoriesPage] = useState(0);
   const [relationshipsPage, setRelationshipsPage] = useState(0);
   const [memoriesHasNext, setMemoriesHasNext] = useState(false);
@@ -396,6 +427,7 @@ export function ProfileCharacterSheetView({
       if (!result.ok) {
         setRelationshipsError(result.error);
         setRelationships([]);
+        setRelationshipCategoryCounts([]);
         setRelationshipsHasNext(false);
         setLoadingRelationships(false);
         return;
@@ -403,6 +435,7 @@ export function ProfileCharacterSheetView({
 
       setRelationships(result.items);
       setRelationshipsHasNext(result.hasMore);
+      setRelationshipCategoryCounts(result.categoryCounts);
       setLoadingRelationships(false);
     }
 
@@ -563,25 +596,34 @@ export function ProfileCharacterSheetView({
           </p>
         ) : relationshipsError ? (
           <p className="mt-3 text-sm text-[#ff004d]">{relationshipsError}</p>
-        ) : relationships.length === 0 ? (
+        ) : relationships.length === 0 && relationshipCategoryCounts.length === 0 ? (
           <p className="mt-3 text-sm text-[#83769a]">No relationships yet.</p>
         ) : (
-          <ul className="mt-3 space-y-2">
-            {relationships.map((relationship) => (
-              <RelationshipListItem
-                key={relationship.personalityId}
-                relationship={relationship}
-                expanded={expandedRelationshipId === relationship.personalityId}
-                onToggle={() =>
-                  setExpandedRelationshipId((current) =>
-                    current === relationship.personalityId
-                      ? null
-                      : relationship.personalityId,
-                  )
-                }
-              />
-            ))}
-          </ul>
+          <>
+            <RelationshipCategorySummary counts={relationshipCategoryCounts} />
+            {relationships.length === 0 ? (
+              <p className="mt-3 text-sm text-[#83769a]">
+                No relationships on this page.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {relationships.map((relationship) => (
+                  <RelationshipListItem
+                    key={relationship.personalityId}
+                    relationship={relationship}
+                    expanded={expandedRelationshipId === relationship.personalityId}
+                    onToggle={() =>
+                      setExpandedRelationshipId((current) =>
+                        current === relationship.personalityId
+                          ? null
+                          : relationship.personalityId,
+                      )
+                    }
+                  />
+                ))}
+              </ul>
+            )}
+          </>
         )}
         {showRelationshipsPagination ? (
           <SectionPagination

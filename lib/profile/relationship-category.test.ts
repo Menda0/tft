@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  buildRelationshipCategoryCounts,
   classifyRelationship,
   compareRelationshipsByCategory,
   getRelationshipCategoryLabel,
@@ -55,6 +56,24 @@ describe("compareRelationshipsByCategory", () => {
 
   it("breaks ties by name", () => {
     assert.ok(compareRelationshipsByCategory("friend", "friend", "Amy", "Zoe") < 0);
+  });
+});
+
+describe("buildRelationshipCategoryCounts", () => {
+  it("returns counts in display order and omits zero categories", () => {
+    const counts = buildRelationshipCategoryCounts({
+      a1: { trust: 4, rivalry: 6, admiration: 2, familiarity: 3 },
+      a2: { trust: 6, rivalry: 3, admiration: 5, familiarity: 4 },
+      a3: { trust: 5, rivalry: 2, admiration: 8, familiarity: 5 },
+    });
+
+    assert.deepEqual(
+      counts.map((entry) => entry.category),
+      ["hater", "friend", "admirer"],
+    );
+    assert.equal(counts[0]?.count, 1);
+    assert.equal(counts[1]?.count, 1);
+    assert.equal(counts[2]?.count, 1);
   });
 });
 

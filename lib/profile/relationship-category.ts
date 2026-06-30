@@ -154,3 +154,43 @@ export function relationshipCategorySortWeight(
 ): number {
   return CATEGORY_SORT_WEIGHT[category];
 }
+
+const CATEGORY_DISPLAY_ORDER = (
+  Object.keys(CATEGORY_SORT_WEIGHT) as RelationshipCategory[]
+).sort(
+  (left, right) =>
+    relationshipCategorySortWeight(right) - relationshipCategorySortWeight(left),
+);
+
+export type RelationshipCategoryCount = {
+  category: RelationshipCategory;
+  label: string;
+  count: number;
+};
+
+export function buildRelationshipCategoryCounts(
+  relationships: Record<string, Relationship>,
+): RelationshipCategoryCount[] {
+  const totals = new Map<RelationshipCategory, number>();
+
+  for (const relationship of Object.values(relationships)) {
+    const category = classifyRelationship(relationship);
+    totals.set(category, (totals.get(category) ?? 0) + 1);
+  }
+
+  return CATEGORY_DISPLAY_ORDER.flatMap((category) => {
+    const count = totals.get(category) ?? 0;
+
+    if (count === 0) {
+      return [];
+    }
+
+    return [
+      {
+        category,
+        label: RELATIONSHIP_CATEGORY_LABELS[category],
+        count,
+      },
+    ];
+  });
+}

@@ -5,6 +5,7 @@ import type {
   ProfilePostItem,
   ProfilePostType,
   ProfileRelationship,
+  ProfileRelationshipCategoryCount,
   PublicPersonality,
 } from "@/lib/types/profile";
 import {
@@ -159,7 +160,12 @@ export async function fetchProfileCharacterRelationships(
   handle: string,
   options: { limit?: number; offset?: number } = {},
 ): Promise<
-  | { ok: true; items: ProfileRelationship[]; hasMore: boolean }
+  | {
+      ok: true;
+      items: ProfileRelationship[];
+      hasMore: boolean;
+      categoryCounts: ProfileRelationshipCategoryCount[];
+    }
   | { ok: false; error: string }
 > {
   const limit = options.limit ?? PROFILE_CHARACTER_SECTION_PAGE_SIZE;
@@ -170,6 +176,7 @@ export async function fetchProfileCharacterRelationships(
   const data = (await response.json()) as {
     items?: ProfileRelationship[];
     hasMore?: boolean;
+    categoryCounts?: ProfileRelationshipCategoryCount[];
     error?: string;
   };
 
@@ -177,9 +184,18 @@ export async function fetchProfileCharacterRelationships(
     return { ok: false, error: data.error ?? "Could not load relationships." };
   }
 
-  if (!data.items || typeof data.hasMore !== "boolean") {
+  if (
+    !data.items ||
+    typeof data.hasMore !== "boolean" ||
+    !Array.isArray(data.categoryCounts)
+  ) {
     return { ok: false, error: "Invalid server response." };
   }
 
-  return { ok: true, items: data.items, hasMore: data.hasMore };
+  return {
+    ok: true,
+    items: data.items,
+    hasMore: data.hasMore,
+    categoryCounts: data.categoryCounts,
+  };
 }
