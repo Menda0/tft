@@ -76,6 +76,7 @@ export function formatMemoriesForPrompt(
   }
 
   const lines = [...memories]
+    .filter((memory) => memory.type !== "endorsement")
     .sort((a, b) => b.importance - a.importance)
     .slice(0, limit)
     .map((memory) => `- ${memory.text}`);

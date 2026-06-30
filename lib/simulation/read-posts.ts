@@ -47,7 +47,7 @@ import {
 
 const READ_POST_COUNT = 2;
 const REPLIES_TO_EVALUATE = 3;
-const FOLLOWED_AUTHOR_WEIGHT = 3;
+const FOLLOWED_AUTHOR_WEIGHT = 5;
 const DEFAULT_AUTHOR_WEIGHT = 1;
 const THREADING_POST_READ_BOOST = 5;
 
@@ -181,19 +181,35 @@ async function pickPostsToRead(
       !readPostIds.has(post.id),
   );
 
-  return weightedSampleWithoutReplacement(
-    eligible,
-    READ_POST_COUNT,
-    (post) => {
-      const author = findAuthor(world, post.author.personalityId);
-      return getPostReadWeight(
-        post,
-        followingIds,
-        author?.stats.socialScore ?? 0,
-        world.threadingPostIds,
-      );
-    },
+  const threadingEligible = eligible.filter((post) =>
+    world.threadingPostIds.has(post.id),
   );
+  const otherEligible = eligible.filter(
+    (post) => !world.threadingPostIds.has(post.id),
+  );
+
+  const getWeight = (post: Post) => {
+    const author = findAuthor(world, post.author.personalityId);
+    return getPostReadWeight(
+      post,
+      followingIds,
+      author?.stats.socialScore ?? 0,
+      world.threadingPostIds,
+    );
+  };
+
+  const fromThreading = weightedSampleWithoutReplacement(
+    threadingEligible,
+    READ_POST_COUNT,
+    getWeight,
+  );
+  const remaining = READ_POST_COUNT - fromThreading.length;
+  const fromOther =
+    remaining > 0
+      ? weightedSampleWithoutReplacement(otherEligible, remaining, getWeight)
+      : [];
+
+  return [...fromThreading, ...fromOther];
 }
 
 export async function readPostsAndEngage(
@@ -323,9 +339,11 @@ export async function readPostsAndEngage(
         recordTickStat(world.tickStats, "replies");
 
         if (decision.responseTone === "agree") {
+          recordTickStat(world.tickStats, "agreeReplies");
           await recordAgreeReplyEffects(world, personality, author, post);
           endorsed = true;
         } else {
+          recordTickStat(world.tickStats, "disagreeReplies");
           await recordDisagreeReplyEffects(world, personality, author, post);
           endorsementBroken = true;
         }

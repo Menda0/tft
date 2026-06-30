@@ -15,7 +15,6 @@ import {
 import {
   getRelationship,
   hasMemory,
-  recordEndorsementMemory,
   recordExchangeMemory,
   recordFriendshipMemory,
   recordRivalryMemory,
@@ -208,12 +207,6 @@ export async function recordFollowEffects(
 
   await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({
     actorMemory: recordFriendshipMemory(freshActor, freshAuthor, post.topic),
-    targetMemory: recordEndorsementMemory(
-      freshAuthor,
-      freshActor,
-      post.topic,
-      "followed",
-    ),
   }));
 }
 
@@ -237,12 +230,6 @@ export async function recordAgreeReplyEffects(
 
   await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({
     actorMemory: recordFriendshipMemory(freshActor, freshAuthor, post.topic),
-    targetMemory: recordEndorsementMemory(
-      freshAuthor,
-      freshActor,
-      post.topic,
-      "agreed",
-    ),
   }));
 }
 

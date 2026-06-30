@@ -1,6 +1,8 @@
 export type SimulationTickStats = {
   posts: number;
   replies: number;
+  agreeReplies: number;
+  disagreeReplies: number;
   likes: number;
   replyLikes: number;
   reposts: number;
@@ -13,6 +15,8 @@ export function createTickStats(): SimulationTickStats {
   return {
     posts: 0,
     replies: 0,
+    agreeReplies: 0,
+    disagreeReplies: 0,
     likes: 0,
     replyLikes: 0,
     reposts: 0,
@@ -37,7 +41,7 @@ export function recordTickStat(
 export function formatTickStatsSummary(stats: SimulationTickStats): string {
   return [
     `${stats.posts} post(s)`,
-    `${stats.replies} repl(ies)`,
+    `${stats.replies} repl(ies) (${stats.agreeReplies} agree, ${stats.disagreeReplies} disagree)`,
     `${stats.likes} like(s)`,
     `${stats.replyLikes} reply like(s)`,
     `${stats.reposts} repost(s)`,

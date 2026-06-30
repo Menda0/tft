@@ -17,12 +17,12 @@ export const DISAGREE_REPLY_CLOUT = 2;
 
 export const POST_CLOUT_LOG_SOFTNESS = 50;
 export const POST_CLOUT_LOG_SCALE = 60;
-export const FOLLOWER_CLOUT_LOG_SOFTNESS = 20;
-export const FOLLOWER_CLOUT_LOG_SCALE = 45;
+export const FOLLOWER_CLOUT_LOG_SOFTNESS = 15;
+export const FOLLOWER_CLOUT_LOG_SCALE = 60;
 
 const LIKE_WEIGHT = 2;
 const REPOST_WEIGHT = 5;
-const VIEW_WEIGHT = 0.05;
+const VIEW_WEIGHT = 0.05; // small contribution per view toward gross clout
 
 const BASE_DELTAS: Record<SocialScoreEvent, number> = {
   like_received: 2,

@@ -1,4 +1,5 @@
 import { saveWorldState } from "@/lib/db/world";
+import { insertTickResult } from "@/lib/db/tick-results";
 
 import { chooseOptionalAction } from "./actions";
 import { createPost } from "./posts";
@@ -13,7 +14,7 @@ import {
   truncateForLog,
   type SimulationLogFn,
 } from "./logger";
-import { getDailyPostLimit, getSimulationPersonalitiesPerTick } from "./limits";
+import { getDailyPostLimit, getSimulationBatchSize } from "./limits";
 import { throwIfCancelled } from "./cancel";
 import { runHeatDecayPass } from "./heat-decay";
 import { applyPersonalityUpdate } from "./personality-state";
@@ -181,7 +182,7 @@ export async function simulationTick(
     log("warn", "No personalities to simulate.");
   }
 
-  const batchSize = getSimulationPersonalitiesPerTick();
+  const batchSize = getSimulationBatchSize(eligible.length);
   const personalities = shuffle(eligible).slice(0, batchSize);
 
   log(
@@ -228,11 +229,19 @@ export async function simulationTick(
     lastTickAt: now,
   });
 
-  log("success", `--- Tick #${nextTick} complete ---`);
-  log("success", `Tick activity: ${formatTickStatsSummary(world.tickStats)}`);
-
-  const stats = world.tickStats;
+  const stats = world.tickStats ?? createTickStats();
   world.tickStats = null;
+
+  await insertTickResult({
+    tickNumber: nextTick,
+    completedAt: now,
+    simulatedPersonalityCount: personalities.length,
+    eligiblePersonalityCount: eligible.length,
+    stats,
+  });
+
+  log("success", `--- Tick #${nextTick} complete ---`);
+  log("success", `Tick activity: ${formatTickStatsSummary(stats)}`);
 
   return {
     world,

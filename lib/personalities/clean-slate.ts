@@ -2,6 +2,7 @@ import { deleteAllFollows } from "@/lib/db/follows";
 import { deleteAllPersonalityActivity } from "@/lib/db/personality-activity";
 import { deleteAllPostReads } from "@/lib/db/post-reads";
 import { deleteAllPosts } from "@/lib/db/posts";
+import { deleteAllTickResults } from "@/lib/db/tick-results";
 import { resetWorldStateToDefault } from "@/lib/db/world";
 import {
   getAllRankNpcs,
@@ -18,6 +19,7 @@ export type CleanSlatePersonalitySocialResult = {
   follows: number;
   postReads: number;
   activities: number;
+  tickResults: number;
   personalitiesReset: number;
   npcsReset: number;
   worldReset: boolean;
@@ -77,12 +79,13 @@ async function resetRankNpcSocialStateFromConfig(): Promise<number> {
 }
 
 export async function cleanSlatePersonalitySocialData(): Promise<CleanSlatePersonalitySocialResult> {
-  const [posts, follows, postReads, activities, personalitiesReset, npcsReset, world] =
+  const [posts, follows, postReads, activities, tickResults, personalitiesReset, npcsReset, world] =
     await Promise.all([
       deleteAllPosts(),
       deleteAllFollows(),
       deleteAllPostReads(),
       deleteAllPersonalityActivity(),
+      deleteAllTickResults(),
       resetActivePersonalitiesSocialState(),
       resetRankNpcSocialStateFromConfig(),
       resetWorldStateToDefault(),
@@ -93,6 +96,7 @@ export async function cleanSlatePersonalitySocialData(): Promise<CleanSlatePerso
     follows,
     postReads,
     activities,
+    tickResults,
     personalitiesReset,
     npcsReset,
     worldReset: world.tickNumber === 0 && world.lastTickAt === null,

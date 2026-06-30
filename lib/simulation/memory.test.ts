@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  formatMemoriesForPrompt,
   recordEndorsementMemory,
   recordExchangeMemory,
 } from "@/lib/simulation/memory";
@@ -48,6 +49,31 @@ function personality(
     relationships,
   };
 }
+
+describe("formatMemoriesForPrompt", () => {
+  it("excludes endorsement memories from prompt output", () => {
+    const author = personality("a1", "author");
+    const actor = personality("a2", "actor");
+    const endorsement = recordEndorsementMemory(author, actor, "AI", "agreed");
+    const withFriendship = {
+      ...author,
+      memory: [
+        ...(endorsement ? [endorsement] : []),
+        {
+          type: "friendship" as const,
+          text: "Bonded with @actor over tech.",
+          importance: 6,
+        },
+      ],
+    };
+
+    const formatted = formatMemoriesForPrompt(withFriendship.memory);
+
+    assert.ok(formatted);
+    assert.match(formatted!, /@actor/);
+    assert.doesNotMatch(formatted!, /received support/i);
+  });
+});
 
 describe("recordEndorsementMemory", () => {
   it("dedupes per actor handle", () => {

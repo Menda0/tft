@@ -7,10 +7,13 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { AppBar } from "@/components/layout/app-bar";
 import {
   fetchAdminDashboard,
+  fetchTickResults,
   type AdminDashboardData,
   type DashboardRange,
 } from "@/lib/admin/client";
+import { PAGE_SIZE } from "@/lib/pagination";
 import type { AiOperation } from "@/lib/types/ai-usage";
+import type { TickResult } from "@/lib/types/tick-result";
 
 const RANGE_OPTIONS: Array<{ days: DashboardRange; label: string }> = [
   { days: 7, label: "Last 7 days" },
@@ -61,6 +64,116 @@ function StatCard({
       <p className="mt-1 text-xl font-bold text-[#ffa300]">{value}</p>
       {hint ? <p className="mt-1 text-[10px] text-[#83769a]">{hint}</p> : null}
     </article>
+  );
+}
+
+function formatDateTime(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value);
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function TickResultsTable({
+  items,
+  loading,
+  tickPage,
+  total,
+  onPrev,
+  onNext,
+}: {
+  items: TickResult[];
+  loading: boolean;
+  tickPage: number;
+  total: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  return (
+    <section className="pixel-border bg-[#1d2b53] p-3">
+      <p className="pixel-heading text-[10px] text-[#29adff]">TICK RESULTS</p>
+
+      {items.length === 0 && !loading ? (
+        <p className="mt-2 text-sm text-[#83769a]">No tick results recorded yet.</p>
+      ) : (
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full min-w-[48rem] text-left text-xs">
+            <thead>
+              <tr className="border-b-2 border-[#29366f] text-[#83769a]">
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">TICK</th>
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">WHEN</th>
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">SIMULATED</th>
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">POSTS</th>
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">REPOSTS</th>
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">LIKES</th>
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">REPLIES</th>
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">R. LIKES</th>
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">FOLLOWS</th>
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">UNFOLLOWS</th>
+                <th className="pb-2 pixel-heading text-[8px]">READ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id} className="border-b border-[#29366f]/60">
+                  <td className="py-2 pr-3 font-bold text-[#fff1e8]">#{item.tickNumber}</td>
+                  <td className="py-2 pr-3 text-[#83769a]">
+                    {formatDateTime(item.completedAt)}
+                  </td>
+                  <td className="py-2 pr-3 text-[#29adff]">
+                    {item.simulatedPersonalityCount}/{item.eligiblePersonalityCount}
+                  </td>
+                  <td className="py-2 pr-3 text-[#29adff]">{formatNumber(item.stats.posts)}</td>
+                  <td className="py-2 pr-3 text-[#29adff]">{formatNumber(item.stats.reposts)}</td>
+                  <td className="py-2 pr-3 text-[#29adff]">{formatNumber(item.stats.likes)}</td>
+                  <td className="py-2 pr-3 text-[#29adff]">
+                    {formatNumber(item.stats.replies)} ({item.stats.agreeReplies ?? 0} agree,{" "}
+                    {item.stats.disagreeReplies ?? 0} disagree)
+                  </td>
+                  <td className="py-2 pr-3 text-[#29adff]">
+                    {formatNumber(item.stats.replyLikes)}
+                  </td>
+                  <td className="py-2 pr-3 text-[#29adff]">{formatNumber(item.stats.follows)}</td>
+                  <td className="py-2 pr-3 text-[#29adff]">
+                    {formatNumber(item.stats.unfollows)}
+                  </td>
+                  <td className="py-2 text-[#29adff]">{formatNumber(item.stats.postsRead)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[10px] text-[#83769a]">
+          Page {tickPage + 1} of {pageCount} · {formatNumber(total)} tick(s) total
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onPrev}
+            disabled={loading || tickPage === 0}
+            className="pixel-border-thin bg-[#1d2b53] px-3 py-2 text-[10px] text-[#fff1e8] pixel-heading disabled:opacity-40"
+          >
+            PREV
+          </button>
+          <button
+            type="button"
+            onClick={onNext}
+            disabled={loading || (tickPage + 1) * PAGE_SIZE >= total}
+            className="pixel-border-thin bg-[#1d2b53] px-3 py-2 text-[10px] text-[#fff1e8] pixel-heading disabled:opacity-40"
+          >
+            NEXT
+          </button>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -122,8 +235,32 @@ export function AdminDashboard() {
   const { user, token, isReady } = useAuth();
   const [range, setRange] = useState<DashboardRange>(7);
   const [data, setData] = useState<AdminDashboardData | null>(null);
+  const [tickResults, setTickResults] = useState<TickResult[]>([]);
+  const [tickTotal, setTickTotal] = useState(0);
+  const [tickPage, setTickPage] = useState(0);
+  const [tickLoading, setTickLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const loadTickResults = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
+    setTickLoading(true);
+
+    const result = await fetchTickResults(token, {
+      offset: tickPage * PAGE_SIZE,
+      limit: PAGE_SIZE,
+    });
+
+    if (result.ok) {
+      setTickResults(result.data.items);
+      setTickTotal(result.data.total);
+    }
+
+    setTickLoading(false);
+  }, [tickPage, token]);
 
   const loadDashboard = useCallback(async () => {
     if (!token) {
@@ -161,7 +298,16 @@ export function AdminDashboard() {
     }
 
     void loadDashboard();
-  }, [isReady, loadDashboard, router, user]);
+    void loadTickResults();
+  }, [isReady, loadDashboard, loadTickResults, router, user]);
+
+  useEffect(() => {
+    if (!isReady || !user || user.role !== "admin" || !token) {
+      return;
+    }
+
+    void loadTickResults();
+  }, [isReady, loadTickResults, token, tickPage, user]);
 
   if (!isReady || !user || user.role !== "admin") {
     return null;
@@ -181,7 +327,10 @@ export function AdminDashboard() {
           </div>
           <button
             type="button"
-            onClick={() => void loadDashboard()}
+            onClick={() => {
+              void loadDashboard();
+              void loadTickResults();
+            }}
             disabled={loading}
             className="pixel-border-thin bg-[#1d2b53] px-3 py-2 text-[10px] text-[#fff1e8] pixel-heading disabled:opacity-60"
           >
@@ -246,6 +395,15 @@ export function AdminDashboard() {
                 <StatCard label="TICKS" value={formatNumber(data.platform.totalTicks)} />
               </div>
             </section>
+
+            <TickResultsTable
+              items={tickResults}
+              loading={tickLoading}
+              tickPage={tickPage}
+              total={tickTotal}
+              onPrev={() => setTickPage((page) => Math.max(0, page - 1))}
+              onNext={() => setTickPage((page) => page + 1)}
+            />
 
             <section>
               <p className="mb-3 pixel-heading text-[10px] text-[#29adff]">

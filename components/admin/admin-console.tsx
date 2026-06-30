@@ -22,7 +22,7 @@ type ConsoleLine = {
 
 const HELP_TEXT = [
   "Available commands:",
-  "  tick    — run a simulation tick (15 random personalities)",
+  "  tick    — run a simulation tick (10% of personalities, random)",
   "  trends  — refresh trending topics",
   "  seed npc — reconcile, sync, and seed parody NPCs (once per day)",
   "  prune npc — delete all mirrored parody NPC posts",

@@ -256,6 +256,7 @@ async function engageWithPost(
   recordTickStat(world.tickStats, "replies");
 
   if (tone === "agree") {
+    recordTickStat(world.tickStats, "agreeReplies");
     await recordRankNpcAgreeReplyEffects(world, npc, author);
     const endorsementStreak = await recordAuthorEndorsementOutcome(
       world,
@@ -273,6 +274,7 @@ async function engageWithPost(
       endorsementStreak,
     );
   } else {
+    recordTickStat(world.tickStats, "disagreeReplies");
     await recordRankNpcDisagreeReplyEffects(world, npc, author);
     await recordAuthorEndorsementOutcome(
       world,
