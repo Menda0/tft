@@ -53,6 +53,14 @@ export function AppMenu() {
 
         {menuOpen ? (
           <div className="absolute top-[calc(100%+8px)] right-0 z-50 w-52 pixel-border bg-[#1d2b53] pixel-shadow-sm">
+            {user ? (
+              <div className="border-b-2 border-[#fff1e8] px-3 py-3">
+                <p className="pixel-heading text-[9px] text-[#29adff]">ONLINE</p>
+                <p className="mt-1 truncate text-sm font-bold text-[#ffa300]">
+                  {user.username}
+                </p>
+              </div>
+            ) : null}
             <Link
               href="/"
               onClick={() => setMenuOpen(false)}
@@ -69,12 +77,6 @@ export function AppMenu() {
             </Link>
             {user ? (
               <>
-                <div className="border-b-2 border-[#fff1e8] px-3 py-3">
-                  <p className="pixel-heading text-[9px] text-[#29adff]">ONLINE</p>
-                  <p className="mt-1 truncate text-sm font-bold text-[#ffa300]">
-                    {user.username}
-                  </p>
-                </div>
                 <Link
                   href="/personalities"
                   onClick={() => setMenuOpen(false)}
