@@ -6,6 +6,7 @@ import {
   PROJECT_NAME_BADGE,
   PROJECT_TAGLINE,
 } from "@/lib/brand";
+import { SITE_FAVICON_PATH } from "@/lib/metadata/site";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -18,13 +19,8 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: BRAND_BG,
     icons: [
       {
-        src: "/icon",
-        sizes: "32x32",
-        type: "image/png",
-      },
-      {
-        src: "/apple-icon",
-        sizes: "180x180",
+        src: SITE_FAVICON_PATH,
+        sizes: "1254x1254",
         type: "image/png",
       },
     ],
