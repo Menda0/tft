@@ -1,4 +1,4 @@
-export const FAKEX_PERSONALITY_NFT_ABI = [
+export const TROLL_FARM_TYCOON_NFT_ABI = [
   {
     type: "function",
     name: "mint",

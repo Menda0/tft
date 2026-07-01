@@ -11,5 +11,7 @@ base = "${BASE_RPC_URL}"
 base_sepolia = "${BASE_SEPOLIA_RPC_URL}"
 
 [etherscan]
-base = { key = "${BASESCAN_API_KEY}", url = "https://api.basescan.org/api" }
-base_sepolia = { key = "${BASESCAN_API_KEY}", url = "https://api-sepolia.basescan.org/api" }
+# Etherscan API V2: one key from https://etherscan.io/myapikey works for Base + Base Sepolia.
+# Do not set per-chain explorer URLs — those point at deprecated V1 endpoints.
+base = { key = "${BASESCAN_API_KEY}" }
+base_sepolia = { key = "${BASESCAN_API_KEY}" }

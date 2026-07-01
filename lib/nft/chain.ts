@@ -7,7 +7,7 @@ import {
 } from "viem";
 import { base, baseSepolia } from "viem/chains";
 
-import { FAKEX_PERSONALITY_NFT_ABI } from "@/lib/nft/contract";
+import { TROLL_FARM_TYCOON_NFT_ABI } from "@/lib/nft/contract";
 import {
   getDefaultChainId,
   getNftContractAddress,
@@ -38,7 +38,7 @@ export async function readMintFee(chainId?: number): Promise<bigint> {
   const client = getPublicClient(chainId ?? getDefaultChainId());
   return client.readContract({
     address: contractAddress,
-    abi: FAKEX_PERSONALITY_NFT_ABI,
+    abi: TROLL_FARM_TYCOON_NFT_ABI,
     functionName: "mintFee",
   });
 }
@@ -56,7 +56,7 @@ export async function readTokenOwner(
     const client = getPublicClient(chainId ?? getDefaultChainId());
     return await client.readContract({
       address: contractAddress,
-      abi: FAKEX_PERSONALITY_NFT_ABI,
+      abi: TROLL_FARM_TYCOON_NFT_ABI,
       functionName: "ownerOf",
       args: [BigInt(tokenId)],
     });
@@ -78,7 +78,7 @@ export async function readPersonalityIdForToken(
     const client = getPublicClient(chainId ?? getDefaultChainId());
     const personalityId = await client.readContract({
       address: contractAddress,
-      abi: FAKEX_PERSONALITY_NFT_ABI,
+      abi: TROLL_FARM_TYCOON_NFT_ABI,
       functionName: "personalityIdOf",
       args: [BigInt(tokenId)],
     });
@@ -101,7 +101,7 @@ export async function readTokenIdForPersonality(
     const client = getPublicClient(chainId ?? getDefaultChainId());
     const tokenId = await client.readContract({
       address: contractAddress,
-      abi: FAKEX_PERSONALITY_NFT_ABI,
+      abi: TROLL_FARM_TYCOON_NFT_ABI,
       functionName: "tokenIdOfPersonality",
       args: [personalityId],
     });
@@ -145,7 +145,7 @@ export async function verifyMintTransaction(
 
     try {
       const decoded = decodeEventLog({
-        abi: FAKEX_PERSONALITY_NFT_ABI,
+        abi: TROLL_FARM_TYCOON_NFT_ABI,
         data: log.data,
         topics: log.topics,
       });

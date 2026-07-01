@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FAKEX_PERSONALITY_NFT_ABI } from "@/lib/nft/contract";
+import { TROLL_FARM_TYCOON_NFT_ABI } from "@/lib/nft/contract";
 import {
   confirmMintRequest,
   prepareMintRequest,
@@ -65,7 +65,7 @@ export function MintPersonalityDialog({
       setStatus("Confirm the mint in MetaMask...");
       const txHash = await writeContractAsync({
         address: data.contractAddress as `0x${string}`,
-        abi: FAKEX_PERSONALITY_NFT_ABI,
+        abi: TROLL_FARM_TYCOON_NFT_ABI,
         functionName: "mint",
         args: [address, data.personalityId, data.metadataUri],
         value: BigInt(data.mintFee),

@@ -14,7 +14,7 @@ import {
   getNftContractAddress,
   isNftEnabled,
 } from "@/lib/nft/config";
-import { FAKEX_PERSONALITY_NFT_ABI } from "@/lib/nft/contract";
+import { TROLL_FARM_TYCOON_NFT_ABI } from "@/lib/nft/contract";
 import { canMintPersonality } from "@/lib/nft/ownership";
 import { uploadJsonToPinata } from "@/lib/pinata/upload-json";
 
@@ -71,7 +71,7 @@ export async function POST(request: Request, context: RouteContext) {
       mintFee: mintFee.toString(),
       metadataUri: uploaded.ipfsUri,
       personalityId: personality.id,
-      abi: FAKEX_PERSONALITY_NFT_ABI,
+      abi: TROLL_FARM_TYCOON_NFT_ABI,
       functionName: "mint",
     });
   } catch (error) {

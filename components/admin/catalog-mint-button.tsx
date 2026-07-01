@@ -17,7 +17,7 @@ import {
   confirmCatalogMintRequest,
   prepareCatalogMintRequest,
 } from "@/lib/admin/personality-catalog-client";
-import { FAKEX_PERSONALITY_NFT_ABI } from "@/lib/nft/contract";
+import { TROLL_FARM_TYCOON_NFT_ABI } from "@/lib/nft/contract";
 
 type CatalogMintButtonProps = {
   personalityId: string;
@@ -58,7 +58,7 @@ export function CatalogMintButton({
       setStatus("Confirm the mint in MetaMask (NFT goes to treasury)...");
       const txHash = await writeContractAsync({
         address: data.contractAddress as `0x${string}`,
-        abi: FAKEX_PERSONALITY_NFT_ABI,
+        abi: TROLL_FARM_TYCOON_NFT_ABI,
         functionName: "mint",
         args: [
           data.mintToAddress as `0x${string}`,

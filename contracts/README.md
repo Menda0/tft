@@ -31,7 +31,7 @@ forge script script/Deploy.s.sol:Deploy \
   --broadcast \
   --private-key $PRIVATE_KEY
 
-# Base mainnet (add --verify when BASESCAN_API_KEY is set)
+# Base mainnet (add --verify when BASESCAN_API_KEY is set; use an Etherscan V2 key from etherscan.io)
 forge script script/Deploy.s.sol:Deploy \
   --rpc-url $BASE_RPC_URL \
   --broadcast \

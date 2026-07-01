@@ -8,7 +8,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title TrollFarmTycoon Personality NFT
 /// @notice ERC-721 representing ownership of a Troll Farm Tycoon personality bot on Base.
-contract FakexPersonalityNFT is ERC721, ERC721URIStorage, ERC2981, Ownable {
+contract TrollFarmTycoonNFT is ERC721, ERC721URIStorage, ERC2981, Ownable {
     uint256 private _nextTokenId;
     uint256 public mintFee;
     address public treasury;
