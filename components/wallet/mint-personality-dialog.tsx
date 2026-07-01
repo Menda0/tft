@@ -92,7 +92,7 @@ export function MintPersonalityDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="overflow-x-hidden">
         <DialogHeader>
           <DialogTitle>Mint as NFT</DialogTitle>
           <DialogDescription>
@@ -102,7 +102,11 @@ export function MintPersonalityDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {status ? <p className="text-sm text-[#ffa300]">{status}</p> : null}
+        {status ? (
+          <p className="min-w-0 break-all text-sm leading-relaxed text-[#ffa300]">
+            {status}
+          </p>
+        ) : null}
 
         {openSeaUrl ? (
           <a
