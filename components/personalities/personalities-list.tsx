@@ -15,14 +15,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PersonalityAvatar } from "@/components/personalities/personality-avatar";
-import { ProfileLink } from "@/components/profile/profile-link";
+import { PersonalityListCard } from "@/components/personalities/personality-list-card";
 import { ImportNftPanel } from "@/components/wallet/import-nft-panel";
 import { PROJECT_NAME } from "@/lib/brand";
-import { profileKindUsesIdentity } from "@/lib/avatars/page-kind";
-import { formatArchetypeLabel } from "@/lib/personalities/archetypes";
-import { formatGenderLabel } from "@/lib/personalities/gender";
-import { formatPronounLabel } from "@/lib/personalities/pronouns";
 import {
   generateAvatarRequest,
   generateDescriptionRequest,
@@ -32,9 +27,7 @@ import { MAX_PERSONALITIES_PER_USER } from "@/lib/personalities/limits";
 import {
   formatStatValue,
   normalizeStoredStats,
-  normalizeStoredStatsRaw,
 } from "@/lib/personalities/stats";
-import { getCloutBreakdown } from "@/lib/scoring/social-score";
 import type { PersonalityListItem } from "@/lib/profile/social-rank";
 import {
   formatSocialRank,
@@ -67,45 +60,6 @@ function needsDescriptionGeneration(personality: PersonalityListItem): boolean {
   return (
     personality.descriptionStatus === "pending" ||
     personality.descriptionStatus === "failed"
-  );
-}
-
-function PersonalityCardStats({ personality }: { personality: PersonalityListItem }) {
-  const rawStats = normalizeStoredStatsRaw(personality.stats);
-  const stats = normalizeStoredStats(personality.stats);
-  const clout = getCloutBreakdown(rawStats.socialScore, rawStats.controversy);
-  const cloutTooltip = `Gross ${formatStatValue(clout.gross)} − heat tax ${formatStatValue(clout.penalty)}`;
-
-  return (
-    <div className="mt-2 grid grid-cols-4 items-end justify-items-center gap-1 border-t border-[#1d2b53] pt-2">
-      <div className="flex min-w-0 flex-col items-center gap-0.5 px-0.5">
-        <p className="pixel-heading text-[7px] text-[#83769a]">FOLLOWERS</p>
-        <p className="text-xs font-bold text-[#fff1e8]">
-          {formatStatValue(stats.followers)}
-        </p>
-      </div>
-      <div
-        className="flex min-w-0 flex-col items-center gap-0.5 px-0.5"
-        title={cloutTooltip}
-      >
-        <p className="pixel-heading text-[7px] text-[#83769a]">CLOUT</p>
-        <p className="text-xs font-bold text-[#ffa300]">
-          {formatStatValue(stats.socialScore)}
-        </p>
-      </div>
-      <div className="flex min-w-0 flex-col items-center gap-0.5 px-0.5">
-        <p className="pixel-heading text-[7px] text-[#83769a]">HEAT</p>
-        <p className="text-xs font-bold text-[#ff004d]">
-          {formatStatValue(stats.controversy)}
-        </p>
-      </div>
-      <div className="flex min-w-0 flex-col items-center gap-0.5 px-0.5">
-        <p className="pixel-heading text-[7px] text-[#83769a]">RANK</p>
-        <p className="text-xs font-bold text-[#29adff]">
-          {(personality.socialRankLabel ?? "Novice").toUpperCase()}
-        </p>
-      </div>
-    </div>
   );
 }
 
@@ -303,7 +257,7 @@ export function PersonalitiesList() {
           <FarmSummary personalities={personalities} />
         ) : null}
 
-        <ImportNftPanel />
+        <ImportNftPanel onImported={loadPersonalities} />
 
         {error ? (
           <p className="pixel-border-thin bg-[#7e2553] px-3 py-2 text-sm text-[#fff1e8]">
@@ -347,92 +301,22 @@ export function PersonalitiesList() {
         ) : (
           <ul className="space-y-3">
             {personalities.map((personality) => (
-              <li
+              <PersonalityListCard
                 key={personality.id}
-                className="flex gap-3 pixel-border-thin bg-[#29366f] p-3"
-              >
-                <ProfileLink handle={personality.handle} className="shrink-0 hover:no-underline">
-                  <PersonalityAvatar personality={personality} size="md" />
-                </ProfileLink>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-bold text-[#ffa300]">
-                    <ProfileLink handle={personality.handle}>
-                      {personality.name}
-                    </ProfileLink>
-                  </p>
-                  <p className="truncate text-sm text-[#c2c3c7]">
-                    <ProfileLink handle={personality.handle}>
-                      @{personality.handle}
-                    </ProfileLink>
-                  </p>
-                  {personality.nft ? (
-                    <p className="mt-1 text-[10px] font-bold text-[#29adff]">
-                      NFT #{personality.nft.tokenId}
-                    </p>
-                  ) : null}
-                  {personality.importedViaNft ? (
-                    <p className="mt-1 text-[10px] text-[#00e756]">
-                      Imported via wallet
-                    </p>
-                  ) : null}
-                  {profileKindUsesIdentity(personality.kind) ? (
-                    <p className="mt-1 text-xs text-[#83769a]">
-                      {formatGenderLabel(personality.gender)} ·{" "}
-                      {formatPronounLabel(personality.pronouns)}
-                    </p>
-                  ) : null}
-                  {personality.archetype ? (
-                    <p className="mt-1 pixel-heading text-[8px] text-[#29adff]">
-                      {formatArchetypeLabel(personality.archetype).toUpperCase()}
-                    </p>
-                  ) : null}
-                  {personality.description ? (
-                    <p className="mt-2 text-xs leading-relaxed text-[#c2c3c7]">
-                      {personality.description}
-                    </p>
-                  ) : null}
-                  <PersonalityCardStats personality={personality} />
-                  {isDescriptionInProgress(personality) ? (
-                    <p className="mt-1 text-xs text-[#83769a]">
-                      Writing profile bio...
-                    </p>
-                  ) : null}
-                  {personality.descriptionStatus === "failed" ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        descriptionStarted.current.delete(personality.id);
-                        void generateDescriptionRequest(
-                          token,
-                          personality.id,
-                        ).then(() => loadPersonalities());
-                      }}
-                      className="mt-1 text-xs text-[#ff004d] underline"
-                    >
-                      Retry bio generation
-                    </button>
-                  ) : null}
-                  {isAvatarInProgress(personality) ? (
-                    <p className="mt-1 text-xs text-[#83769a]">
-                      Generating pixel avatar...
-                    </p>
-                  ) : null}
-                  {personality.avatarStatus === "failed" ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        generationStarted.current.delete(personality.id);
-                        void generateAvatarRequest(token, personality.id).then(
-                          () => loadPersonalities(),
-                        );
-                      }}
-                      className="mt-1 text-xs text-[#ff004d] underline"
-                    >
-                      Retry avatar generation
-                    </button>
-                  ) : null}
-                </div>
-              </li>
+                personality={personality}
+                onRetryDescription={() => {
+                  descriptionStarted.current.delete(personality.id);
+                  void generateDescriptionRequest(token, personality.id).then(
+                    () => loadPersonalities(),
+                  );
+                }}
+                onRetryAvatar={() => {
+                  generationStarted.current.delete(personality.id);
+                  void generateAvatarRequest(token, personality.id).then(() =>
+                    loadPersonalities(),
+                  );
+                }}
+              />
             ))}
           </ul>
         )}

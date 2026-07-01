@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { SiweMessage } from "siwe";
 import {
   useAccount,
@@ -10,41 +10,23 @@ import {
 } from "wagmi";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useWalletLink } from "@/components/wallet/wallet-link-provider";
 import { defaultChain } from "@/lib/wallet/config";
 import {
   fetchWalletNonce,
   linkWalletRequest,
-  listLinkedWalletsRequest,
   unlinkWalletRequest,
 } from "@/lib/wallet/client";
-import type { LinkedWallet } from "@/lib/db/users";
 
 export function useWalletConnection() {
   const { token, user } = useAuth();
+  const { linkedWallets, setLinkedWallets } = useWalletLink();
   const { address, isConnected, chainId } = useAccount();
   const { connect, connectors, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
-  const [linkedWallets, setLinkedWallets] = useState<LinkedWallet[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  const loadWallets = useCallback(async () => {
-    if (!token) {
-      setLinkedWallets([]);
-      return;
-    }
-
-    const result = await listLinkedWalletsRequest(token);
-
-    if (result.ok) {
-      setLinkedWallets(result.wallets);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    void loadWallets();
-  }, [loadWallets]);
 
   const isLinked = Boolean(
     address &&

@@ -27,6 +27,7 @@ export type PublicPersonality = {
   openSeaUrl?: string | null;
   socialRank?: SocialRank;
   socialRankLabel?: string;
+  ownerUsername?: string | null;
 };
 
 export type ProfileFollower = {

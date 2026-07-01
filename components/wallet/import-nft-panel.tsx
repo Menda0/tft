@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useWalletLink } from "@/components/wallet/wallet-link-provider";
 import { PersonalityAvatar } from "@/components/personalities/personality-avatar";
 import { ProfileLink } from "@/components/profile/profile-link";
 import { Button } from "@/components/ui/button";
@@ -12,8 +13,13 @@ import {
   type WalletNftItem,
 } from "@/lib/wallet/client";
 
-export function ImportNftPanel() {
+type ImportNftPanelProps = {
+  onImported?: () => void | Promise<void>;
+};
+
+export function ImportNftPanel({ onImported }: ImportNftPanelProps) {
   const { token } = useAuth();
+  const { linkedWalletRevision } = useWalletLink();
   const [nfts, setNfts] = useState<WalletNftItem[]>([]);
   const [enabled, setEnabled] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -38,7 +44,7 @@ export function ImportNftPanel() {
 
   useEffect(() => {
     void loadNfts();
-  }, [loadNfts]);
+  }, [loadNfts, linkedWalletRevision]);
 
   async function handleImport(tokenId: string) {
     if (!token) {
@@ -58,6 +64,7 @@ export function ImportNftPanel() {
 
     setStatus("Personality imported.");
     await loadNfts();
+    await onImported?.();
   }
 
   if (!token || !enabled) {

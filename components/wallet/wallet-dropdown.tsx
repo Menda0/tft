@@ -1,13 +1,13 @@
 "use client";
 
 import { Wallet } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAccount } from "wagmi";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { APP_BAR_ICON_BUTTON_CLASS } from "@/components/layout/app-bar-styles";
 import { WalletConnectionPanel } from "@/components/wallet/wallet-connection-panel";
-import { listLinkedWalletsRequest } from "@/lib/wallet/client";
+import { useWalletLink } from "@/components/wallet/wallet-link-provider";
 import { cn } from "@/lib/utils";
 
 type WalletDropdownProps = {
@@ -15,25 +15,12 @@ type WalletDropdownProps = {
 };
 
 export function WalletDropdown({ variant = "icon" }: WalletDropdownProps) {
-  const { user, isReady, token } = useAuth();
+  const { user, isReady } = useAuth();
+  const { linkedWallets } = useWalletLink();
   const { isConnected } = useAccount();
   const [open, setOpen] = useState(false);
-  const [hasLinkedWallet, setHasLinkedWallet] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const refreshLinkedState = useCallback(async () => {
-    if (!token) {
-      setHasLinkedWallet(false);
-      return;
-    }
-
-    const result = await listLinkedWalletsRequest(token);
-    setHasLinkedWallet(result.ok && result.wallets.length > 0);
-  }, [token]);
-
-  useEffect(() => {
-    void refreshLinkedState();
-  }, [refreshLinkedState, isConnected, open]);
+  const hasLinkedWallet = linkedWallets.length > 0;
 
   useEffect(() => {
     if (!open) {
@@ -89,10 +76,7 @@ export function WalletDropdown({ variant = "icon" }: WalletDropdownProps) {
         >
           <WalletConnectionPanel
             variant="menu"
-            onAction={() => {
-              setOpen(false);
-              void refreshLinkedState();
-            }}
+            onAction={() => setOpen(false)}
           />
         </div>
       ) : null}

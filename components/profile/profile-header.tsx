@@ -1,4 +1,5 @@
 import { PersonalityAvatar } from "@/components/personalities/personality-avatar";
+import { FarmerLink } from "@/components/farmers/farmer-link";
 import { FollowersCount } from "@/components/profile/followers-count";
 import { profileKindUsesIdentity } from "@/lib/avatars/page-kind";
 import { formatArchetypeLabel } from "@/lib/personalities/archetypes";
@@ -59,6 +60,16 @@ export function ProfileHeader({ personality }: ProfileHeaderProps) {
           <p className="truncate text-sm text-[#c2c3c7]">
             @{personality.handle}
           </p>
+          {!personality.isRankNpc && personality.ownerUsername ? (
+            <p className="mt-1 text-xs">
+              <FarmerLink
+                username={personality.ownerUsername}
+                className="text-[#29adff]"
+              >
+                {personality.ownerUsername}
+              </FarmerLink>
+            </p>
+          ) : null}
           {profileKindUsesIdentity(personality.kind) && !personality.isRankNpc ? (
             <p className="mt-1 text-xs text-[#83769a]">
               {formatGenderLabel(personality.gender)} ·{" "}

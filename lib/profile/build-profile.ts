@@ -4,6 +4,7 @@ import {
   getRepliesByPersonality,
   getRepostsByPersonality,
 } from "@/lib/db/posts";
+import { findUserById } from "@/lib/db/users";
 import { formatRelativeTime } from "@/lib/feed/format";
 import { normalizePersonality } from "@/lib/personalities";
 import { isRankNpc } from "@/lib/personalities/rank-npc";
@@ -29,6 +30,8 @@ export async function toPublicPersonality(
   const contractAddress = getNftContractAddress();
   const chainId = getDefaultChainId();
   const tokenId = normalized.nft?.tokenId ?? null;
+  const isNpc = isRankNpc(normalized);
+  const owner = isNpc ? null : await findUserById(normalized.ownerId);
 
   return {
     id: normalized.id,
@@ -42,7 +45,8 @@ export async function toPublicPersonality(
     pronouns: normalized.pronouns,
     stats: normalized.stats,
     politicalSwing: normalized.politicalSwing,
-    isRankNpc: isRankNpc(normalized),
+    isRankNpc: isNpc,
+    ownerUsername: owner?.username ?? null,
     hasNft: Boolean(normalized.nft),
     nftTokenId: tokenId,
     openSeaUrl:
