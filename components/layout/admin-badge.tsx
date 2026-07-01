@@ -3,17 +3,16 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import { AdminConsole } from "@/components/admin/admin-console";
 import { useAuth } from "@/components/auth/auth-provider";
 import { LoginDialog } from "@/components/auth/login-dialog";
+import {
+  DESKTOP_BAR_BUTTON_CLASS,
+  DESKTOP_BAR_BUTTON_LABEL_CLASS,
+} from "@/components/layout/app-bar-styles";
 import { WalletDropdown } from "@/components/wallet/wallet-dropdown";
-
-const DESKTOP_BAR_BUTTON_CLASS =
-  "pixel-border px-4 py-2 pixel-shadow-sm transition-transform hover:-translate-y-px active:translate-y-px";
 
 export function AdminBadge() {
   const { user, isReady, logout } = useAuth();
-  const [consoleOpen, setConsoleOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [loginMode, setLoginMode] = useState<"login" | "signup">("login");
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -30,8 +29,14 @@ export function AdminBadge() {
       }
     }
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    const timer = window.setTimeout(() => {
+      document.addEventListener("click", handleClickOutside);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("click", handleClickOutside);
+    };
   }, [userMenuOpen]);
 
   function openLogin(mode: "login" | "signup") {
@@ -62,13 +67,13 @@ export function AdminBadge() {
                 onClick={() => setUserMenuOpen((open) => !open)}
                 className={`${DESKTOP_BAR_BUTTON_CLASS} bg-[#29366f]`}
               >
-                <p className="pixel-heading text-sm leading-none tracking-widest text-[#ffa300]">
+                <span className={`${DESKTOP_BAR_BUTTON_LABEL_CLASS} text-[#ffa300]`}>
                   {user.username.toUpperCase()}
-                </p>
+                </span>
               </button>
 
               {userMenuOpen ? (
-                <div className="absolute top-[calc(100%+8px)] right-0 z-50 w-44 pixel-border bg-[#1d2b53] pixel-shadow-sm">
+                <div className="absolute top-[calc(100%+8px)] right-0 z-[120] w-44 pixel-border bg-[#1d2b53] pixel-shadow-sm">
                   <button
                     type="button"
                     onClick={handleLogout}
@@ -80,26 +85,14 @@ export function AdminBadge() {
               ) : null}
             </div>
             {user.role === "admin" ? (
-              <>
-                <Link
-                  href="/admin/dashboard"
-                  className={`${DESKTOP_BAR_BUTTON_CLASS} bg-[#ffa300]`}
-                >
-                  <p className="pixel-heading text-sm leading-none tracking-widest text-[#1d2b53]">
-                    STATS
-                  </p>
-                </Link>
-                <button
-                  type="button"
-                  aria-label="Open admin console"
-                  onClick={() => setConsoleOpen(true)}
-                  className={`${DESKTOP_BAR_BUTTON_CLASS} bg-[#ff004d]`}
-                >
-                  <p className="pixel-heading text-sm leading-none tracking-widest text-[#fff1e8]">
-                    ADMIN
-                  </p>
-                </button>
-              </>
+              <Link
+                href="/admin/dashboard"
+                className={`${DESKTOP_BAR_BUTTON_CLASS} bg-[#ff004d]`}
+              >
+                <span className={`${DESKTOP_BAR_BUTTON_LABEL_CLASS} text-[#fff1e8]`}>
+                  ADMIN
+                </span>
+              </Link>
             ) : null}
           </>
         ) : (
@@ -109,18 +102,18 @@ export function AdminBadge() {
               onClick={() => openLogin("login")}
               className={`${DESKTOP_BAR_BUTTON_CLASS} bg-[#29adff]`}
             >
-              <p className="pixel-heading text-sm leading-none tracking-widest text-[#1d2b53]">
+              <span className={`${DESKTOP_BAR_BUTTON_LABEL_CLASS} text-[#1d2b53]`}>
                 LOG IN
-              </p>
+              </span>
             </button>
             <button
               type="button"
               onClick={() => openLogin("signup")}
               className={`${DESKTOP_BAR_BUTTON_CLASS} bg-[#00e436]`}
             >
-              <p className="pixel-heading text-sm leading-none tracking-widest text-[#1d2b53]">
+              <span className={`${DESKTOP_BAR_BUTTON_LABEL_CLASS} text-[#1d2b53]`}>
                 SIGN UP
-              </p>
+              </span>
             </button>
           </>
         )}
@@ -131,10 +124,6 @@ export function AdminBadge() {
         onOpenChange={setLoginOpen}
         initialMode={loginMode}
       />
-
-      {user?.role === "admin" ? (
-        <AdminConsole open={consoleOpen} onClose={() => setConsoleOpen(false)} />
-      ) : null}
     </>
   );
 }

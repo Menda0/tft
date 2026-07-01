@@ -55,7 +55,7 @@ export type AvatarStatus = "pending" | "generating" | "ready" | "failed";
 
 export type DescriptionStatus = AvatarStatus;
 
-export type PersonalityRole = "player" | "rank_npc";
+export type PersonalityRole = "player" | "rank_npc" | "catalog";
 
 export type PersonalityNft = {
   chainId: number;

@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
-import { AppBar } from "@/components/layout/app-bar";
+import {
+  DESKTOP_BAR_BUTTON_CLASS,
+  DESKTOP_BAR_BUTTON_LABEL_CLASS,
+} from "@/components/layout/app-bar-styles";
 import { PersonalityAvatar } from "@/components/personalities/personality-avatar";
 import { ProfileLink } from "@/components/profile/profile-link";
 import { listRankNpcsAdminRequest, pruneRankNpcPostsRequest } from "@/lib/rank-npcs/client";
@@ -197,10 +200,8 @@ export function RankNpcsAdminList() {
   const activeCount = items.filter((item) => item.rankNpcActive).length;
 
   return (
-    <div className="min-h-dvh">
-      <AppBar title="Parody NPCs" onBack={() => router.push("/")} />
-
-      <main className="mx-auto max-w-3xl px-4 py-6">
+    <div>
+      <main>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="pixel-heading text-[10px] text-[#29adff]">ADMIN</p>
@@ -213,17 +214,21 @@ export function RankNpcsAdminList() {
               type="button"
               onClick={() => void loadItems()}
               disabled={loading || pruning}
-              className="pixel-border-thin bg-[#1d2b53] px-3 py-2 text-[10px] text-[#fff1e8] pixel-heading disabled:opacity-60"
+              className={`${DESKTOP_BAR_BUTTON_CLASS} bg-[#1d2b53] disabled:opacity-60`}
             >
-              REFRESH
+              <span className={`${DESKTOP_BAR_BUTTON_LABEL_CLASS} text-[#fff1e8]`}>
+                REFRESH
+              </span>
             </button>
             <button
               type="button"
               onClick={() => void handlePrunePosts()}
               disabled={loading || pruning}
-              className="pixel-border-thin bg-[#7e2553] px-3 py-2 text-[10px] text-[#fff1e8] pixel-heading disabled:opacity-60"
+              className={`${DESKTOP_BAR_BUTTON_CLASS} bg-[#7e2553] disabled:opacity-60`}
             >
-              {pruning ? "PRUNING..." : "PRUNE ALL POSTS"}
+              <span className={`${DESKTOP_BAR_BUTTON_LABEL_CLASS} text-[#fff1e8]`}>
+                {pruning ? "PRUNING..." : "PRUNE ALL POSTS"}
+              </span>
             </button>
           </div>
         </div>

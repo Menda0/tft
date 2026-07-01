@@ -24,6 +24,7 @@ import { refreshTrendingTopics } from "./trending-state";
 import type { SimulationWorld } from "./world";
 import { runWithConcurrency, shuffle } from "./utils";
 import { isRankNpc } from "@/lib/personalities/rank-npc";
+import { isCatalogPersonality } from "@/lib/personalities/catalog";
 import type { Personality } from "@/lib/types/personality";
 import { getThreadingPosts } from "@/lib/feed/threading";
 import {
@@ -176,7 +177,7 @@ export async function simulationTick(
   throwIfCancelled(signal);
 
   const eligible = world.personalities.filter(
-    (personality) => !isRankNpc(personality),
+    (personality) => !isRankNpc(personality) && !isCatalogPersonality(personality),
   );
 
   if (eligible.length === 0) {

@@ -24,6 +24,7 @@ import {
 } from "./personalities/validation";
 import { normalizeStoredStats, normalizeStoredStatsRaw } from "./personalities/stats";
 import { isRankNpc } from "./personalities/rank-npc";
+import { isCatalogPersonality } from "./personalities/catalog";
 import { COMPETITIVE_FILTER } from "./personalities/competitive-filter";
 import {
   competitiveMatchStage,
@@ -99,7 +100,15 @@ export function isActivePlayerPersonality(personality: Personality): boolean {
 }
 
 function normalizeRole(role: PersonalityRole | string | undefined): PersonalityRole {
-  return role === "rank_npc" ? "rank_npc" : "player";
+  if (role === "rank_npc") {
+    return "rank_npc";
+  }
+
+  if (role === "catalog") {
+    return "catalog";
+  }
+
+  return "player";
 }
 
 function normalizeXSync(
@@ -294,6 +303,10 @@ export async function findPublicPersonalityByHandle(
 
   const normalized = normalizePersonality(personality);
 
+  if (isCatalogPersonality(normalized)) {
+    return null;
+  }
+
   if (normalized.role === "rank_npc" && normalized.rankNpcActive === false) {
     return null;
   }
@@ -359,6 +372,16 @@ export async function getActiveRankNpcs(): Promise<Personality[]> {
 export async function getAllRankNpcs(): Promise<Personality[]> {
   const collection = await getPersonalitiesCollection();
   const personalities = await collection.find({ role: "rank_npc" }).toArray();
+  return personalities.map(normalizePersonality);
+}
+
+export async function findCatalogPersonalities(): Promise<Personality[]> {
+  const collection = await getPersonalitiesCollection();
+  const personalities = await collection
+    .find(mergeNotDeleted({ role: "catalog" }))
+    .sort({ createdAt: -1 })
+    .toArray();
+
   return personalities.map(normalizePersonality);
 }
 

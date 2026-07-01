@@ -5,6 +5,7 @@ import {
   findPersonalityByNftTokenId,
   updatePersonality,
 } from "@/lib/personalities";
+import { isCatalogPersonality } from "@/lib/personalities/catalog";
 import { getWalletAuthContext } from "@/lib/nft/auth-context";
 import {
   normalizeWalletAddress,
@@ -81,6 +82,7 @@ export async function POST(request: Request) {
       ownerId: authUser.id,
       nftOwnerAddress: normalizeWalletAddress(owner),
       importedViaNft: true,
+      ...(isCatalogPersonality(personality) ? { role: "player" as const } : {}),
     });
 
     if (!updated) {

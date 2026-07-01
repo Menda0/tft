@@ -4,7 +4,10 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
-import { AppBar } from "@/components/layout/app-bar";
+import {
+  DESKTOP_BAR_BUTTON_CLASS,
+  DESKTOP_BAR_BUTTON_LABEL_CLASS,
+} from "@/components/layout/app-bar-styles";
 import {
   fetchAdminDashboard,
   fetchTickResults,
@@ -159,17 +162,21 @@ function TickResultsTable({
             type="button"
             onClick={onPrev}
             disabled={loading || tickPage === 0}
-            className="pixel-border-thin bg-[#1d2b53] px-3 py-2 text-[10px] text-[#fff1e8] pixel-heading disabled:opacity-40"
+            className={`${DESKTOP_BAR_BUTTON_CLASS} bg-[#1d2b53] disabled:opacity-40`}
           >
-            PREV
+            <span className={`${DESKTOP_BAR_BUTTON_LABEL_CLASS} text-[#fff1e8]`}>
+              PREV
+            </span>
           </button>
           <button
             type="button"
             onClick={onNext}
             disabled={loading || (tickPage + 1) * PAGE_SIZE >= total}
-            className="pixel-border-thin bg-[#1d2b53] px-3 py-2 text-[10px] text-[#fff1e8] pixel-heading disabled:opacity-40"
+            className={`${DESKTOP_BAR_BUTTON_CLASS} bg-[#1d2b53] disabled:opacity-40`}
           >
-            NEXT
+            <span className={`${DESKTOP_BAR_BUTTON_LABEL_CLASS} text-[#fff1e8]`}>
+              NEXT
+            </span>
           </button>
         </div>
       </div>
@@ -314,10 +321,8 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-dvh">
-      <AppBar title="Analytics" onBack={() => router.push("/")} />
-
-      <main className="mx-auto max-w-4xl px-4 py-6">
+    <div>
+      <main>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="pixel-heading text-[10px] text-[#29adff]">ADMIN</p>
@@ -332,9 +337,11 @@ export function AdminDashboard() {
               void loadTickResults();
             }}
             disabled={loading}
-            className="pixel-border-thin bg-[#1d2b53] px-3 py-2 text-[10px] text-[#fff1e8] pixel-heading disabled:opacity-60"
+            className={`${DESKTOP_BAR_BUTTON_CLASS} bg-[#1d2b53] disabled:opacity-60`}
           >
-            REFRESH
+            <span className={`${DESKTOP_BAR_BUTTON_LABEL_CLASS} text-[#fff1e8]`}>
+              REFRESH
+            </span>
           </button>
         </div>
 
@@ -344,13 +351,19 @@ export function AdminDashboard() {
               key={option.days}
               type="button"
               onClick={() => setRange(option.days)}
-              className={`pixel-border-thin px-3 py-2 text-[10px] pixel-heading ${
+              className={`${DESKTOP_BAR_BUTTON_CLASS} ${
                 range === option.days
-                  ? "bg-[#ffa300] text-[#1d2b53]"
-                  : "bg-[#1d2b53] text-[#fff1e8]"
+                  ? "bg-[#ffa300]"
+                  : "bg-[#1d2b53]"
               }`}
             >
-              {option.label.toUpperCase()}
+              <span
+                className={`${DESKTOP_BAR_BUTTON_LABEL_CLASS} ${
+                  range === option.days ? "text-[#1d2b53]" : "text-[#fff1e8]"
+                }`}
+              >
+                {option.label.toUpperCase()}
+              </span>
             </button>
           ))}
         </div>

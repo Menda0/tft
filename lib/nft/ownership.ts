@@ -1,4 +1,5 @@
 import type { AuthUser } from "@/lib/auth/server";
+import { isCatalogPersonality } from "@/lib/personalities/catalog";
 import { normalizeWalletAddress } from "@/lib/nft/chain";
 import type { LinkedWallet } from "@/lib/db/users";
 import type { Personality } from "@/lib/types/personality";
@@ -67,6 +68,17 @@ export function canManagePersonality(
 
 export function canDeletePersonality(personality: Personality): boolean {
   return !personality.nft;
+}
+
+export function canAdminMintCatalogPersonality(
+  user: AuthUser,
+  personality: Personality,
+): boolean {
+  return (
+    user.role === "admin" &&
+    isCatalogPersonality(personality) &&
+    !personality.nft
+  );
 }
 
 export function canImportPersonality(

@@ -1,4 +1,5 @@
 import type { Personality } from "@/lib/types/personality";
+import { isCatalogPersonality } from "@/lib/personalities/catalog";
 
 export function isRankNpc(personality: Personality): boolean {
   return personality.role === "rank_npc";
@@ -9,6 +10,10 @@ export function isActiveRankNpc(personality: Personality): boolean {
 }
 
 export function isPublicPersonality(personality: Personality): boolean {
+  if (isCatalogPersonality(personality)) {
+    return false;
+  }
+
   if (personality.role === "rank_npc" && personality.rankNpcActive === false) {
     return false;
   }

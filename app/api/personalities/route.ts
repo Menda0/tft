@@ -7,7 +7,7 @@ import {
   insertPersonality,
   normalizePersonality,
 } from "@/lib/personalities";
-import { mergeNotDeleted } from "@/lib/db/active-filters";
+import { COMPETITIVE_FILTER } from "@/lib/personalities/competitive-filter";
 import { MAX_PERSONALITIES_PER_USER } from "@/lib/personalities/limits";
 import { attachSocialRanksToPersonalities } from "@/lib/profile/social-rank";
 import { getAuthUser } from "@/lib/auth/server";
@@ -93,7 +93,7 @@ export async function GET(request: Request) {
     if (!authUser) {
       const collection = await getPersonalitiesCollection();
       const personalities = await collection
-        .find(mergeNotDeleted({}))
+        .find(COMPETITIVE_FILTER)
         .sort({ createdAt: -1 })
         .limit(50)
         .toArray();

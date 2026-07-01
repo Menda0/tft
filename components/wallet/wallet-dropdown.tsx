@@ -5,7 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import { useAccount } from "wagmi";
 
 import { useAuth } from "@/components/auth/auth-provider";
-import { APP_BAR_ICON_BUTTON_CLASS } from "@/components/layout/app-bar-styles";
+import {
+  APP_BAR_ICON_BUTTON_CLASS,
+  DESKTOP_BAR_BUTTON_CLASS,
+  DESKTOP_BAR_BUTTON_LABEL_CLASS,
+} from "@/components/layout/app-bar-styles";
 import { WalletConnectionPanel } from "@/components/wallet/wallet-connection-panel";
 import { useWalletLink } from "@/components/wallet/wallet-link-provider";
 import { cn } from "@/lib/utils";
@@ -55,14 +59,14 @@ export function WalletDropdown({ variant = "icon" }: WalletDropdownProps) {
         className={cn(
           "relative transition-transform hover:-translate-y-px active:translate-y-px",
           isDesktopBar
-            ? "pixel-border bg-[#29adff] px-4 py-2 pixel-shadow-sm"
+            ? cn(DESKTOP_BAR_BUTTON_CLASS, "bg-[#29adff]")
             : `${APP_BAR_ICON_BUTTON_CLASS} bg-[#1d2b53]`,
         )}
       >
         {isDesktopBar ? (
-          <p className="pixel-heading text-sm leading-none tracking-widest text-[#1d2b53]">
+          <span className={`${DESKTOP_BAR_BUTTON_LABEL_CLASS} text-[#1d2b53]`}>
             {label}
-          </p>
+          </span>
         ) : (
           <Wallet className="size-4 text-[#29adff]" strokeWidth={2.5} />
         )}

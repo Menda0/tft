@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { RankNpcsAdminList } from "@/components/admin/rank-npcs-list";
 
 export const metadata: Metadata = {
-  title: "Admin",
+  title: "Admin · Rank NPCs",
   robots: {
     index: false,
     follow: false,

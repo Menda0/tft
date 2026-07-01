@@ -4,6 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import {
+  DESKTOP_BAR_BUTTON_CLASS,
+  DESKTOP_BAR_BUTTON_LABEL_CLASS,
+} from "@/components/layout/app-bar-styles";
+import {
   logLevelColor,
   refreshTrendingTopicsRequest,
   streamSimulationTickRequest,
@@ -425,7 +429,7 @@ export function AdminConsole({ open, onClose }: AdminConsoleProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-[110] hidden md:flex md:items-end md:justify-center md:p-8 md:pt-24">
+    <div className="fixed inset-0 z-[110] flex items-end justify-center p-3 pt-16 sm:p-4 sm:pt-20 md:p-8 md:pt-24">
       <button
         type="button"
         aria-label="Close admin console"
@@ -433,15 +437,17 @@ export function AdminConsole({ open, onClose }: AdminConsoleProps) {
         onClick={onClose}
       />
 
-      <div className="relative flex h-[min(70dvh,560px)] w-[min(720px,100%)] flex-col pixel-border bg-[#0a0a2a] pixel-shadow-sm">
+      <div className="relative flex h-[min(85dvh,560px)] w-full max-w-[720px] flex-col pixel-border bg-[#0a0a2a] pixel-shadow-sm">
         <div className="flex items-center justify-between border-b-2 border-[#fff1e8] px-4 py-2">
           <p className="pixel-heading text-[10px] text-[#29adff]">ADMIN CONSOLE</p>
           <button
             type="button"
             onClick={onClose}
-            className="pixel-border-thin bg-[#7e2553] px-2 py-1 text-[10px] text-[#fff1e8] pixel-heading"
+            className={`${DESKTOP_BAR_BUTTON_CLASS} bg-[#7e2553]`}
           >
-            CLOSE
+            <span className={`${DESKTOP_BAR_BUTTON_LABEL_CLASS} text-[#fff1e8]`}>
+              CLOSE
+            </span>
           </button>
         </div>
 
