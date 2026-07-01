@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useWalletLink } from "@/components/wallet/wallet-link-provider";
 import { PersonalityAvatar } from "@/components/personalities/personality-avatar";
+import { usePersonalitiesRefresh } from "@/components/personalities/personalities-refresh-provider";
 import { ProfileLink } from "@/components/profile/profile-link";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,7 @@ type ImportNftPanelProps = {
 export function ImportNftPanel({ onImported }: ImportNftPanelProps) {
   const { token } = useAuth();
   const { linkedWalletRevision } = useWalletLink();
+  const { refreshPersonalities, personalitiesRevision } = usePersonalitiesRefresh();
   const [nfts, setNfts] = useState<WalletNftItem[]>([]);
   const [enabled, setEnabled] = useState(false);
   const [hasLinkedWallet, setHasLinkedWallet] = useState(false);
@@ -47,7 +49,14 @@ export function ImportNftPanel({ onImported }: ImportNftPanelProps) {
 
   useEffect(() => {
     void loadNfts();
-  }, [loadNfts, linkedWalletRevision]);
+  }, [loadNfts, linkedWalletRevision, personalitiesRevision]);
+
+  async function finishImport(statusMessage: string) {
+    setStatus(statusMessage);
+    await loadNfts();
+    refreshPersonalities();
+    await onImported?.();
+  }
 
   async function handleImport(tokenId: string) {
     if (!token || importingAll) {
@@ -65,9 +74,7 @@ export function ImportNftPanel({ onImported }: ImportNftPanelProps) {
       return;
     }
 
-    setStatus("Personality imported.");
-    await loadNfts();
-    await onImported?.();
+    await finishImport("Personality imported.");
   }
 
   async function handleImportAll(tokenIds: string[]) {
@@ -95,6 +102,7 @@ export function ImportNftPanel({ onImported }: ImportNftPanelProps) {
         );
         await loadNfts();
         if (imported > 0) {
+          refreshPersonalities();
           await onImported?.();
         }
         return;
@@ -105,9 +113,7 @@ export function ImportNftPanel({ onImported }: ImportNftPanelProps) {
 
     setImportingId(null);
     setImportingAll(false);
-    setStatus(`Imported ${imported} personalities.`);
-    await loadNfts();
-    await onImported?.();
+    await finishImport(`Imported ${imported} personalities.`);
   }
 
   if (!token || !enabled) {

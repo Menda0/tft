@@ -1,4 +1,5 @@
 import { DesktopSidebar } from "@/components/layout/desktop-sidebar";
+import { PersonalitiesRefreshProvider } from "@/components/personalities/personalities-refresh-provider";
 import { PROJECT_NAME_BADGE } from "@/lib/brand";
 
 type PhoneFrameProps = {
@@ -69,7 +70,7 @@ function PhoneSideButtons() {
 
 export function PhoneFrame({ children }: PhoneFrameProps) {
   return (
-    <>
+    <PersonalitiesRefreshProvider>
       {/* Mobile: full bleed — fixed viewport height so overflow-y-auto can scroll */}
       <div className="flex h-dvh flex-col overflow-hidden md:hidden">
         <div className="pixel-scanlines scrollbar-hidden min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -109,6 +110,6 @@ export function PhoneFrame({ children }: PhoneFrameProps) {
           <DesktopSidebar />
         </div>
       </div>
-    </>
+    </PersonalitiesRefreshProvider>
   );
 }

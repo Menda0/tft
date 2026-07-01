@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PersonalityListCard } from "@/components/personalities/personality-list-card";
+import { usePersonalitiesRefresh } from "@/components/personalities/personalities-refresh-provider";
 import { ImportNftPanel } from "@/components/wallet/import-nft-panel";
 import { PROJECT_NAME } from "@/lib/brand";
 import {
@@ -110,6 +111,7 @@ function FarmSummary({ personalities }: { personalities: PersonalityListItem[] }
 export function PersonalitiesList() {
   const router = useRouter();
   const { user, token, isReady } = useAuth();
+  const { personalitiesRevision } = usePersonalitiesRefresh();
   const [personalities, setPersonalities] = useState<PersonalityListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -150,7 +152,7 @@ export function PersonalitiesList() {
   useEffect(() => {
     if (!isReady || !token) return;
     void loadPersonalities();
-  }, [isReady, token, loadPersonalities]);
+  }, [isReady, token, loadPersonalities, personalitiesRevision]);
 
   useEffect(() => {
     if (!token || personalities.length === 0) return;
@@ -253,7 +255,7 @@ export function PersonalitiesList() {
           <FarmSummary personalities={personalities} />
         ) : null}
 
-        <ImportNftPanel onImported={loadPersonalities} />
+        <ImportNftPanel />
 
         {error ? (
           <p className="pixel-border-thin bg-[#7e2553] px-3 py-2 text-sm text-[#fff1e8]">
