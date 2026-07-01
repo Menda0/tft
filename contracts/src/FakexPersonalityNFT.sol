@@ -6,8 +6,8 @@ import {ERC721URIStorage} from "@openzeppelin/contracts/token/ERC721/extensions/
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-/// @title Fakex Personality NFT
-/// @notice ERC-721 representing ownership of a fakex personality bot on Base.
+/// @title TrollFarmTycoon Personality NFT
+/// @notice ERC-721 representing ownership of a Troll Farm Tycoon personality bot on Base.
 contract FakexPersonalityNFT is ERC721, ERC721URIStorage, ERC2981, Ownable {
     uint256 private _nextTokenId;
     uint256 public mintFee;
@@ -31,7 +31,7 @@ contract FakexPersonalityNFT is ERC721, ERC721URIStorage, ERC2981, Ownable {
         address treasury_,
         uint96 royaltyBps_,
         uint256 mintFee_
-    ) ERC721("Fakex Personality", "FAKEX") Ownable(msg.sender) {
+    ) ERC721("TrollFarmTycoon", "TFT") Ownable(msg.sender) {
         require(treasury_ != address(0), "Invalid treasury");
         treasury = treasury_;
         mintFee = mintFee_;

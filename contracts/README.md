@@ -1,24 +1,31 @@
-# Fakex Personality NFT (Base)
+# TrollFarmTycoon NFT (Base)
 
-ERC-721 + ERC-2981 contract for minting fakex personalities on Base.
+ERC-721 + ERC-2981 contract for minting Troll Farm Tycoon personalities on Base.
 
 ## Setup
 
 ```bash
 cd contracts
-forge install OpenZeppelin/openzeppelin-contracts forge-std --no-commit
+forge install OpenZeppelin/openzeppelin-contracts
+forge install foundry-rs/forge-std
 ```
 
 ## Deploy
 
-Set env vars (see repo `.env.example`), then:
+Set env vars in `.env` / `.env.local` (see repo `.env.example`), including `PRIVATE_KEY`, then from the repo root:
+
+```bash
+npm run deploy:nft:sepolia
+```
+
+Or manually:
 
 ```bash
 # Base Sepolia (testnet)
 forge script script/Deploy.s.sol:Deploy \
   --rpc-url $BASE_SEPOLIA_RPC_URL \
   --broadcast \
-  --verify
+  --private-key $PRIVATE_KEY
 
 # Base mainnet
 forge script script/Deploy.s.sol:Deploy \
