@@ -6,6 +6,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { getInitials } from "@/components/feed/post-author";
 import { DesktopActivityLog } from "@/components/layout/desktop-activity-log";
 import { DesktopOverviewLeaderboard } from "@/components/layout/desktop-overview-leaderboard";
+import { DesktopPersonalityActions } from "@/components/layout/desktop-personality-actions";
 import { MyPersonalitiesPanel } from "@/components/layout/my-social-panel";
 import { ProfileLink } from "@/components/profile/profile-link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -169,6 +170,7 @@ export function DesktopSidebar() {
   const [mySocial, setMySocial] = useState<MySocialPayload>(EMPTY_MY_SOCIAL);
   const [mySocialLoading, setMySocialLoading] = useState(false);
   const [mySocialError, setMySocialError] = useState<string | null>(null);
+  const [mySocialRevision, setMySocialRevision] = useState(0);
 
   const visibleTabs = SIDEBAR_TABS.filter(
     (tab) => !tab.requiresAuth || Boolean(user),
@@ -242,7 +244,7 @@ export function DesktopSidebar() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [activeTab, token]);
+  }, [activeTab, token, mySocialRevision]);
 
   return (
     <aside
@@ -287,11 +289,16 @@ export function DesktopSidebar() {
           topicsError={topicsError}
         />
       ) : activeTab === "my-personalities" ? (
-        <MyPersonalitiesPanel
-          data={mySocial}
-          loading={mySocialLoading}
-          error={mySocialError}
-        />
+        <div className="space-y-4">
+          <DesktopPersonalityActions
+            onImported={() => setMySocialRevision((revision) => revision + 1)}
+          />
+          <MyPersonalitiesPanel
+            data={mySocial}
+            loading={mySocialLoading}
+            error={mySocialError}
+          />
+        </div>
       ) : (
         <DesktopActivityLog />
       )}

@@ -25,6 +25,7 @@ export function ImportNftPanel({ onImported }: ImportNftPanelProps) {
   const [hasLinkedWallet, setHasLinkedWallet] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [importingId, setImportingId] = useState<string | null>(null);
+  const [importingAll, setImportingAll] = useState(false);
 
   const loadNfts = useCallback(async () => {
     if (!token) {
@@ -49,7 +50,7 @@ export function ImportNftPanel({ onImported }: ImportNftPanelProps) {
   }, [loadNfts, linkedWalletRevision]);
 
   async function handleImport(tokenId: string) {
-    if (!token) {
+    if (!token || importingAll) {
       return;
     }
 
@@ -65,6 +66,46 @@ export function ImportNftPanel({ onImported }: ImportNftPanelProps) {
     }
 
     setStatus("Personality imported.");
+    await loadNfts();
+    await onImported?.();
+  }
+
+  async function handleImportAll(tokenIds: string[]) {
+    if (!token || tokenIds.length < 2 || importingAll) {
+      return;
+    }
+
+    setImportingAll(true);
+    setStatus(null);
+
+    let imported = 0;
+
+    for (const tokenId of tokenIds) {
+      setImportingId(tokenId);
+
+      const result = await importNftRequest(token, tokenId);
+
+      if (!result.ok) {
+        setImportingId(null);
+        setImportingAll(false);
+        setStatus(
+          imported > 0
+            ? `Imported ${imported}. ${result.error}`
+            : result.error,
+        );
+        await loadNfts();
+        if (imported > 0) {
+          await onImported?.();
+        }
+        return;
+      }
+
+      imported += 1;
+    }
+
+    setImportingId(null);
+    setImportingAll(false);
+    setStatus(`Imported ${imported} personalities.`);
     await loadNfts();
     await onImported?.();
   }
@@ -90,42 +131,57 @@ export function ImportNftPanel({ onImported }: ImportNftPanelProps) {
             : "No importable NFT personalities in your linked wallets."}
         </p>
       ) : (
-        <ul className="mt-3 space-y-3">
-          {importable.map((nft) => (
-            <li
-              key={nft.tokenId!}
-              className="flex items-center justify-between gap-3 border-b border-[#3e3546] pb-3 last:border-0"
+        <>
+          {importable.length >= 2 ? (
+            <Button
+              type="button"
+              className="mt-3 w-full"
+              disabled={importingAll || importingId !== null}
+              onClick={() =>
+                void handleImportAll(importable.map((nft) => nft.tokenId!))
+              }
             >
-              <div className="flex min-w-0 items-center gap-3">
-                <PersonalityAvatar
-                  personality={{
-                    name: nft.name,
-                    handle: nft.handle,
-                    avatarUrl: nft.avatarUrl,
-                    avatarStatus: "ready",
-                  }}
-                  size="sm"
-                />
-                <div className="min-w-0">
-                  <ProfileLink handle={nft.handle} className="truncate text-sm">
-                    @{nft.handle}
-                  </ProfileLink>
-                  <p className="text-[10px] text-[#83769a]">
-                    Token #{nft.tokenId}
-                  </p>
-                </div>
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                disabled={importingId === nft.tokenId}
-                onClick={() => void handleImport(nft.tokenId!)}
+              {importingAll ? "Importing all..." : "Import all"}
+            </Button>
+          ) : null}
+
+          <ul className="mt-3 space-y-3">
+            {importable.map((nft) => (
+              <li
+                key={nft.tokenId!}
+                className="flex items-center justify-between gap-3 border-b border-[#3e3546] pb-3 last:border-0"
               >
-                {importingId === nft.tokenId ? "Importing..." : "Import"}
-              </Button>
-            </li>
-          ))}
-        </ul>
+                <div className="flex min-w-0 items-center gap-3">
+                  <PersonalityAvatar
+                    personality={{
+                      name: nft.name,
+                      handle: nft.handle,
+                      avatarUrl: nft.avatarUrl,
+                      avatarStatus: "ready",
+                    }}
+                    size="sm"
+                  />
+                  <div className="min-w-0">
+                    <ProfileLink handle={nft.handle} className="truncate text-sm">
+                      @{nft.handle}
+                    </ProfileLink>
+                    <p className="text-[10px] text-[#83769a]">
+                      Token #{nft.tokenId}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={importingAll || importingId === nft.tokenId}
+                  onClick={() => void handleImport(nft.tokenId!)}
+                >
+                  {importingId === nft.tokenId ? "Importing..." : "Import"}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       {status ? <p className="mt-3 text-xs text-[#ffa300]">{status}</p> : null}

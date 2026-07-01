@@ -393,12 +393,6 @@ export function MyPersonalitiesPanel({
     return (
       <div className="pixel-border-thin bg-[#29366f] p-4 text-center">
         <p className="text-sm text-[#fff1e8]">No personalities yet.</p>
-        <Link
-          href="/create-personality"
-          className="mt-3 inline-block pixel-border-thin bg-[#00e436] px-3 py-2 text-xs text-[#1d2b53] pixel-heading"
-        >
-          CREATE ONE
-        </Link>
       </div>
     );
   }
