@@ -28,11 +28,12 @@ export function DesktopPersonalityActions({
       return;
     }
 
+    const authToken = token;
     const userId = user.id;
     let cancelled = false;
 
     async function checkLimit() {
-      const result = await listPersonalitiesRequest(token);
+      const result = await listPersonalitiesRequest(authToken);
 
       if (cancelled) {
         return;

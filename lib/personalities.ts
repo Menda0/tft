@@ -1,4 +1,4 @@
-import { Collection } from "mongodb";
+import { Collection, type Document, type Filter } from "mongodb";
 import { getAddress } from "viem";
 
 import { getDb } from "./mongodb";
@@ -369,6 +369,10 @@ const PLAYER_PERSONALITY_FILTER = mergeNotDeleted({
   ],
 });
 
+const UNMINTED_NFT_FILTER: Filter<Document> = {
+  $or: [{ nft: { $exists: false } }, { nft: null }],
+};
+
 export async function countActivePersonalitiesByOwner(
   ownerId: string,
 ): Promise<number> {
@@ -376,8 +380,8 @@ export async function countActivePersonalitiesByOwner(
   return collection.countDocuments(
     mergeNotDeleted({
       ownerId,
-      $or: [{ nft: { $exists: false } }, { nft: null }],
       $and: [
+        UNMINTED_NFT_FILTER,
         {
           $or: [
             { role: { $exists: false } },
@@ -403,7 +407,7 @@ export async function findPersonalitiesForUser(input: {
   const orFilters: Record<string, unknown>[] = [
     {
       ownerId: input.userId,
-      $or: [{ nft: { $exists: false } }, { nft: null }],
+      ...UNMINTED_NFT_FILTER,
     },
     {
       ownerId: input.userId,
