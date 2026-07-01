@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { CatalogMintButton } from "@/components/admin/catalog-mint-button";
+import { CatalogPersonalityProfileDialog } from "@/components/admin/catalog-personality-profile-dialog";
 import { CatalogPersonalityForm } from "@/components/admin/catalog-personality-form";
 import { useAuth } from "@/components/auth/auth-provider";
 import {
@@ -45,10 +46,12 @@ function CatalogRow({
   item,
   token,
   onRefresh,
+  onViewProfile,
 }: {
   item: CatalogPersonalityListItem;
   token: string;
   onRefresh: () => void;
+  onViewProfile: (item: CatalogPersonalityListItem) => void;
 }) {
   const [avatarLoading, setAvatarLoading] = useState(false);
 
@@ -77,9 +80,21 @@ function CatalogRow({
             }}
             size="sm"
           />
-          <div>
-            <p className="font-bold text-[#fff1e8]">{item.name}</p>
-            <p className="text-xs text-[#29adff]">@{item.handle}</p>
+          <div className="flex flex-col items-start">
+            <button
+              type="button"
+              onClick={() => onViewProfile(item)}
+              className="text-left font-bold text-[#fff1e8] hover:text-[#ffa300]"
+            >
+              {item.name}
+            </button>
+            <button
+              type="button"
+              onClick={() => onViewProfile(item)}
+              className="text-left text-xs text-[#29adff] hover:text-[#ffa300]"
+            >
+              @{item.handle}
+            </button>
           </div>
         </div>
       </td>
@@ -123,6 +138,13 @@ function CatalogRow({
       </td>
       <td className="px-3 py-3">
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            onClick={() => onViewProfile(item)}
+            className="rounded-none border-2 border-[#fff1e8] bg-[#29366f] px-2 py-1 text-[10px] text-[#fff1e8] hover:bg-[#1d2b53]"
+          >
+            PROFILE
+          </Button>
           {canMint ? (
             <CatalogMintButton
               personalityId={item.id}
@@ -153,6 +175,8 @@ export function PersonalityCatalogDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [profileItem, setProfileItem] =
+    useState<CatalogPersonalityListItem | null>(null);
 
   const loadItems = useCallback(async () => {
     if (!token) {
@@ -305,12 +329,23 @@ export function PersonalityCatalogDashboard() {
                   item={item}
                   token={token!}
                   onRefresh={() => void loadItems()}
+                  onViewProfile={setProfileItem}
                 />
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      <CatalogPersonalityProfileDialog
+        item={profileItem}
+        open={profileItem !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setProfileItem(null);
+          }
+        }}
+      />
     </div>
   );
 }
