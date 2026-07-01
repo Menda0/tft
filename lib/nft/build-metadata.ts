@@ -75,7 +75,7 @@ export function buildPersonalityNftMetadata(
   }
 
   return {
-    name: personality.name,
+    name: `${personality.name} @${personality.handle}`,
     description,
     image: toIpfsUri(personality.avatarUrl),
     external_url: `${getSiteUrl()}/u/${personality.handle}`,

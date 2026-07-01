@@ -51,7 +51,7 @@ describe("buildPersonalityNftMetadata", () => {
   it("builds OpenSea-compatible metadata with ipfs image", () => {
     const metadata = buildPersonalityNftMetadata(basePersonality());
 
-    assert.equal(metadata.name, "Test Bot");
+    assert.equal(metadata.name, "Test Bot @testbot");
     assert.equal(metadata.image, "ipfs://QmTest");
     assert.equal(metadata.properties.personality_id, "pers_test");
     assert.ok(metadata.attributes.some((trait) => trait.trait_type === "Humor"));
