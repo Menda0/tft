@@ -62,7 +62,7 @@ export function buildSiweMessage(address: string, nonce: string): SiweMessage {
   return new SiweMessage({
     domain: new URL(getSiteUrl()).host,
     address,
-    statement: "Link your wallet to your fakex account.",
+    statement: "Link your wallet to your Troll Farm Tycoon account.",
     uri: getSiteUrl(),
     version: "1",
     chainId: getDefaultChainId(),

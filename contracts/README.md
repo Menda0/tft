@@ -15,7 +15,11 @@ forge install foundry-rs/forge-std
 Set env vars in `.env` / `.env.local` (see repo `.env.example`), including `PRIVATE_KEY`, then from the repo root:
 
 ```bash
+# Base Sepolia (testnet)
 npm run deploy:nft:sepolia
+
+# Base mainnet
+npm run deploy:nft:mainnet
 ```
 
 Or manually:
@@ -27,11 +31,11 @@ forge script script/Deploy.s.sol:Deploy \
   --broadcast \
   --private-key $PRIVATE_KEY
 
-# Base mainnet
+# Base mainnet (add --verify when BASESCAN_API_KEY is set)
 forge script script/Deploy.s.sol:Deploy \
   --rpc-url $BASE_RPC_URL \
   --broadcast \
-  --verify
+  --private-key $PRIVATE_KEY
 ```
 
 Copy the deployed address into `NEXT_PUBLIC_NFT_CONTRACT_ADDRESS`.

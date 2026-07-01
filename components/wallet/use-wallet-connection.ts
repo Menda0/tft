@@ -73,7 +73,7 @@ export function useWalletConnection() {
       const message = new SiweMessage({
         domain: window.location.host,
         address,
-        statement: "Link your wallet to your fakex account.",
+        statement: "Link your wallet to your Troll Farm Tycoon account.",
         uri: window.location.origin,
         version: "1",
         chainId: defaultChain.id,

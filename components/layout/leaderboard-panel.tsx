@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { getInitials } from "@/components/feed/post-author";
 import { AppBar } from "@/components/layout/app-bar";
+import { FarmerLink } from "@/components/farmers/farmer-link";
 import { ProfileLink } from "@/components/profile/profile-link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -158,7 +159,13 @@ function PersonalityRow({
             {entry.socialRankLabel.toUpperCase()}
           </span>
           <span className="text-[#83769a]"> · @{entry.handle}</span>
-          <span className="text-[#c2c3c7]"> · {entry.ownerUsername}</span>
+          <span className="text-[#c2c3c7]"> · </span>
+          <FarmerLink
+            username={entry.ownerUsername}
+            className="text-[#c2c3c7] hover:underline"
+          >
+            {entry.ownerUsername}
+          </FarmerLink>
         </p>
       </div>
 
@@ -194,21 +201,31 @@ function FarmerRow({
         {entry.rank}
       </span>
 
-      <Avatar
-        size="sm"
-        className="size-7 shrink-0 rounded-none after:rounded-none after:border-2 after:border-[#1d2b53]"
+      <FarmerLink
+        username={entry.username}
+        className="block shrink-0 hover:no-underline"
       >
-        <AvatarFallback
-          className={cn(
-            "rounded-none bg-[#29366f] text-[8px] font-bold text-[#fff1e8] pixel-heading",
-          )}
+        <Avatar
+          size="sm"
+          className="size-7 shrink-0 rounded-none after:rounded-none after:border-2 after:border-[#1d2b53]"
         >
-          {getInitials(entry.username)}
-        </AvatarFallback>
-      </Avatar>
+          <AvatarFallback
+            className={cn(
+              "rounded-none bg-[#29366f] text-[8px] font-bold text-[#fff1e8] pixel-heading",
+            )}
+          >
+            {getInitials(entry.username)}
+          </AvatarFallback>
+        </Avatar>
+      </FarmerLink>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm text-[#fff1e8]">{entry.username}</p>
+        <FarmerLink
+          username={entry.username}
+          className="block truncate text-sm text-[#fff1e8] hover:underline"
+        >
+          {entry.username}
+        </FarmerLink>
         <p className="text-[10px] text-[#83769a]">
           {entry.botCount} bot{entry.botCount === 1 ? "" : "s"}
         </p>
