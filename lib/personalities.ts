@@ -376,9 +376,14 @@ export async function countActivePersonalitiesByOwner(
   return collection.countDocuments(
     mergeNotDeleted({
       ownerId,
-      $or: [
-        { role: { $exists: false } },
-        { role: "player" as const },
+      $or: [{ nft: { $exists: false } }, { nft: null }],
+      $and: [
+        {
+          $or: [
+            { role: { $exists: false } },
+            { role: "player" as const },
+          ],
+        },
       ],
     }),
   );

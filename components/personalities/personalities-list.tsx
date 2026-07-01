@@ -23,7 +23,7 @@ import {
   generateDescriptionRequest,
   listPersonalitiesRequest,
 } from "@/lib/personalities/client";
-import { MAX_PERSONALITIES_PER_USER } from "@/lib/personalities/limits";
+import { MAX_PERSONALITIES_PER_USER, countTowardCreateLimit } from "@/lib/personalities/limits";
 import {
   formatStatValue,
   normalizeStoredStats,
@@ -118,11 +118,7 @@ export function PersonalitiesList() {
   const descriptionStarted = useRef(new Set<string>());
 
   const createdCount = useMemo(
-    () =>
-      personalities.filter(
-        (personality) =>
-          personality.ownerId === user?.id && personality.importedViaNft !== true,
-      ).length,
+    () => countTowardCreateLimit(personalities, user?.id ?? ""),
     [personalities, user?.id],
   );
 

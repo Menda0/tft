@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PROJECT_NAME } from "@/lib/brand";
 import { createPersonalityRequest, checkHandleAvailabilityRequest, listPersonalitiesRequest } from "@/lib/personalities/client";
-import { MAX_PERSONALITIES_PER_USER } from "@/lib/personalities/limits";
+import { MAX_PERSONALITIES_PER_USER, countTowardCreateLimit } from "@/lib/personalities/limits";
 import {
   PAGE_KINDS,
   PAGE_KIND_LABELS,
@@ -102,12 +102,13 @@ export function CreatePersonalityForm() {
   const [handleChecking, setHandleChecking] = useState(false);
 
   useEffect(() => {
-    if (!isReady || !token) {
+    if (!isReady || !token || !user) {
       setCheckingLimit(false);
       return;
     }
 
     const authToken = token;
+    const userId = user.id;
     let cancelled = false;
 
     async function checkLimit() {
@@ -119,7 +120,8 @@ export function CreatePersonalityForm() {
 
       if (result.ok) {
         setAtPersonalityLimit(
-          result.personalities.length >= MAX_PERSONALITIES_PER_USER,
+          countTowardCreateLimit(result.personalities, userId) >=
+            MAX_PERSONALITIES_PER_USER,
         );
       }
 
@@ -131,7 +133,7 @@ export function CreatePersonalityForm() {
     return () => {
       cancelled = true;
     };
-  }, [isReady, token]);
+  }, [isReady, token, user]);
 
   useEffect(() => {
     let cancelled = false;
