@@ -94,6 +94,24 @@ describe("ownership helpers", () => {
     );
   });
 
+  it("allows imported owner to manage minted personality without linked wallet", () => {
+    const imported = basePersonality({
+      ownerId: "user_1",
+      importedViaNft: true,
+      nft: {
+        chainId: 8453,
+        contractAddress: "0x0000000000000000000000000000000000000001",
+        tokenId: "1",
+        metadataUri: "ipfs://meta",
+        mintTxHash: "0xabc",
+        mintedAt: new Date(),
+      },
+      nftOwnerAddress: "0xAb5801a7D398351bEFbE11D02C0970b6579bdda0",
+    });
+
+    assert.equal(canManagePersonality(user, imported, []), true);
+  });
+
   it("blocks mint when already minted", () => {
     const minted = basePersonality({
       nft: {

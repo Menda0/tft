@@ -83,20 +83,22 @@ export function PersonalityListCard({
   const isMinted = Boolean(personality.nft);
 
   return (
-    <li className="relative flex gap-3 pixel-border-thin bg-[#29366f] p-3">
-      {isMinted ? (
-        <span className="absolute right-2 top-2 flex items-center gap-1 border border-[#00e756] bg-[#1d2b53] px-1.5 py-0.5 text-[9px] font-bold leading-none text-[#00e756]">
-          <Check className="size-2.5 shrink-0" strokeWidth={3} />
-          Minted
-        </span>
-      ) : null}
+    <li className="flex gap-3 pixel-border-thin bg-[#29366f] p-3">
       <ProfileLink handle={personality.handle} className="shrink-0 hover:no-underline">
         <PersonalityAvatar personality={personality} size="md" />
       </ProfileLink>
-      <div className={isMinted ? "min-w-0 flex-1 pr-14" : "min-w-0 flex-1"}>
-        <p className="truncate font-bold text-[#ffa300]">
-          <ProfileLink handle={personality.handle}>{personality.name}</ProfileLink>
-        </p>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <p className="min-w-0 truncate font-bold text-[#ffa300]">
+            <ProfileLink handle={personality.handle}>{personality.name}</ProfileLink>
+          </p>
+          {isMinted ? (
+            <span className="flex shrink-0 items-center gap-1 border border-[#00e756] bg-[#1d2b53] px-1.5 py-0.5 text-[9px] font-bold leading-none text-[#00e756]">
+              <Check className="size-2.5 shrink-0" strokeWidth={3} />
+              Minted
+            </span>
+          ) : null}
+        </div>
         <p className="truncate text-sm text-[#c2c3c7]">
           <ProfileLink handle={personality.handle}>@{personality.handle}</ProfileLink>
         </p>

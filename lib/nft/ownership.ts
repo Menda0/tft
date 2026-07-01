@@ -51,6 +51,14 @@ export function canManagePersonality(
   linkedWallets: LinkedWallet[] | undefined,
 ): boolean {
   if (personality.nft) {
+    if (personality.ownerId === user.id) {
+      if (personality.importedViaNft) {
+        return true;
+      }
+
+      return userOwnsNftWallet(linkedWallets, personality.nftOwnerAddress);
+    }
+
     return userOwnsNftWallet(linkedWallets, personality.nftOwnerAddress);
   }
 

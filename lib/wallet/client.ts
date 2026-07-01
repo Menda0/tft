@@ -14,6 +14,7 @@ export type WalletNftItem = {
   avatarUrl: string | null;
   tokenId: string | null;
   importedViaNft: boolean;
+  importable: boolean;
   openSeaUrl: string | null;
 };
 
@@ -185,6 +186,7 @@ export async function listWalletNftsRequest(
   | {
       ok: true;
       enabled: boolean;
+      hasLinkedWallet: boolean;
       nfts: WalletNftItem[];
       mintFee: string;
     }
@@ -195,6 +197,7 @@ export async function listWalletNftsRequest(
   });
   const data = (await response.json()) as {
     enabled?: boolean;
+    hasLinkedWallet?: boolean;
     nfts?: WalletNftItem[];
     mintFee?: string;
     error?: string;
@@ -207,6 +210,7 @@ export async function listWalletNftsRequest(
   return {
     ok: true,
     enabled: data.enabled ?? false,
+    hasLinkedWallet: data.hasLinkedWallet ?? false,
     nfts: data.nfts ?? [],
     mintFee: data.mintFee ?? "0",
   };

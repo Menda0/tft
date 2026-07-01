@@ -405,15 +405,16 @@ export async function findPersonalitiesForUser(input: {
       ownerId: input.userId,
       $or: [{ nft: { $exists: false } }, { nft: null }],
     },
+    {
+      ownerId: input.userId,
+      importedViaNft: true,
+    },
   ];
 
   if (walletAddresses.length > 0) {
     orFilters.push({
       ownerId: input.userId,
-      nftOwnerAddress: { $in: walletAddresses },
-    });
-    orFilters.push({
-      importedViaNft: true,
+      nft: { $exists: true },
       nftOwnerAddress: { $in: walletAddresses },
     });
   }

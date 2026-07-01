@@ -73,7 +73,12 @@ export async function POST(request: Request) {
       return authError("Personality not found for this NFT.", 404);
     }
 
+    if (personality.ownerId === authUser.id) {
+      return Response.json({ personality });
+    }
+
     const updated = await updatePersonality(personality.id, {
+      ownerId: authUser.id,
       nftOwnerAddress: normalizeWalletAddress(owner),
       importedViaNft: true,
     });

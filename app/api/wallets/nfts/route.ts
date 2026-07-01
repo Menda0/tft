@@ -23,6 +23,7 @@ export async function GET(request: Request) {
     }
 
     const { linkedWalletAddresses } = await getWalletAuthContext(authUser);
+    const hasLinkedWallet = linkedWalletAddresses.length > 0;
     const personalities = await findMintedPersonalitiesForWallets(
       linkedWalletAddresses,
     );
@@ -30,25 +31,31 @@ export async function GET(request: Request) {
     const chainId = getDefaultChainId();
     const mintFee = (await readMintFee(chainId)).toString();
 
-    const nfts = personalities.map((personality) => ({
-      personalityId: personality.id,
-      name: personality.name,
-      handle: personality.handle,
-      avatarUrl: personality.avatarUrl,
-      tokenId: personality.nft?.tokenId ?? null,
-      importedViaNft: personality.importedViaNft === true,
-      openSeaUrl:
-        personality.nft?.tokenId
-          ? getOpenSeaAssetUrl(
-              chainId,
-              contractAddress,
-              personality.nft.tokenId,
-            )
-          : null,
-    }));
+    const nfts = personalities.map((personality) => {
+      const alreadyOwnedByAccount = personality.ownerId === authUser.id;
+
+      return {
+        personalityId: personality.id,
+        name: personality.name,
+        handle: personality.handle,
+        avatarUrl: personality.avatarUrl,
+        tokenId: personality.nft?.tokenId ?? null,
+        importedViaNft: alreadyOwnedByAccount,
+        importable: !alreadyOwnedByAccount,
+        openSeaUrl:
+          personality.nft?.tokenId
+            ? getOpenSeaAssetUrl(
+                chainId,
+                contractAddress,
+                personality.nft.tokenId,
+              )
+            : null,
+      };
+    });
 
     return Response.json({
       enabled: true,
+      hasLinkedWallet,
       contractAddress,
       chainId,
       mintFee,

@@ -22,6 +22,7 @@ export function ImportNftPanel({ onImported }: ImportNftPanelProps) {
   const { linkedWalletRevision } = useWalletLink();
   const [nfts, setNfts] = useState<WalletNftItem[]>([]);
   const [enabled, setEnabled] = useState(false);
+  const [hasLinkedWallet, setHasLinkedWallet] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [importingId, setImportingId] = useState<string | null>(null);
 
@@ -39,6 +40,7 @@ export function ImportNftPanel({ onImported }: ImportNftPanelProps) {
     }
 
     setEnabled(result.enabled);
+    setHasLinkedWallet(result.hasLinkedWallet);
     setNfts(result.nfts);
   }, [token]);
 
@@ -71,7 +73,7 @@ export function ImportNftPanel({ onImported }: ImportNftPanelProps) {
     return null;
   }
 
-  const importable = nfts.filter((nft) => nft.tokenId && !nft.importedViaNft);
+  const importable = nfts.filter((nft) => nft.tokenId && nft.importable);
 
   return (
     <section className="pixel-border bg-[#1d2b53] p-4 pixel-shadow-sm">
@@ -83,7 +85,9 @@ export function ImportNftPanel({ onImported }: ImportNftPanelProps) {
 
       {importable.length === 0 ? (
         <p className="mt-3 text-xs text-[#83769a]">
-          No importable NFT personalities in your linked wallets.
+          {!hasLinkedWallet
+            ? "Link a wallet to your account to import NFT personalities."
+            : "No importable NFT personalities in your linked wallets."}
         </p>
       ) : (
         <ul className="mt-3 space-y-3">
