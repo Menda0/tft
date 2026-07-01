@@ -16,7 +16,7 @@ function basePersonality(overrides: Partial<Personality> = {}): Personality {
     handle: "testbot",
     kind: "person",
     gender: "nonbinary",
-    pronouns: "they/them",
+    pronouns: "they_them",
     avatarUrl: "https://gateway.pinata.cloud/ipfs/QmTest",
     avatarStatus: "ready",
     description: "A test bot.",
@@ -32,7 +32,7 @@ function basePersonality(overrides: Partial<Personality> = {}): Personality {
       negacionist: 1,
       radical: 2,
     },
-    politicalSwing: "center",
+    politicalSwing: -3,
     interests: ["memes"],
     beliefs: {},
     stats: {
@@ -55,6 +55,23 @@ describe("buildPersonalityNftMetadata", () => {
     assert.equal(metadata.image, "ipfs://QmTest");
     assert.equal(metadata.properties.personality_id, "pers_test");
     assert.ok(metadata.attributes.some((trait) => trait.trait_type === "Humor"));
+    assert.deepEqual(
+      metadata.attributes.find((trait) => trait.trait_type === "Pronouns"),
+      { trait_type: "Pronouns", value: "they/them" },
+    );
+    assert.deepEqual(
+      metadata.attributes.find((trait) => trait.trait_type === "Political Swing"),
+      { trait_type: "Political Swing", value: "CENTER-LEFT" },
+    );
+    assert.deepEqual(
+      metadata.attributes.find(
+        (trait) => trait.trait_type === "Political Category",
+      ),
+      {
+        trait_type: "Political Category",
+        value: "Social democracy / Progressive liberalism",
+      },
+    );
   });
 });
 

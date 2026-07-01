@@ -1,4 +1,9 @@
 import { formatArchetypeLabel } from "@/lib/personalities/archetypes";
+import {
+  formatPoliticalSwingCategory,
+  formatPoliticalSwingLabel,
+} from "@/lib/personalities/political-swing";
+import { formatPronounLabel } from "@/lib/personalities/pronouns";
 import { getSiteUrl } from "@/lib/nft/config";
 import type { Personality, Traits } from "@/lib/types/personality";
 
@@ -55,6 +60,11 @@ export function buildPersonalityNftMetadata(
     }),
   );
 
+  attributes.push({
+    trait_type: "Pronouns",
+    value: formatPronounLabel(personality.pronouns),
+  });
+
   if (personality.archetype) {
     attributes.push({
       trait_type: "Archetype",
@@ -62,10 +72,16 @@ export function buildPersonalityNftMetadata(
     });
   }
 
-  attributes.push({
-    trait_type: "Political Swing",
-    value: personality.politicalSwing,
-  });
+  attributes.push(
+    {
+      trait_type: "Political Swing",
+      value: formatPoliticalSwingLabel(personality.politicalSwing).toUpperCase(),
+    },
+    {
+      trait_type: "Political Category",
+      value: formatPoliticalSwingCategory(personality.politicalSwing),
+    },
+  );
 
   if (personality.interests.length > 0) {
     attributes.push({
