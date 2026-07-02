@@ -73,10 +73,10 @@ export const simulationConfig = {
       followingDrag: 0.005,
     },
     follow: {
-      base: 0.008,
-      alignment: 0.12,
-      negacionist: 0.01,
-      streakBonusPerStep: 0.75,
+      base: 0.003,
+      alignment: 0.04,
+      negacionist: 0.002,
+      streakBonusPerStep: 0.2,
     },
     unfollow: {
       base: 0.02,
@@ -151,7 +151,7 @@ export const simulationConfig = {
     engageChance: 0.015,
     actionWeights: {
       like: 68,
-      follow: 24,
+      follow: 8,
       reply: 5,
     },
     followFallbackLikeChance: 0.55,

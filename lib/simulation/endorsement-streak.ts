@@ -5,7 +5,7 @@ import { defaultRelationship } from "./personality-state";
 import type { SimulationWorld } from "./world";
 
 /** Minimum endorsement streak before a follow attempt is allowed. */
-export const CONSECUTIVE_ENDORSEMENTS_FOR_FOLLOW = 1;
+export const CONSECUTIVE_ENDORSEMENTS_FOR_FOLLOW = 2;
 
 export function getEndorsementStreak(
   personality: Pick<Personality, "relationships">,
@@ -18,7 +18,7 @@ export function getEndorsementStreak(
 }
 
 export function canFollowAfterEndorsements(streak: number): boolean {
-  return streak >= 1;
+  return streak >= CONSECUTIVE_ENDORSEMENTS_FOR_FOLLOW;
 }
 
 export function syncWorldPersonality(
