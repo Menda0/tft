@@ -1,13 +1,14 @@
 import { getOpenAIClient, getTrendingModel } from "@/lib/openai/client";
 import { trackedResponsesCreate } from "@/lib/openai/usage";
 
-const TRENDING_TOPIC_COUNT = 4;
+const TRENDING_TOPIC_COUNT = 5;
 
 const FALLBACK_TOPICS = [
   "Congress debating new AI regulation after a major lab announces a powerful model with weak safety guardrails",
   "Viral meme format taking over social feeds as celebrities and brands pile on with their own versions",
   "Underdog sports team forcing a decisive playoff game after a last-minute comeback shocks fans",
   "Tech company unveiling its latest phone while users argue online over price hikes and missing features",
+  "Streaming platform canceling a hit show after backlash over its season finale cliffhanger",
 ];
 
 export class TrendingTopicsError extends Error {

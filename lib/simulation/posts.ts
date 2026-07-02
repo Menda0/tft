@@ -1,6 +1,7 @@
 import {
   countOriginalPostsSince,
   getOriginalPostTopicsSince,
+  getTopLevelOriginalPostsSince,
   incrementPostStat,
   insertPost,
   toPostAuthor,
@@ -20,12 +21,18 @@ import { defaultPostStats, type Post, type PostStats, type ReplyTone } from "@/l
 import type { Personality } from "@/lib/types/personality";
 
 import { truncateForLog, type SimulationLogFn } from "./logger";
+import {
+  findTooSimilarPost,
+  POST_GENERATION_MAX_ATTEMPTS,
+} from "./post-content-similarity";
+import { pickPostAngle } from "./post-angle";
 import { normalizeLegacyReplyTone, replyToneToStatField } from "./reply-tone";
-import { pickTopicForPersonality } from "./topics";
+import { pickTopicForPersonality, topicsAreSimilar } from "./topics";
 import type { SimulationWorld } from "./world";
 import {
   getDailyPostLimit,
   startOfRollingWindow,
+  startOfThreadingWindow,
 } from "./limits";
 
 export type CreatePostResult =
@@ -83,36 +90,76 @@ export async function createPost(
     return { ok: false, reason: "no_topic" };
   }
 
+  const recentTopicPosts = (
+    await getTopLevelOriginalPostsSince(startOfThreadingWindow())
+  )
+    .filter(
+      (post) =>
+        post.topic &&
+        topicsAreSimilar(topic, post.topic) &&
+        post.author.personalityId !== personality.id,
+    )
+    .map((post) => post.content);
+  const existingContents = [...recentTopicPosts];
+  let angle = pickPostAngle(personality);
+
   try {
-    const content = await generateLLMPost(personality, topic, {
-      onStage: (stage) => {
-        if (!log) {
-          return;
-        }
+    for (let attempt = 1; attempt <= POST_GENERATION_MAX_ATTEMPTS; attempt += 1) {
+      const content = await generateLLMPost(personality, topic, {
+        onStage: (stage) => {
+          if (!log) {
+            return;
+          }
 
-        if (stage === "research") {
-          log(
-            "info",
-            `@${personality.handle} researching: ${truncateForLog(topic, 100)}`,
+          if (stage === "research") {
+            log(
+              "info",
+              `@${personality.handle} researching: ${truncateForLog(topic, 100)}`,
+            );
+          } else {
+            log(
+              "info",
+              `@${personality.handle} writing post${attempt > 1 ? ` (attempt ${attempt})` : ""}...`,
+            );
+          }
+        },
+        angle,
+        recentPostsToAvoid: existingContents,
+      });
+      const duplicate = findTooSimilarPost(content, existingContents);
+
+      if (duplicate) {
+        if (attempt < POST_GENERATION_MAX_ATTEMPTS) {
+          log?.(
+            "warn",
+            `@${personality.handle} generated a near-duplicate post, retrying with a new angle...`,
           );
-        } else {
-          log("info", `@${personality.handle} writing post...`);
+          angle = pickPostAngle(personality);
+          continue;
         }
-      },
-    });
-    const post = await insertPost({
-      author: authorFromPersonality(personality),
-      content,
-      topic,
-      createdAt: new Date(),
-      tickNumber: world.state.tickNumber + 1,
-      replyToPostId: null,
-      repostOfPostId: null,
-    });
 
-    world.posts.unshift(post);
-    void recordAuthoredPostActivity(personality.id, post, personality.ownerId);
-    return { ok: true, post };
+        console.warn(
+          `createPost rejected near-duplicate for ${personality.handle} after ${POST_GENERATION_MAX_ATTEMPTS} attempts.`,
+        );
+        return { ok: false, reason: "generation_failed" };
+      }
+
+      const post = await insertPost({
+        author: authorFromPersonality(personality),
+        content,
+        topic,
+        createdAt: new Date(),
+        tickNumber: world.state.tickNumber + 1,
+        replyToPostId: null,
+        repostOfPostId: null,
+      });
+
+      world.posts.unshift(post);
+      void recordAuthoredPostActivity(personality.id, post, personality.ownerId);
+      return { ok: true, post };
+    }
+
+    return { ok: false, reason: "generation_failed" };
   } catch (error) {
     console.error(`createPost failed for ${personality.handle}:`, error);
     return { ok: false, reason: "generation_failed" };

@@ -9,6 +9,10 @@ import {
 import { formatPersonalityVoiceLabel } from "@/lib/personalities/kind-archetypes";
 import { formatPoliticalSwingDescription } from "@/lib/personalities/political-swing";
 import { formatMemoriesForPrompt } from "@/lib/simulation/memory";
+import {
+  formatPostAngleGuidance,
+  type PostAngle,
+} from "@/lib/simulation/post-angle";
 import type { Personality } from "@/lib/types/personality";
 
 export type { ReplyEngagementContext, ReplyTone } from "@/lib/openai/reply-prompt";
@@ -52,6 +56,10 @@ function buildPostPrompt(
   personality: Personality,
   topic: string,
   researchNotes: string | null,
+  options?: {
+    angle?: PostAngle;
+    recentPostsToAvoid?: string[];
+  },
 ): string {
   const interests =
     personality.interests.length > 0
@@ -74,6 +82,22 @@ function buildPostPrompt(
       "",
       "Use these research notes for depth and specificity (do not list them verbatim):",
       researchNotes,
+    );
+  }
+
+  if (options?.angle) {
+    lines.push(
+      "",
+      `Posting angle: ${formatPostAngleGuidance(options.angle)}`,
+    );
+  }
+
+  if (options?.recentPostsToAvoid && options.recentPostsToAvoid.length > 0) {
+    lines.push(
+      "",
+      "Avoid repeating these recent posts about this topic:",
+      ...options.recentPostsToAvoid.map((post) => `- ${post}`),
+      "Write a clearly distinct angle, wording, and punchline.",
     );
   }
 
@@ -130,6 +154,8 @@ export async function generateLLMPost(
   topic: string,
   options?: {
     onStage?: (stage: PostGenerationStage) => void;
+    angle?: PostAngle;
+    recentPostsToAvoid?: string[];
   },
 ): Promise<string> {
   options?.onStage?.("research");
@@ -148,7 +174,10 @@ export async function generateLLMPost(
   options?.onStage?.("write");
 
   return generateText(
-    buildPostPrompt(personality, topic, researchNotes),
+    buildPostPrompt(personality, topic, researchNotes, {
+      angle: options?.angle,
+      recentPostsToAvoid: options?.recentPostsToAvoid,
+    }),
     "You write short, specific social media posts for fictional internet personalities.",
     "post",
     personality.id,

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
@@ -8,7 +9,6 @@ import { DesktopActivityLog } from "@/components/layout/desktop-activity-log";
 import { DesktopOverviewLeaderboard } from "@/components/layout/desktop-overview-leaderboard";
 import { DesktopPersonalityActions } from "@/components/layout/desktop-personality-actions";
 import { MyPersonalitiesPanel } from "@/components/layout/my-social-panel";
-import { ProfileLink } from "@/components/profile/profile-link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   fetchMySocial,
@@ -24,7 +24,7 @@ import type {
 import { cn } from "@/lib/utils";
 
 const REFRESH_INTERVAL_MS = 60_000;
-const MAX_VISIBLE_AVATARS = 5;
+const MAX_VISIBLE_AVATARS = 6;
 
 type SidebarTab = "overview" | "my-personalities" | "activity";
 
@@ -58,9 +58,10 @@ function ParticipantAvatar({
   className?: string;
 }) {
   return (
-    <ProfileLink
-      handle={participant.handle}
+    <Link
+      href={`/thread/${participant.postId}`}
       className={cn("block shrink-0 hover:no-underline", className)}
+      aria-label={`View ${participant.name}'s post about this topic`}
     >
       <Avatar
         size="sm"
@@ -78,7 +79,7 @@ function ParticipantAvatar({
           {getInitials(participant.name)}
         </AvatarFallback>
       </Avatar>
-    </ProfileLink>
+    </Link>
   );
 }
 
@@ -96,21 +97,21 @@ function TopicRow({ topic }: { topic: ThreadingTopic }) {
 
       {topic.participants.length > 0 ? (
         <div className="flex shrink-0 items-center">
-          {topic.participants.map((participant, index) => (
-            <ParticipantAvatar
-              key={participant.handle}
-              participant={participant}
-              className={cn(index > 0 && "-ml-2")}
-            />
-          ))}
           {overflowCount > 0 ? (
             <span
-              className="-ml-2 flex size-7 items-center justify-center border-2 border-[#1d2b53] bg-[#83769a] pixel-heading text-[8px] text-[#fff1e8]"
+              className="mr-1 flex size-7 items-center justify-center border-2 border-[#1d2b53] bg-[#83769a] pixel-heading text-[8px] text-[#fff1e8]"
               aria-label={`${overflowCount} more personalities discussing`}
             >
               +{overflowCount}
             </span>
           ) : null}
+          {topic.participants.map((participant, index) => (
+            <ParticipantAvatar
+              key={participant.personalityId}
+              participant={participant}
+              className={cn(index > 0 && "-ml-2")}
+            />
+          ))}
         </div>
       ) : (
         <span className="shrink-0 text-xs text-[#83769a]">—</span>

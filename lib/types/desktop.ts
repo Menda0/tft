@@ -1,11 +1,14 @@
 import type { SocialRank } from "@/lib/scoring/ranks";
 
 export type ThreadingTopicParticipant = {
+  personalityId: string;
   name: string;
   handle: string;
   avatarUrl: string | null;
   avatarColor: string;
   postCount: number;
+  replyCount: number;
+  postId: string;
 };
 
 export type ThreadingTopic = {

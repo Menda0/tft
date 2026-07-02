@@ -1,15 +1,19 @@
-import { getTopLevelOriginalPostsSince } from "@/lib/db/posts";
+import {
+  getRepliesForPosts,
+  getTopLevelOriginalPostsSince,
+} from "@/lib/db/posts";
 import { getWorldState } from "@/lib/db/world";
 import { avatarColorForHandle } from "@/lib/feed/format";
 import { startOfThreadingWindow } from "@/lib/simulation/limits";
 import { topicsAreSimilar } from "@/lib/simulation/topics";
+import type { Post } from "@/lib/types/post";
 import type {
   ThreadingTopic,
   ThreadingTopicParticipant,
   ThreadingTopicsPayload,
 } from "@/lib/types/desktop";
 
-const MAX_VISIBLE_PARTICIPANTS = 5;
+const MAX_VISIBLE_PARTICIPANTS = 6;
 
 function findMatchingTopicLabel(
   postTopic: string,
@@ -22,6 +26,45 @@ function findMatchingTopicLabel(
   }
 
   return null;
+}
+
+function participantActivity(participant: ThreadingTopicParticipant): number {
+  return participant.postCount + participant.replyCount;
+}
+
+function upsertParticipant(
+  participants: Map<string, ThreadingTopicParticipant>,
+  personalityId: string,
+  author: Post["author"],
+  postId: string,
+  kind: "post" | "reply",
+): void {
+  const existing = participants.get(personalityId);
+
+  if (existing) {
+    if (kind === "post") {
+      existing.postCount += 1;
+      existing.postId = postId;
+    } else {
+      existing.replyCount += 1;
+      if (existing.postCount === 0) {
+        existing.postId = postId;
+      }
+    }
+
+    return;
+  }
+
+  participants.set(personalityId, {
+    personalityId,
+    name: author.name,
+    handle: author.handle,
+    avatarUrl: author.avatarUrl,
+    avatarColor: avatarColorForHandle(author.handle),
+    postCount: kind === "post" ? 1 : 0,
+    replyCount: kind === "reply" ? 1 : 0,
+    postId,
+  });
 }
 
 export async function buildThreadingTopics(): Promise<ThreadingTopicsPayload> {
@@ -37,6 +80,7 @@ export async function buildThreadingTopics(): Promise<ThreadingTopicsPayload> {
       participants: Map<string, ThreadingTopicParticipant>;
     }
   >();
+  const postToTopic = new Map<string, string>();
 
   for (const label of trendingLabels) {
     topicMap.set(label, { postCount: 0, participants: new Map() });
@@ -62,22 +106,41 @@ export async function buildThreadingTopics(): Promise<ThreadingTopicsPayload> {
     }
 
     entry.postCount += 1;
+    postToTopic.set(post.id, matchedLabel);
+    upsertParticipant(
+      entry.participants,
+      post.author.personalityId,
+      post.author,
+      post.id,
+      "post",
+    );
+  }
 
-    const personalityId = post.author.personalityId;
-    const existing = entry.participants.get(personalityId);
+  if (postToTopic.size > 0) {
+    const replies = await getRepliesForPosts([...postToTopic.keys()]);
 
-    if (existing) {
-      existing.postCount += 1;
-      continue;
+    for (const reply of replies) {
+      const parentId = reply.replyToPostId;
+
+      if (!parentId) {
+        continue;
+      }
+
+      const matchedLabel = postToTopic.get(parentId);
+      const entry = matchedLabel ? topicMap.get(matchedLabel) : undefined;
+
+      if (!entry) {
+        continue;
+      }
+
+      upsertParticipant(
+        entry.participants,
+        reply.author.personalityId,
+        reply.author,
+        reply.id,
+        "reply",
+      );
     }
-
-    entry.participants.set(personalityId, {
-      name: post.author.name,
-      handle: post.author.handle,
-      avatarUrl: post.author.avatarUrl,
-      avatarColor: avatarColorForHandle(post.author.handle),
-      postCount: 1,
-    });
   }
 
   const topics: ThreadingTopic[] = state.trendingTopics
@@ -88,7 +151,15 @@ export async function buildThreadingTopics(): Promise<ThreadingTopicsPayload> {
       };
 
       const sortedParticipants = [...bucket.participants.values()].sort(
-        (left, right) => right.postCount - left.postCount,
+        (left, right) => {
+          const activityDelta = participantActivity(right) - participantActivity(left);
+
+          if (activityDelta !== 0) {
+            return activityDelta;
+          }
+
+          return right.postCount - left.postCount;
+        },
       );
 
       return {
