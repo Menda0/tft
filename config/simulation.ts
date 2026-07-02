@@ -19,7 +19,7 @@ export const simulationConfig = {
   },
 
   limits: {
-    maxPostsPerPersonalityPerDay: 1,
+    maxPostsPerPersonalityPerDay: 3,
     dailyPostWindowMs: 24 * 60 * 60 * 1000,
     trendingTopicsTtlMs: 6 * 60 * 60 * 1000,
     disagreeCooldownWindowMs: 24 * 60 * 60 * 1000,
@@ -58,9 +58,9 @@ export const simulationConfig = {
       followingBonus: 0.045,
     },
     repost: {
-      base: 0.012,
-      alignment: 0.18,
-      radical: 0.015,
+      base: 0.005,
+      alignment: 0.1,
+      radical: 0.008,
     },
     respondAgree: {
       base: 0.001,
@@ -73,9 +73,10 @@ export const simulationConfig = {
       followingDrag: 0.005,
     },
     follow: {
-      base: 0.015,
+      base: 0.008,
       alignment: 0.12,
       negacionist: 0.01,
+      streakBonusPerStep: 0.75,
     },
     unfollow: {
       base: 0.02,
@@ -140,12 +141,10 @@ export const simulationConfig = {
   optionalAction: {
     postBase: 2,
     postCreativityMultiplier: 0.12,
+    postSecondMultiplier: 0.12,
+    postThirdMultiplier: 0.03,
     lurk: 40,
     skip: 115,
-  },
-
-  endorsement: {
-    consecutiveForFollow: 3,
   },
 
   rankNpc: {

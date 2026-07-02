@@ -1,4 +1,5 @@
 import type { Post } from "@/lib/types/post";
+import type { ReplyTone } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
 import { classifyRelationship } from "@/lib/profile/relationship-category";
@@ -11,6 +12,7 @@ import {
   getRelationshipTowardAuthor,
 } from "./engagement-intensity";
 import { scorePostAlignment, scorePostRevelatory } from "./engagement-scoring";
+import { scoreIdeologicalCompatibility } from "./ideological-compatibility";
 
 const {
   maxProbability,
@@ -41,6 +43,11 @@ function applyThreadingBoost(
   return probability * boost;
 }
 
+function followStreakFactor(streak: number): number {
+  const normalized = Math.max(1, Math.round(streak));
+  return 1 + (normalized - 1) * follow.streakBonusPerStep;
+}
+
 export type EngagementProbabilityContext = {
   personality: Personality;
   post: Post;
@@ -49,15 +56,19 @@ export type EngagementProbabilityContext = {
   mutuallyFollowing: boolean;
   isThreadingPost?: boolean;
   recentDisagreeCount?: number;
+  projectedEndorsementStreak?: number;
 };
 
 export type EngagementProbabilities = {
   like: number;
   repost: number;
+  respond: number;
   respondAgree: number;
   respondDisagree: number;
   follow: number;
   unfollow: number;
+  compatibility: number;
+  alignment: number;
 };
 
 export function computeEngagementProbabilities(
@@ -71,8 +82,10 @@ export function computeEngagementProbabilities(
     mutuallyFollowing,
     isThreadingPost,
     recentDisagreeCount = 0,
+    projectedEndorsementStreak = 1,
   } = context;
   const alignment = scorePostAlignment(personality, post, author);
+  const compatibility = scoreIdeologicalCompatibility(personality, author, post);
   const traits = personality.traits;
   const relationship = getRelationshipTowardAuthor(
     personality,
@@ -88,7 +101,7 @@ export function computeEngagementProbabilities(
 
   let respondDisagreeProbability = applyThreadingBoost(
     respondDisagree.base +
-      (1 - alignment) * respondDisagree.misalignment +
+      (1 - compatibility) * respondDisagree.misalignment +
       computeDisagreeProbabilityModifiers(relationship, traits, author, category) -
       followingDisagreeDrag,
     isThreadingPost,
@@ -99,22 +112,42 @@ export function computeEngagementProbabilities(
     relationship.rivalry,
   );
 
+  const respondAgreeProbability = applyThreadingBoost(
+    respondAgree.base +
+      compatibility * respondAgree.alignment +
+      computeAgreeProbabilityModifiers(relationship, traits, category) +
+      followingAgreeBonus,
+    isThreadingPost,
+    threadingReplyBoost,
+  );
+
+  const respondProbability = capProbability(
+    respondAgreeProbability + respondDisagreeProbability,
+  );
+
   const revelatory = scorePostRevelatory(personality, post, author);
-  const disagrees = alignment < disagreeAlignmentThreshold;
+  const disagrees = compatibility < disagreeAlignmentThreshold;
   const unfollowProbability =
     alreadyFollowing && disagrees
       ? unfollow.base +
-        (1 - alignment) * unfollow.misalignment +
+        (1 - compatibility) * unfollow.misalignment +
         revelatory * unfollow.revelatory +
         traits.aggression * unfollow.aggression +
         traits.negacionist * unfollow.negacionist
       : 0;
 
+  const baseFollow = applyThreadingBoost(
+    follow.base +
+      compatibility * follow.alignment +
+      traits.negacionist * follow.negacionist,
+    isThreadingPost,
+  );
+
   return {
     like: capProbability(
       applyThreadingBoost(
         like.base +
-          alignment * like.alignment +
+          compatibility * like.alignment +
           traits.humor * like.humor +
           followingLikeBonus,
         isThreadingPost,
@@ -123,30 +156,17 @@ export function computeEngagementProbabilities(
     repost: capProbability(
       applyThreadingBoost(
         repost.base +
-          alignment * repost.alignment +
+          compatibility * repost.alignment +
           traits.radical * repost.radical,
         isThreadingPost,
       ),
     ),
-    respondAgree: capProbability(
-      applyThreadingBoost(
-        respondAgree.base +
-          alignment * respondAgree.alignment +
-          computeAgreeProbabilityModifiers(relationship, traits, category) +
-          followingAgreeBonus,
-        isThreadingPost,
-        threadingReplyBoost,
-      ),
-    ),
+    respond: respondProbability,
+    respondAgree: capProbability(respondAgreeProbability),
     respondDisagree: capProbability(respondDisagreeProbability),
-    follow: capProbability(
-      applyThreadingBoost(
-        follow.base +
-          alignment * follow.alignment +
-          traits.negacionist * follow.negacionist,
-        isThreadingPost,
-      ),
-    ),
+    follow: capProbability(baseFollow * followStreakFactor(projectedEndorsementStreak)),
     unfollow: capProbability(unfollowProbability),
+    compatibility,
+    alignment,
   };
 }

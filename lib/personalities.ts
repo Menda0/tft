@@ -20,6 +20,7 @@ import {
 } from "./personalities/political-swing";
 import {
   defaultStats,
+  normalizeBeliefs,
   normalizeStoredTraits,
 } from "./personalities/validation";
 import { normalizeStoredStats, normalizeStoredStatsRaw } from "./personalities/stats";
@@ -239,10 +240,7 @@ export function normalizePersonality(
       personality.pronouns ?? defaultPronounsForGender(personality.gender),
     memory: normalizeMemory(personality.memory),
     relationships: normalizeRelationships(personality.relationships),
-    beliefs:
-      personality.beliefs && typeof personality.beliefs === "object"
-        ? personality.beliefs
-        : {},
+    beliefs: normalizeBeliefs(personality.beliefs),
     stats: normalizeStoredStatsRaw(personality.stats),
     role: normalizeRole(personality.role),
     rankNpcActive:

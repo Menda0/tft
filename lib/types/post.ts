@@ -3,11 +3,22 @@ export type PostStats = {
   reposts: number;
   likes: number;
   views: number;
+  stronglyAgreeReplies: number;
   agreeReplies: number;
+  neutralReplies: number;
   disagreeReplies: number;
+  stronglyDisagreeReplies: number;
 };
 
-export type ReplyTone = "agree" | "disagree";
+export type ReplyTone =
+  | "strongly_disagree"
+  | "disagree"
+  | "neutral"
+  | "agree"
+  | "strongly_agree";
+
+/** @deprecated Use ReplyTone — kept for legacy posts */
+export type LegacyReplyTone = "agree" | "disagree";
 
 export type PostSource = "simulated" | "mirrored";
 
@@ -51,8 +62,11 @@ export function defaultPostStats(): PostStats {
     reposts: 0,
     likes: 0,
     views: 0,
+    stronglyAgreeReplies: 0,
     agreeReplies: 0,
+    neutralReplies: 0,
     disagreeReplies: 0,
+    stronglyDisagreeReplies: 0,
   };
 }
 

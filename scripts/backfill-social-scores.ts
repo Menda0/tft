@@ -26,7 +26,14 @@ async function backfillReplyToneCounters(): Promise<number> {
 
   const toneCounts = new Map<
     string,
-    { agreeReplies: number; disagreeReplies: number; replies: number }
+    {
+      stronglyAgreeReplies: number;
+      agreeReplies: number;
+      neutralReplies: number;
+      disagreeReplies: number;
+      stronglyDisagreeReplies: number;
+      replies: number;
+    }
   >();
 
   for (const post of posts) {
@@ -35,17 +42,32 @@ async function backfillReplyToneCounters(): Promise<number> {
     }
 
     const existing = toneCounts.get(post.replyToPostId) ?? {
+      stronglyAgreeReplies: 0,
       agreeReplies: 0,
+      neutralReplies: 0,
       disagreeReplies: 0,
+      stronglyDisagreeReplies: 0,
       replies: 0,
     };
 
     existing.replies += 1;
 
-    if (post.replyTone === "disagree") {
-      existing.disagreeReplies += 1;
-    } else {
-      existing.agreeReplies += 1;
+    switch (post.replyTone) {
+      case "strongly_agree":
+        existing.stronglyAgreeReplies += 1;
+        break;
+      case "neutral":
+        existing.neutralReplies += 1;
+        break;
+      case "disagree":
+        existing.disagreeReplies += 1;
+        break;
+      case "strongly_disagree":
+        existing.stronglyDisagreeReplies += 1;
+        break;
+      default:
+        existing.agreeReplies += 1;
+        break;
     }
 
     toneCounts.set(post.replyToPostId, existing);
@@ -57,8 +79,11 @@ async function backfillReplyToneCounters(): Promise<number> {
     const result = await collection.updateOne(mergeNotDeletedPost({ id: postId }), {
       $set: {
         "stats.replies": counts.replies,
+        "stats.stronglyAgreeReplies": counts.stronglyAgreeReplies,
         "stats.agreeReplies": counts.agreeReplies,
+        "stats.neutralReplies": counts.neutralReplies,
         "stats.disagreeReplies": counts.disagreeReplies,
+        "stats.stronglyDisagreeReplies": counts.stronglyDisagreeReplies,
       },
     });
 
@@ -89,8 +114,11 @@ async function main(): Promise<void> {
       reposts: 0,
       replies: 0,
       views: 0,
+      stronglyAgreeReplies: 0,
       agreeReplies: 0,
+      neutralReplies: 0,
       disagreeReplies: 0,
+      stronglyDisagreeReplies: 0,
     };
     const socialScore = computeGrossClout(totals, rawStats.followers);
 

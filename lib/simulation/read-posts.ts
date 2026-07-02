@@ -7,7 +7,7 @@ import {
   classifyRelationship,
   getRelationshipCategoryLabel,
 } from "@/lib/profile/relationship-category";
-import type { Post } from "@/lib/types/post";
+import type { Post, ReplyTone } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
 import { decideEngagement, decideReplyLike } from "./engagement";
@@ -17,13 +17,15 @@ import {
   getRelationshipTowardAuthor,
 } from "./engagement-intensity";
 import {
-  recordAgreeReplyEffects,
-  recordDisagreeReplyEffects,
   recordFollowEffects,
   recordLikeEffects,
+  recordReplyToneEffects,
   recordRepostEffects,
   recordUnfollowEffects,
 } from "./engagement-effects";
+import { isEndorsementTone } from "./engagement";
+import { replyToneLogLabel } from "./reply-tone-clout";
+import { breaksEndorsementStreak } from "./reply-tone";
 import { startOfDisagreeCooldownWindow, startOfRollingWindow } from "./limits";
 import { truncateForLog, type SimulationLogFn } from "./logger";
 import {
@@ -151,7 +153,7 @@ function findAuthor(
 function buildReplyEngagementContext(
   actor: Personality,
   author: Personality,
-  tone: "agree" | "disagree",
+  tone: ReplyTone,
   mutuallyFollowing: boolean,
 ): ReplyEngagementContext {
   const relationship = getRelationshipTowardAuthor(actor, author.id);
@@ -166,12 +168,14 @@ function buildReplyEngagementContext(
     category,
     categoryLabel: getRelationshipCategoryLabel(category),
     agreeIntensity:
-      tone === "agree"
-        ? computeAgreeIntensity(actor, relationship)
+      tone === "agree" || tone === "strongly_agree"
+        ? computeAgreeIntensity(actor, relationship) *
+          (tone === "strongly_agree" ? 1.25 : 1)
         : undefined,
     disagreeIntensity:
-      tone === "disagree"
-        ? computeDisagreeIntensity(actor, author, relationship)
+      tone === "disagree" || tone === "strongly_disagree"
+        ? computeDisagreeIntensity(actor, author, relationship) *
+          (tone === "strongly_disagree" ? 1.35 : 1)
         : undefined,
   };
 }
@@ -328,7 +332,7 @@ export async function readPostsAndEngage(
     if (decision.respond && decision.responseTone && author) {
       log(
         "info",
-        `${handle} ${decision.responseTone === "agree" ? "agreeing with" : "pushing back on"} @${post.author.handle}...`,
+        `${handle} ${replyToneLogLabel(decision.responseTone)} @${post.author.handle}...`,
       );
 
       const reply = await replyToSpecificPost(personality, post, world, {
@@ -346,20 +350,25 @@ export async function readPostsAndEngage(
         endorsementBroken = true;
       } else {
         recordTickStat(world.tickStats, "replies");
+        await recordReplyToneEffects(
+          world,
+          personality,
+          author,
+          post,
+          decision.responseTone,
+        );
 
-        if (decision.responseTone === "agree") {
+        if (isEndorsementTone(decision.responseTone)) {
           recordTickStat(world.tickStats, "agreeReplies");
-          await recordAgreeReplyEffects(world, personality, author, post);
           endorsed = true;
-        } else {
+        } else if (breaksEndorsementStreak(decision.responseTone)) {
           recordTickStat(world.tickStats, "disagreeReplies");
-          await recordDisagreeReplyEffects(world, personality, author, post);
           endorsementBroken = true;
         }
 
         log(
           "success",
-          `${handle} ${decision.responseTone === "agree" ? "agreed with" : "pushed back on"} @${post.author.handle}: ${truncateForLog(reply.content)}`,
+          `${handle} ${replyToneLogLabel(decision.responseTone)} @${post.author.handle}: ${truncateForLog(reply.content)}`,
         );
       }
     }

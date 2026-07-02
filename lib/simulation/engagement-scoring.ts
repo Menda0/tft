@@ -1,6 +1,11 @@
 import type { Post } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
+import {
+  scoreBeliefOpposition,
+  scoreIdeologicalCompatibility,
+  scoreRelationshipAlignment,
+} from "./ideological-compatibility";
 import { topicsMatchInterest } from "./topics";
 
 function clamp01(value: number): number {
@@ -47,34 +52,7 @@ function scoreBeliefAlignment(
   personality: Pick<Personality, "beliefs">,
   post: Pick<Post, "topic" | "content">,
 ): number {
-  const beliefEntries = Object.entries(personality.beliefs);
-
-  if (beliefEntries.length === 0 || !post.topic) {
-    return 0.5;
-  }
-
-  const topic = normalize(post.topic);
-  const content = normalize(post.content);
-  let matched = 0;
-  let total = 0;
-
-  for (const [belief, strength] of beliefEntries) {
-    const normalizedBelief = normalize(belief);
-
-    if (
-      topic.includes(normalizedBelief) ||
-      content.includes(normalizedBelief)
-    ) {
-      matched += strength;
-      total += 10;
-    }
-  }
-
-  if (total === 0) {
-    return 0.5;
-  }
-
-  return matched / total;
+  return 1 - scoreBeliefOpposition(personality, null, post);
 }
 
 export function scorePostRelevance(
@@ -95,38 +73,11 @@ export function scorePostAlignment(
   post: Post,
   author: Personality | null,
 ): number {
-  const interestAlignment = interestMatchesPost(personality.interests, post);
-
-  let politicalAlignment = 0.5;
-
-  if (author) {
-    const swingGap = Math.abs(personality.politicalSwing - author.politicalSwing);
-    politicalAlignment = 1 - swingGap / 20;
-  }
-
+  const compatibility = scoreIdeologicalCompatibility(personality, author, post);
   const relationship = personality.relationships[post.author.personalityId];
-  let relationshipAlignment = 0.5;
+  const relationshipAlignment = scoreRelationshipAlignment(relationship);
 
-  if (relationship) {
-    relationshipAlignment =
-      0.5 +
-      (relationship.admiration - relationship.rivalry) / 20 +
-      relationship.trust / 40;
-  }
-
-  let beliefAlignment = 0.5;
-  const beliefEntries = Object.entries(personality.beliefs);
-
-  if (beliefEntries.length > 0 && post.topic) {
-    beliefAlignment = scoreBeliefAlignment(personality, post);
-  }
-
-  return clamp01(
-    interestAlignment * 0.4 +
-      politicalAlignment * 0.3 +
-      relationshipAlignment * 0.2 +
-      beliefAlignment * 0.1,
-  );
+  return clamp01(compatibility * 0.85 + relationshipAlignment * 0.15);
 }
 
 export function scorePostRevelatory(
@@ -134,8 +85,8 @@ export function scorePostRevelatory(
   post: Post,
   author: Personality | null,
 ): number {
-  const beliefAlignment = scoreBeliefAlignment(personality, post);
-  const beliefShock = beliefAlignment < 0.5 ? 1 - beliefAlignment : 0;
+  const beliefOpposition = scoreBeliefOpposition(personality, author, post);
+  const beliefShock = beliefOpposition > 0.5 ? beliefOpposition : 0;
 
   let expectationBetrayal = 0;
 
@@ -159,3 +110,6 @@ export function scorePostRevelatory(
     beliefShock * 0.45 + expectationBetrayal * 0.35 + authorShock * 0.2,
   );
 }
+
+/** @deprecated Internal — use scoreIdeologicalCompatibility */
+export { scoreBeliefAlignment as scoreLegacyBeliefAlignment };

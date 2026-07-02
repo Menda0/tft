@@ -3,10 +3,10 @@ import { getOpenAIClient, getTextModel } from "@/lib/openai/client";
 import { trackedChatCompletion } from "@/lib/openai/usage";
 import { PostGenerationError } from "@/lib/openai/post";
 import { getRankNpcRealName } from "@/lib/personalities/rank-npc";
-import type { Post } from "@/lib/types/post";
+import type { Post, ReplyTone } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
-export type RankNpcReplyTone = "agree" | "disagree";
+export type RankNpcReplyTone = ReplyTone;
 
 function normalizeReplyContent(text: string): string {
   return text
@@ -16,16 +16,27 @@ function normalizeReplyContent(text: string): string {
     .slice(0, 280);
 }
 
+function tonePromptLine(tone: ReplyTone): string {
+  switch (tone) {
+    case "strongly_agree":
+      return "You strongly agree with this post. Reply with emphatic support while sounding exactly like the real person would.";
+    case "agree":
+      return "You agree with this post. Reply in support while sounding exactly like the real person would.";
+    case "neutral":
+      return "You have a neutral reaction to this post. Reply with a balanced take while sounding exactly like the real person would.";
+    case "disagree":
+      return "You disagree with this post. Push back while sounding exactly like the real person would.";
+    case "strongly_disagree":
+      return "You strongly disagree with this post. Push back sharply while sounding exactly like the real person would.";
+  }
+}
+
 function buildRankNpcReplyPrompt(
   npc: Personality,
   targetPost: Post,
   tone: RankNpcReplyTone,
 ): string {
   const realName = getRankNpcRealName(npc);
-  const toneLine =
-    tone === "agree"
-      ? "You agree with this post. Reply in support while sounding exactly like the real person would."
-      : "You disagree with this post. Push back sharply while sounding exactly like the real person would.";
 
   return [
     `You are ${npc.name} (@${npc.handle}), a knock-off parody account.`,
@@ -35,7 +46,7 @@ function buildRankNpcReplyPrompt(
     `Reply to @${targetPost.author.handle}:`,
     `"${targetPost.content}"`,
     "",
-    toneLine,
+    tonePromptLine(tone),
     "Do not mention that you are AI.",
     "Return only the reply text.",
     "No hashtags, no quotes, no markdown.",

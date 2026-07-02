@@ -38,6 +38,14 @@ import {
   persistEndorsementStreak,
   recordAuthorEndorsementOutcome,
 } from "./endorsement-streak";
+import { getRelationshipTowardAuthor } from "./engagement-intensity";
+import { scoreIdeologicalCompatibility } from "./ideological-compatibility";
+import { replyToneLogLabel } from "./reply-tone-clout";
+import {
+  decideReplyTone,
+  isEndorsementTone,
+  breaksEndorsementStreak,
+} from "./reply-tone";
 
 type RankNpcAction = "like" | "follow" | "reply";
 
@@ -206,11 +214,15 @@ async function engageWithPost(
     return;
   }
 
-  const tone =
-    Math.random() < rankNpcConfig.replyToneAgreeChance ? "agree" : "disagree";
+  const tone = decideReplyTone(
+    scoreIdeologicalCompatibility(npc, author, post),
+    scoreIdeologicalCompatibility(npc, author, post),
+    npc.traits,
+    getRelationshipTowardAuthor(npc, author.id),
+  );
   log(
     "info",
-    `${npcLabel} ${tone === "agree" ? "agreeing with" : "pushing back on"} @${author.handle}...`,
+    `${npcLabel} ${replyToneLogLabel(tone)} @${author.handle}...`,
   );
 
   let content: string;
@@ -249,7 +261,7 @@ async function engageWithPost(
 
   recordTickStat(world.tickStats, "replies");
 
-  if (tone === "agree") {
+  if (isEndorsementTone(tone)) {
     recordTickStat(world.tickStats, "agreeReplies");
     await recordRankNpcAgreeReplyEffects(world, npc, author);
     const endorsementStreak = await recordAuthorEndorsementOutcome(
@@ -267,7 +279,7 @@ async function engageWithPost(
       npcLabel,
       endorsementStreak,
     );
-  } else {
+  } else if (breaksEndorsementStreak(tone)) {
     recordTickStat(world.tickStats, "disagreeReplies");
     await recordRankNpcDisagreeReplyEffects(world, npc, author);
     await recordAuthorEndorsementOutcome(
@@ -281,7 +293,7 @@ async function engageWithPost(
 
   log(
     "success",
-    `${npcLabel} ${tone === "agree" ? "agreed with" : "pushed back on"} @${author.handle}: ${truncateForLog(reply.content)}`,
+    `${npcLabel} ${replyToneLogLabel(tone)} @${author.handle}: ${truncateForLog(reply.content)}`,
   );
 }
 

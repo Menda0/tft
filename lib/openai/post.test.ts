@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import { buildReplyPrompt } from "@/lib/openai/reply-prompt";
 import type { Personality } from "@/lib/types/personality";
 import type { Post } from "@/lib/types/post";
+import { defaultPostStats } from "@/lib/types/post";
 
 function personality(): Personality {
   return {
@@ -56,14 +57,7 @@ function post(): Post {
     topic: "AI",
     createdAt: new Date(),
     tickNumber: 1,
-    stats: {
-      replies: 0,
-      reposts: 0,
-      likes: 0,
-      views: 0,
-      agreeReplies: 0,
-      disagreeReplies: 0,
-    },
+    stats: defaultPostStats(),
     replyToPostId: null,
     repostOfPostId: null,
   };

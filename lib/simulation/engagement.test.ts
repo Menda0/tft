@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { computeEngagementProbabilities } from "@/lib/simulation/engagement-probabilities";
-import type { Post } from "@/lib/types/post";
+import { defaultPostStats, type Post } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
 function basePersonality(overrides: Partial<Personality> = {}): Personality {
@@ -43,13 +43,14 @@ function basePersonality(overrides: Partial<Personality> = {}): Personality {
   };
 }
 
-function baseAuthor(): Personality {
+function baseAuthor(overrides: Partial<Personality> = {}): Personality {
   return basePersonality({
     id: "author",
     name: "Author",
     handle: "author",
     interests: ["tech"],
     politicalSwing: 0,
+    ...overrides,
   });
 }
 
@@ -61,6 +62,7 @@ function basePost(author: Personality): Post {
       handle: author.handle,
       name: author.name,
       avatarUrl: null,
+      archetype: "",
     },
     content: "Tech is changing everything.",
     topic: "tech",
@@ -68,18 +70,36 @@ function basePost(author: Personality): Post {
     repostOfPostId: null,
     createdAt: new Date(),
     tickNumber: 1,
-    stats: {
-      likes: 0,
-      reposts: 0,
-      replies: 0,
-      views: 0,
-      agreeReplies: 0,
-      disagreeReplies: 0,
-    },
+    stats: defaultPostStats(),
   };
 }
 
 describe("computeEngagementProbabilities", () => {
+  it("scales follow probability with endorsement streak", () => {
+    const personality = basePersonality();
+    const author = baseAuthor();
+    const post = basePost(author);
+    const baseContext = {
+      personality,
+      post,
+      author,
+      alreadyFollowing: false,
+      mutuallyFollowing: false,
+      isThreadingPost: false,
+    };
+
+    const streakOne = computeEngagementProbabilities({
+      ...baseContext,
+      projectedEndorsementStreak: 1,
+    });
+    const streakThree = computeEngagementProbabilities({
+      ...baseContext,
+      projectedEndorsementStreak: 3,
+    });
+
+    assert.ok(streakThree.follow > streakOne.follow);
+  });
+
   it("boosts like and agree odds for followed authors", () => {
     const personality = basePersonality();
     const author = baseAuthor();

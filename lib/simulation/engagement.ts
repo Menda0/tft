@@ -1,4 +1,4 @@
-import type { Post } from "@/lib/types/post";
+import type { Post, ReplyTone } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
 import { simulationConfig } from "./config";
@@ -7,6 +7,13 @@ import {
   type EngagementProbabilityContext,
 } from "./engagement-probabilities";
 import { scorePostAlignment } from "./engagement-scoring";
+import { getRelationshipTowardAuthor } from "./engagement-intensity";
+import {
+  breaksEndorsementStreak,
+  decideReplyTone,
+  isDisagreeTone,
+  isEndorsementTone,
+} from "./reply-tone";
 
 export type { EngagementProbabilities } from "./engagement-probabilities";
 export { computeEngagementProbabilities } from "./engagement-probabilities";
@@ -16,13 +23,11 @@ export {
   scorePostRevelatory,
 } from "./engagement-scoring";
 
-export type ResponseTone = "agree" | "disagree";
-
 export type EngagementDecision = {
   like: boolean;
   repost: boolean;
   respond: boolean;
-  responseTone: ResponseTone | null;
+  responseTone: ReplyTone | null;
   follow: boolean;
   unfollow: boolean;
 };
@@ -33,8 +38,6 @@ const {
   disagreeUnfollowMultiplier,
 } = simulationConfig.engagement;
 const replyLikeConfig = simulationConfig.replyLike;
-const CONSECUTIVE_ENDORSEMENTS_FOR_FOLLOW =
-  simulationConfig.endorsement.consecutiveForFollow;
 
 function capProbability(value: number): number {
   return Math.min(maxProbability, value);
@@ -57,44 +60,43 @@ export function decideEngagement(context: EngagementContext): EngagementDecision
     consecutiveEndorsements = 0,
     ...probabilityContext
   } = context;
-  const alignment = scorePostAlignment(personality, post, author);
+
+  const relationship = getRelationshipTowardAuthor(
+    personality,
+    post.author.personalityId,
+  );
+
   const probabilities = computeEngagementProbabilities({
     personality,
     post,
     author,
     alreadyFollowing,
+    projectedEndorsementStreak: Math.max(1, consecutiveEndorsements + 1),
     ...probabilityContext,
   });
 
-  const agreeRoll = Math.random();
-  const disagreeRoll = Math.random();
-  const agreeHit = agreeRoll < probabilities.respondAgree;
-  const disagreeHit = disagreeRoll < probabilities.respondDisagree;
-
   let respond = false;
-  let responseTone: ResponseTone | null = null;
+  let responseTone: ReplyTone | null = null;
 
-  if (agreeHit && disagreeHit) {
-    const agreeStrength = agreeRoll / probabilities.respondAgree;
-    const disagreeStrength = disagreeRoll / probabilities.respondDisagree;
+  if (roll(probabilities.respond)) {
     respond = true;
-    responseTone = agreeStrength <= disagreeStrength ? "agree" : "disagree";
-  } else if (agreeHit) {
-    respond = true;
-    responseTone = "agree";
-  } else if (disagreeHit) {
-    respond = true;
-    responseTone = "disagree";
+    responseTone = decideReplyTone(
+      probabilities.compatibility,
+      probabilities.alignment,
+      personality.traits,
+      relationship,
+    );
   }
 
-  const skipLike = responseTone === "disagree";
+  const skipLike = responseTone !== null && isDisagreeTone(responseTone);
 
   const disagrees =
-    responseTone === "disagree" || alignment < disagreeAlignmentThreshold;
+    (responseTone !== null && isDisagreeTone(responseTone)) ||
+    probabilities.compatibility < disagreeAlignmentThreshold;
   let unfollowProbability =
     alreadyFollowing && disagrees ? probabilities.unfollow : 0;
 
-  if (alreadyFollowing && responseTone === "disagree") {
+  if (alreadyFollowing && responseTone !== null && isDisagreeTone(responseTone)) {
     unfollowProbability = capProbability(
       unfollowProbability * disagreeUnfollowMultiplier,
     );
@@ -103,10 +105,26 @@ export function decideEngagement(context: EngagementContext): EngagementDecision
   const liked = !skipLike && roll(probabilities.like);
   const reposted = roll(probabilities.repost);
   const willEndorse =
-    liked || reposted || (respond && responseTone === "agree");
+    liked ||
+    reposted ||
+    (respond && responseTone !== null && isEndorsementTone(responseTone));
+
+  const streakAfterAction = willEndorse ? consecutiveEndorsements + 1 : consecutiveEndorsements;
+
+  const followProbabilities =
+    willEndorse && streakAfterAction >= 1
+      ? computeEngagementProbabilities({
+          personality,
+          post,
+          author,
+          alreadyFollowing,
+          projectedEndorsementStreak: streakAfterAction,
+          ...probabilityContext,
+        })
+      : probabilities;
+
   const followEligible =
-    consecutiveEndorsements >= CONSECUTIVE_ENDORSEMENTS_FOR_FOLLOW - 1 &&
-    willEndorse;
+    willEndorse && streakAfterAction >= 1 && !alreadyFollowing;
 
   return {
     like: liked,
@@ -114,10 +132,9 @@ export function decideEngagement(context: EngagementContext): EngagementDecision
     respond,
     responseTone,
     follow:
-      !alreadyFollowing &&
-      post.author.personalityId !== personality.id &&
       followEligible &&
-      roll(probabilities.follow),
+      post.author.personalityId !== personality.id &&
+      roll(followProbabilities.follow),
     unfollow: roll(unfollowProbability),
   };
 }
@@ -162,3 +179,5 @@ export function decideReplyLike(context: ReplyLikeContext): boolean {
 
   return roll(probability);
 }
+
+export { breaksEndorsementStreak, isEndorsementTone };

@@ -1,5 +1,7 @@
 import type { Personality } from "@/lib/types/personality";
 
+import { computeReplyToneCloutRaw } from "@/lib/simulation/reply-tone-clout";
+
 export type SocialScoreEvent =
   | "like_received"
   | "repost_received"
@@ -39,8 +41,14 @@ export type PostEngagementTotals = {
   reposts: number;
   replies: number;
   views: number;
+  stronglyAgreeReplies?: number;
   agreeReplies?: number;
+  neutralReplies?: number;
   disagreeReplies?: number;
+  stronglyDisagreeReplies?: number;
+  /** @deprecated Legacy aggregate — used when tone breakdown is missing */
+  legacyAgreeReplies?: number;
+  legacyDisagreeReplies?: number;
 };
 
 export type CloutBreakdown = {
@@ -77,13 +85,7 @@ export function computeSocialScoreDelta(
 }
 
 export function computeLinearEngagementRaw(totals: PostEngagementTotals): number {
-  const agreeReplies = totals.agreeReplies ?? 0;
-  const disagreeReplies = totals.disagreeReplies ?? 0;
-  const hasToneBreakdown = agreeReplies > 0 || disagreeReplies > 0;
-
-  const replyScore = hasToneBreakdown
-    ? agreeReplies * AGREE_REPLY_CLOUT + disagreeReplies * DISAGREE_REPLY_CLOUT
-    : totals.replies * AGREE_REPLY_CLOUT;
+  const replyScore = computeReplyToneCloutRaw(totals);
 
   return (
     totals.likes * LIKE_WEIGHT +

@@ -123,6 +123,40 @@ export function normalizeTraits(input: Partial<Traits> | Record<string, unknown>
   return traits;
 }
 
+const MAX_BELIEF_ENTRIES = 12;
+
+export function normalizeBeliefs(
+  beliefs: Record<string, number> | undefined | null,
+): Record<string, number> {
+  if (!beliefs || typeof beliefs !== "object") {
+    return {};
+  }
+
+  const normalized: Record<string, number> = {};
+
+  for (const [rawKey, rawStrength] of Object.entries(beliefs)) {
+    const key = rawKey.trim().toLowerCase();
+
+    if (!key || key in normalized) {
+      continue;
+    }
+
+    const strength = Number(rawStrength);
+
+    if (!Number.isFinite(strength)) {
+      continue;
+    }
+
+    normalized[key] = Math.min(10, Math.max(0, Math.round(strength)));
+
+    if (Object.keys(normalized).length >= MAX_BELIEF_ENTRIES) {
+      break;
+    }
+  }
+
+  return normalized;
+}
+
 export function normalizeStoredTraits(input: unknown): Traits {
   const normalized = normalizeTraits(
     input && typeof input === "object" ? (input as Record<string, unknown>) : {},
@@ -289,6 +323,11 @@ export function validateCreatePersonalityInput(
             .slice(0, 8)
         : [];
 
+  const beliefs =
+    data.beliefs && typeof data.beliefs === "object" && !Array.isArray(data.beliefs)
+      ? normalizeBeliefs(data.beliefs as Record<string, number>)
+      : {};
+
   return {
     ok: true,
     value: {
@@ -301,7 +340,7 @@ export function validateCreatePersonalityInput(
       traits,
       politicalSwing,
       interests,
-      beliefs: {},
+      beliefs,
     },
   };
 }

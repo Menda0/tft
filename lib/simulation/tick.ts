@@ -3,6 +3,7 @@ import { insertTickResult } from "@/lib/db/tick-results";
 
 import { chooseOptionalAction } from "./actions";
 import { createPost } from "./posts";
+import { countOriginalPostsSince } from "@/lib/db/posts";
 import {
   evolvePersonality,
   rankMilestonePatch,
@@ -14,7 +15,7 @@ import {
   truncateForLog,
   type SimulationLogFn,
 } from "./logger";
-import { getDailyPostLimit, getSimulationBatchSize } from "./limits";
+import { getDailyPostLimit, getSimulationBatchSize, startOfRollingWindow } from "./limits";
 import { throwIfCancelled } from "./cancel";
 import { runHeatDecayPass } from "./heat-decay";
 import { applyPersonalityUpdate } from "./personality-state";
@@ -62,7 +63,9 @@ async function simulatePersonality(
     world.personalities.find((entry) => entry.id === personality.id) ??
     personality;
 
-  const optional = chooseOptionalAction(current);
+  const since = startOfRollingWindow();
+  const postsToday = await countOriginalPostsSince(current.id, since);
+  const optional = chooseOptionalAction(current, postsToday);
 
   if (optional === "post") {
     log("info", `${handle} chose POST`);

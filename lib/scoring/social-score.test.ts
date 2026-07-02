@@ -37,14 +37,30 @@ describe("getCloutBreakdown", () => {
 });
 
 describe("computeLinearEngagementRaw", () => {
-  it("weights agree and disagree replies differently", () => {
+  it("weights five reply tones differently", () => {
     const raw = computeLinearEngagementRaw({
       likes: 0,
       reposts: 0,
       replies: 0,
       views: 0,
-      agreeReplies: 3,
-      disagreeReplies: 2,
+      stronglyAgreeReplies: 1,
+      agreeReplies: 1,
+      neutralReplies: 1,
+      disagreeReplies: 1,
+      stronglyDisagreeReplies: 1,
+    });
+
+    assert.equal(raw, 14 + 8 + 3 + 2 + 0);
+  });
+
+  it("weights legacy agree and disagree replies", () => {
+    const raw = computeLinearEngagementRaw({
+      likes: 0,
+      reposts: 0,
+      replies: 0,
+      views: 0,
+      legacyAgreeReplies: 3,
+      legacyDisagreeReplies: 2,
     });
 
     assert.equal(raw, 3 * 8 + 2 * 2);

@@ -16,17 +16,17 @@ import {
 } from "@/lib/personality-activity/record";
 import { generateLLMPost, generateLLMReply, type ReplyEngagementContext } from "@/lib/openai/post";
 import { refreshGrossCloutInWorld } from "@/lib/scoring/refresh-gross-clout";
-import { defaultPostStats, type Post } from "@/lib/types/post";
+import { defaultPostStats, type Post, type PostStats, type ReplyTone } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
-import type { ResponseTone } from "./engagement";
+import { truncateForLog, type SimulationLogFn } from "./logger";
+import { normalizeLegacyReplyTone, replyToneToStatField } from "./reply-tone";
+import { pickTopicForPersonality } from "./topics";
+import type { SimulationWorld } from "./world";
 import {
   getDailyPostLimit,
   startOfRollingWindow,
 } from "./limits";
-import { truncateForLog, type SimulationLogFn } from "./logger";
-import { pickTopicForPersonality } from "./topics";
-import type { SimulationWorld } from "./world";
 
 export type CreatePostResult =
   | { ok: true; post: Post }
@@ -45,13 +45,7 @@ function authorFromPersonality(personality: Personality) {
 function syncPostStat(
   world: SimulationWorld,
   postId: string,
-  field:
-    | "replies"
-    | "reposts"
-    | "likes"
-    | "views"
-    | "agreeReplies"
-    | "disagreeReplies",
+  field: keyof PostStats,
 ): void {
   const cached = world.posts.find((post) => post.id === postId);
 
@@ -168,13 +162,13 @@ export async function replyToSpecificPost(
   target: Post,
   world: SimulationWorld,
   options?: {
-    tone?: ResponseTone;
+    tone?: ReplyTone;
     content?: string;
     engagementContext?: ReplyEngagementContext;
   },
 ): Promise<Post | null> {
   try {
-    const tone = options?.tone ?? "agree";
+    const tone = normalizeLegacyReplyTone(options?.tone ?? "agree");
     const content =
       options?.content ??
       (await generateLLMReply(personality, target, {
@@ -194,15 +188,9 @@ export async function replyToSpecificPost(
 
     await incrementPostStat(target.id, "replies");
     syncPostStat(world, target.id, "replies");
-    await incrementPostStat(
-      target.id,
-      tone === "disagree" ? "disagreeReplies" : "agreeReplies",
-    );
-    syncPostStat(
-      world,
-      target.id,
-      tone === "disagree" ? "disagreeReplies" : "agreeReplies",
-    );
+    const toneField = replyToneToStatField(tone);
+    await incrementPostStat(target.id, toneField);
+    syncPostStat(world, target.id, toneField);
     world.posts.unshift(reply);
     void recordAuthoredReplyActivity(
       personality.id,

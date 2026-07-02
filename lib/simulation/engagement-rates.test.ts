@@ -5,6 +5,7 @@ import { computeEngagementProbabilities } from "@/lib/simulation/engagement-prob
 import { decideEngagement } from "@/lib/simulation/engagement";
 import { simulationConfig } from "@/lib/simulation/config";
 import type { Post } from "@/lib/types/post";
+import { defaultPostStats } from "@/lib/types/post";
 import type { Personality } from "@/lib/types/personality";
 
 function basePersonality(overrides: Partial<Personality> = {}): Personality {
@@ -63,6 +64,7 @@ function basePost(author: Personality): Post {
       handle: author.handle,
       name: author.name,
       avatarUrl: null,
+      archetype: "",
     },
     content: "Tech is changing everything.",
     topic: "tech",
@@ -70,14 +72,7 @@ function basePost(author: Personality): Post {
     repostOfPostId: null,
     createdAt: new Date(),
     tickNumber: 1,
-    stats: {
-      likes: 0,
-      reposts: 0,
-      replies: 0,
-      views: 0,
-      agreeReplies: 0,
-      disagreeReplies: 0,
-    },
+    stats: defaultPostStats(),
   };
 }
 

@@ -149,10 +149,43 @@ function postStatsEqual(left: PostStats, right: PostStats): boolean {
     left.reposts === right.reposts &&
     left.likes === right.likes &&
     left.views === right.views &&
+    left.stronglyAgreeReplies === right.stronglyAgreeReplies &&
     left.agreeReplies === right.agreeReplies &&
-    left.disagreeReplies === right.disagreeReplies
+    left.neutralReplies === right.neutralReplies &&
+    left.disagreeReplies === right.disagreeReplies &&
+    left.stronglyDisagreeReplies === right.stronglyDisagreeReplies
   );
 }
+
+const REPLY_TONE_GROUP_FIELDS = {
+  stronglyAgreeReplies: {
+    $sum: { $cond: [{ $eq: ["$replyTone", "strongly_agree"] }, 1, 0] },
+  },
+  agreeReplies: {
+    $sum: {
+      $cond: [
+        {
+          $or: [
+            { $eq: ["$replyTone", "agree"] },
+            { $eq: ["$replyTone", null] },
+            { $not: ["$replyTone"] },
+          ],
+        },
+        1,
+        0,
+      ],
+    },
+  },
+  neutralReplies: {
+    $sum: { $cond: [{ $eq: ["$replyTone", "neutral"] }, 1, 0] },
+  },
+  disagreeReplies: {
+    $sum: { $cond: [{ $eq: ["$replyTone", "disagree"] }, 1, 0] },
+  },
+  stronglyDisagreeReplies: {
+    $sum: { $cond: [{ $eq: ["$replyTone", "strongly_disagree"] }, 1, 0] },
+  },
+} as const;
 
 export async function resolvePostStatsBatch(
   posts: Array<Pick<Post, "id" | "stats">>,
@@ -169,24 +202,18 @@ export async function resolvePostStatsBatch(
       .aggregate<{
         _id: string;
         count: number;
+        stronglyAgreeReplies: number;
         agreeReplies: number;
+        neutralReplies: number;
         disagreeReplies: number;
+        stronglyDisagreeReplies: number;
       }>([
         { $match: mergeNotDeletedPost({ replyToPostId: { $in: ids } }) },
         {
           $group: {
             _id: "$replyToPostId",
             count: { $sum: 1 },
-            agreeReplies: {
-              $sum: {
-                $cond: [{ $eq: ["$replyTone", "disagree"] }, 0, 1],
-              },
-            },
-            disagreeReplies: {
-              $sum: {
-                $cond: [{ $eq: ["$replyTone", "disagree"] }, 1, 0],
-              },
-            },
+            ...REPLY_TONE_GROUP_FIELDS,
           },
         },
       ])
@@ -201,11 +228,20 @@ export async function resolvePostStatsBatch(
   ]);
 
   const replyCounts = new Map(replyRows.map((row) => [row._id, row.count]));
+  const stronglyAgreeReplyCounts = new Map(
+    replyRows.map((row) => [row._id, row.stronglyAgreeReplies]),
+  );
   const agreeReplyCounts = new Map(
     replyRows.map((row) => [row._id, row.agreeReplies]),
   );
+  const neutralReplyCounts = new Map(
+    replyRows.map((row) => [row._id, row.neutralReplies]),
+  );
   const disagreeReplyCounts = new Map(
     replyRows.map((row) => [row._id, row.disagreeReplies]),
+  );
+  const stronglyDisagreeReplyCounts = new Map(
+    replyRows.map((row) => [row._id, row.stronglyDisagreeReplies]),
   );
   const repostCounts = new Map(repostRows.map((row) => [row._id, row.count]));
 
@@ -222,8 +258,11 @@ export async function resolvePostStatsBatch(
           reposts,
           likes: resolveStoredLikes(post.stats.likes, replies, reposts, views),
           views,
+          stronglyAgreeReplies: stronglyAgreeReplyCounts.get(post.id) ?? 0,
           agreeReplies: agreeReplyCounts.get(post.id) ?? 0,
+          neutralReplies: neutralReplyCounts.get(post.id) ?? 0,
           disagreeReplies: disagreeReplyCounts.get(post.id) ?? 0,
+          stronglyDisagreeReplies: stronglyDisagreeReplyCounts.get(post.id) ?? 0,
         },
       ];
     }),
@@ -711,8 +750,11 @@ export type PersonalityEngagementTotals = {
   reposts: number;
   replies: number;
   views: number;
+  stronglyAgreeReplies: number;
   agreeReplies: number;
+  neutralReplies: number;
   disagreeReplies: number;
+  stronglyDisagreeReplies: number;
 };
 
 function engagementTotalsFromRow(row: {
@@ -720,16 +762,22 @@ function engagementTotalsFromRow(row: {
   reposts: number;
   replies: number;
   views: number;
+  stronglyAgreeReplies: number;
   agreeReplies: number;
+  neutralReplies: number;
   disagreeReplies: number;
+  stronglyDisagreeReplies: number;
 }): PersonalityEngagementTotals {
   return {
     likes: row.likes,
     reposts: row.reposts,
     replies: row.replies,
     views: row.views,
+    stronglyAgreeReplies: row.stronglyAgreeReplies,
     agreeReplies: row.agreeReplies,
+    neutralReplies: row.neutralReplies,
     disagreeReplies: row.disagreeReplies,
+    stronglyDisagreeReplies: row.stronglyDisagreeReplies,
   };
 }
 
@@ -740,11 +788,20 @@ const ENGAGEMENT_GROUP_STAGE = {
     reposts: { $sum: "$stats.reposts" },
     replies: { $sum: "$stats.replies" },
     views: { $sum: "$stats.views" },
+    stronglyAgreeReplies: {
+      $sum: { $ifNull: ["$stats.stronglyAgreeReplies", 0] },
+    },
     agreeReplies: {
       $sum: { $ifNull: ["$stats.agreeReplies", 0] },
     },
+    neutralReplies: {
+      $sum: { $ifNull: ["$stats.neutralReplies", 0] },
+    },
     disagreeReplies: {
       $sum: { $ifNull: ["$stats.disagreeReplies", 0] },
+    },
+    stronglyDisagreeReplies: {
+      $sum: { $ifNull: ["$stats.stronglyDisagreeReplies", 0] },
     },
   },
 } as const;
@@ -760,8 +817,11 @@ export async function aggregateSocialScoreForPersonality(
       reposts: number;
       replies: number;
       views: number;
+      stronglyAgreeReplies: number;
       agreeReplies: number;
+      neutralReplies: number;
       disagreeReplies: number;
+      stronglyDisagreeReplies: number;
     }>([
       {
         $match: mergeNotDeletedPost({
@@ -780,8 +840,11 @@ export async function aggregateSocialScoreForPersonality(
       reposts: 0,
       replies: 0,
       views: 0,
+      stronglyAgreeReplies: 0,
       agreeReplies: 0,
+      neutralReplies: 0,
       disagreeReplies: 0,
+      stronglyDisagreeReplies: 0,
     };
   }
 
@@ -799,8 +862,11 @@ export async function aggregateSocialScoreByPersonality(): Promise<
       reposts: number;
       replies: number;
       views: number;
+      stronglyAgreeReplies: number;
       agreeReplies: number;
+      neutralReplies: number;
       disagreeReplies: number;
+      stronglyDisagreeReplies: number;
     }>([
       {
         $match: mergeNotDeletedPost({}),
@@ -816,13 +882,7 @@ export async function aggregateSocialScoreByPersonality(): Promise<
 
 export async function incrementPostStat(
   id: string,
-  field:
-    | "replies"
-    | "reposts"
-    | "likes"
-    | "views"
-    | "agreeReplies"
-    | "disagreeReplies",
+  field: keyof PostStats,
   amount = 1,
 ): Promise<void> {
   const collection = await getPostsCollection();
@@ -901,7 +961,7 @@ export async function countDisagreeRepliesFromToSince(
       {
         $match: mergeNotDeletedPost({
           "author.personalityId": replierId,
-          replyTone: "disagree",
+          replyTone: { $in: ["disagree", "strongly_disagree"] },
           replyToPostId: { $ne: null },
           createdAt: { $gte: since },
         }),

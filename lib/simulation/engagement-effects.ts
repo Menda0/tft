@@ -3,7 +3,7 @@ import {
   computeScaledControversyDelta,
 } from "@/lib/scoring/controversy";
 import { refreshGrossCloutInWorld } from "@/lib/scoring/refresh-gross-clout";
-import type { Post } from "@/lib/types/post";
+import type { Post, ReplyTone } from "@/lib/types/post";
 import type { MemoryItem, Personality } from "@/lib/types/personality";
 
 import {
@@ -210,27 +210,93 @@ export async function recordFollowEffects(
   }));
 }
 
+export async function recordReplyToneEffects(
+  world: SimulationWorld,
+  actor: Personality,
+  author: Personality,
+  post: Post,
+  tone: ReplyTone,
+): Promise<void> {
+  if (tone === "neutral") {
+    await applyRelationshipAndStats(world, actor.id, author.id, {
+      relationshipDelta: { familiarity: 0.5 },
+      refreshTargetClout: false,
+    });
+    return;
+  }
+
+  if (tone === "agree" || tone === "strongly_agree") {
+    const relationship = getRelationship(actor, author.id);
+    const intensity =
+      computeAgreeIntensity(actor, relationship) *
+      (tone === "strongly_agree" ? 1.25 : 1);
+
+    await applyRelationshipAndStats(world, actor.id, author.id, {
+      relationshipDelta: {
+        trust: scaleRelationshipDelta(tone === "strongly_agree" ? 2 : 1, intensity),
+        admiration: scaleRelationshipDelta(tone === "strongly_agree" ? 2 : 1, intensity),
+        familiarity: 1,
+      },
+      refreshTargetClout: false,
+    });
+
+    await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({
+      actorMemory: recordFriendshipMemory(freshActor, freshAuthor, post.topic),
+    }));
+    return;
+  }
+
+  const relationship = getRelationship(actor, author.id);
+  const intensity =
+    computeDisagreeIntensity(actor, author, relationship) *
+    (tone === "strongly_disagree" ? 1.35 : 1);
+  const heatDefense = computeAuthorHeatDefense(author);
+  const actorKey = `@${actor.handle}`;
+  const isRepeat =
+    hasMemory(author, "exchange", actorKey) ||
+    hasMemory(author, "scandal", actorKey);
+  const baseTargetHeat = computeControversyDelta(
+    isRepeat ? "disagree_reply_target_repeat" : "disagree_reply_target",
+  );
+  const actorHeatBase =
+    tone === "strongly_disagree" ? 2 : computeControversyDelta("disagree_reply_actor");
+  const targetHeatBase = tone === "strongly_disagree" ? baseTargetHeat + 1 : baseTargetHeat;
+  const actorHeat = computeScaledControversyDelta(actorHeatBase, intensity);
+  const targetHeat = computeScaledControversyDelta(
+    targetHeatBase,
+    intensity * heatDefense,
+  );
+
+  await applyRelationshipAndStats(world, actor.id, author.id, {
+    relationshipDelta: {
+      trust: scaleRelationshipDelta(tone === "strongly_disagree" ? -2 : -1, intensity),
+      rivalry: scaleRelationshipDelta(tone === "strongly_disagree" ? 3 : 2, intensity),
+      familiarity: 1,
+    },
+    targetRelationshipDelta: {
+      rivalry: scaleRelationshipDelta(tone === "strongly_disagree" ? 2 : 1, intensity),
+    },
+    actorStatsDelta: {
+      controversy: actorHeat,
+    },
+    targetStatsDelta: {
+      controversy: targetHeat,
+    },
+  });
+
+  await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({
+    actorMemory: recordRivalryMemory(freshActor, freshAuthor, post.topic),
+    targetMemory: recordExchangeMemory(freshAuthor, freshActor, post.topic),
+  }));
+}
+
 export async function recordAgreeReplyEffects(
   world: SimulationWorld,
   actor: Personality,
   author: Personality,
   post: Post,
 ): Promise<void> {
-  const relationship = getRelationship(actor, author.id);
-  const intensity = computeAgreeIntensity(actor, relationship);
-
-  await applyRelationshipAndStats(world, actor.id, author.id, {
-    relationshipDelta: {
-      trust: scaleRelationshipDelta(1, intensity),
-      admiration: scaleRelationshipDelta(1, intensity),
-      familiarity: 1,
-    },
-    refreshTargetClout: false,
-  });
-
-  await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({
-    actorMemory: recordFriendshipMemory(freshActor, freshAuthor, post.topic),
-  }));
+  await recordReplyToneEffects(world, actor, author, post, "agree");
 }
 
 export async function recordUnfollowEffects(
@@ -270,44 +336,5 @@ export async function recordDisagreeReplyEffects(
   author: Personality,
   post: Post,
 ): Promise<void> {
-  const relationship = getRelationship(actor, author.id);
-  const intensity = computeDisagreeIntensity(actor, author, relationship);
-  const heatDefense = computeAuthorHeatDefense(author);
-  const actorKey = `@${actor.handle}`;
-  const isRepeat =
-    hasMemory(author, "exchange", actorKey) ||
-    hasMemory(author, "scandal", actorKey);
-  const baseTargetHeat = computeControversyDelta(
-    isRepeat ? "disagree_reply_target_repeat" : "disagree_reply_target",
-  );
-  const actorHeat = computeScaledControversyDelta(
-    computeControversyDelta("disagree_reply_actor"),
-    intensity,
-  );
-  const targetHeat = computeScaledControversyDelta(
-    baseTargetHeat,
-    intensity * heatDefense,
-  );
-
-  await applyRelationshipAndStats(world, actor.id, author.id, {
-    relationshipDelta: {
-      trust: scaleRelationshipDelta(-1, intensity),
-      rivalry: scaleRelationshipDelta(2, intensity),
-      familiarity: 1,
-    },
-    targetRelationshipDelta: {
-      rivalry: scaleRelationshipDelta(1, intensity),
-    },
-    actorStatsDelta: {
-      controversy: actorHeat,
-    },
-    targetStatsDelta: {
-      controversy: targetHeat,
-    },
-  });
-
-  await applyMemoryIfNeeded(world, actor.id, author.id, (freshActor, freshAuthor) => ({
-    actorMemory: recordRivalryMemory(freshActor, freshAuthor, post.topic),
-    targetMemory: recordExchangeMemory(freshAuthor, freshActor, post.topic),
-  }));
+  await recordReplyToneEffects(world, actor, author, post, "disagree");
 }

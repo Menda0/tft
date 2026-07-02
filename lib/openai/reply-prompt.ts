@@ -1,11 +1,12 @@
 import { formatPersonalityVoiceLabel } from "@/lib/personalities/kind-archetypes";
 import { formatPoliticalSwingDescription } from "@/lib/personalities/political-swing";
+import type { ReplyTone } from "@/lib/types/post";
 import type { RelationshipCategory } from "@/lib/profile/relationship-category";
 import { formatMemoriesForPrompt } from "@/lib/simulation/memory";
 import type { Post } from "@/lib/types/post";
 import type { Personality, Relationship } from "@/lib/types/personality";
 
-export type ReplyTone = "agree" | "disagree";
+export type { ReplyTone };
 
 export type ReplyEngagementContext = {
   targetAuthor: Pick<Personality, "name" | "handle">;
@@ -42,6 +43,10 @@ function agreeToneGuidance(intensity: number | undefined): string {
   return "Reply with enthusiastic ally energy — amplify their point and sound genuinely supportive.";
 }
 
+function stronglyAgreeToneGuidance(intensity: number | undefined): string {
+  return `${agreeToneGuidance(intensity)} Sound emphatic and fully aligned — this is a strong endorsement.`;
+}
+
 function disagreeToneGuidance(intensity: number | undefined): string {
   if (intensity === undefined || intensity < 0.8) {
     return "Reply with mild pushback — hedge your disagreement and stay civil.";
@@ -52,6 +57,14 @@ function disagreeToneGuidance(intensity: number | undefined): string {
   }
 
   return "Reply with sharp feud energy — you've clashed before, so don't pull punches.";
+}
+
+function stronglyDisagreeToneGuidance(intensity: number | undefined): string {
+  return `${disagreeToneGuidance(intensity)} Make the disagreement unmistakable and forceful.`;
+}
+
+function neutralToneGuidance(): string {
+  return "Reply with a neutral, matter-of-fact take — neither cheerleading nor attacking.";
 }
 
 function relationshipContextLines(context: ReplyEngagementContext): string[] {
@@ -76,6 +89,21 @@ function relationshipContextLines(context: ReplyEngagementContext): string[] {
   return lines;
 }
 
+function toneGuidance(tone: ReplyTone, context?: ReplyEngagementContext): string {
+  switch (tone) {
+    case "strongly_agree":
+      return `You strongly agree with this post. ${stronglyAgreeToneGuidance(context?.agreeIntensity)}`;
+    case "agree":
+      return `You agree with this post. ${agreeToneGuidance(context?.agreeIntensity)}`;
+    case "neutral":
+      return `You have a mixed or neutral reaction to this post. ${neutralToneGuidance()}`;
+    case "disagree":
+      return `You disagree with this post. ${disagreeToneGuidance(context?.disagreeIntensity)}`;
+    case "strongly_disagree":
+      return `You strongly disagree with this post. ${stronglyDisagreeToneGuidance(context?.disagreeIntensity)}`;
+  }
+}
+
 export function buildReplyPrompt(
   personality: Personality,
   targetPost: Post,
@@ -87,12 +115,9 @@ export function buildReplyPrompt(
       ? personality.interests.join(", ")
       : "social media";
 
-  const toneLine =
-    tone === "agree"
-      ? `You agree with this post. ${agreeToneGuidance(context?.agreeIntensity)}`
-      : tone === "disagree"
-        ? `You disagree with this post. ${disagreeToneGuidance(context?.disagreeIntensity)}`
-        : "Write one short in-character reply.";
+  const toneLine = tone
+    ? toneGuidance(tone, context)
+    : "Write one short in-character reply.";
 
   return [
     `You are ${personality.name}.`,
