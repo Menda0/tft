@@ -27,6 +27,11 @@ const RANGE_OPTIONS: Array<{ days: DashboardRange; label: string }> = [
   { days: 90, label: "Last 90 days" },
 ];
 
+const TAB_OPTIONS: Array<{ id: "activity" | "ai"; label: string }> = [
+  { id: "activity", label: "Activity" },
+  { id: "ai", label: "AI Usage" },
+];
+
 const OPERATION_LABELS: Record<AiOperation, string> = {
   bio: "Bios",
   avatar: "Avatars",
@@ -341,6 +346,7 @@ export function AdminDashboard() {
   const router = useRouter();
   const { user, token, isReady } = useAuth();
   const [range, setRange] = useState<DashboardRange>(7);
+  const [activeTab, setActiveTab] = useState<"activity" | "ai">("activity");
   const [data, setData] = useState<AdminDashboardData | null>(null);
   const [tickResults, setTickResults] = useState<TickResult[]>([]);
   const [tickTotal, setTickTotal] = useState(0);
@@ -479,7 +485,7 @@ export function AdminDashboard() {
           </button>
         </div>
 
-        <div className="mb-6 flex flex-wrap gap-2">
+        <div className="mb-4 flex flex-wrap gap-2">
           {RANGE_OPTIONS.map((option) => (
             <button
               key={option.days}
@@ -502,6 +508,27 @@ export function AdminDashboard() {
           ))}
         </div>
 
+        <div className="mb-6 flex flex-wrap gap-2 border-b border-[#29366f] pb-3">
+          {TAB_OPTIONS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`${DESKTOP_BAR_BUTTON_CLASS} ${
+                activeTab === tab.id ? "bg-[#29adff]" : "bg-[#1d2b53]"
+              }`}
+            >
+              <span
+                className={`${DESKTOP_BAR_BUTTON_LABEL_CLASS} ${
+                  activeTab === tab.id ? "text-[#1d2b53]" : "text-[#fff1e8]"
+                }`}
+              >
+                {tab.label.toUpperCase()}
+              </span>
+            </button>
+          ))}
+        </div>
+
         {error ? (
           <p className="mb-4 pixel-border bg-[#7e2553] px-3 py-2 text-sm text-[#fff1e8]">
             {error}
@@ -512,11 +539,13 @@ export function AdminDashboard() {
           <p className="text-sm text-[#83769a]">Loading analytics...</p>
         ) : data ? (
           <div className="space-y-6">
+            {activeTab === "activity" ? (
+              <>
             <section>
               <p className="mb-3 pixel-heading text-[10px] text-[#29adff]">
                 PLATFORM ACTIVITY
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <StatCard label="POSTS" value={formatNumber(data.platform.totalPosts)} />
                 <StatCard label="REPLIES" value={formatNumber(data.platform.totalReplies)} />
                 <StatCard label="REPOSTS" value={formatNumber(data.platform.totalReposts)} />
@@ -525,6 +554,22 @@ export function AdminDashboard() {
                   label="LIKES"
                   value={formatNumber(data.platform.totalLikes)}
                   hint="On posts created in range"
+                />
+                <StatCard
+                  label="AGREES"
+                  value={formatNumber(data.platform.agreeReplies)}
+                />
+                <StatCard
+                  label="DISAGREES"
+                  value={formatNumber(data.platform.disagreeReplies)}
+                />
+                <StatCard
+                  label="NEUTRAL"
+                  value={formatNumber(data.platform.neutralReplies)}
+                />
+                <StatCard
+                  label="UNFOLLOWS"
+                  value={formatNumber(data.platform.unfollows)}
                 />
               </div>
             </section>
@@ -550,7 +595,7 @@ export function AdminDashboard() {
               <p className="mb-3 pixel-heading text-[10px] text-[#29adff]">
                 PLATFORM TOTALS (ALL TIME)
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <StatCard
                   label="PERSONALITIES"
                   value={formatNumber(data.platform.totalPersonalities)}
@@ -568,11 +613,18 @@ export function AdminDashboard() {
               onNext={() => setTickPage((page) => page + 1)}
             />
 
+            <p className="text-xs text-[#83769a]">
+              Likes reflect current counts on posts created within the selected
+              window, not when likes occurred.
+            </p>
+              </>
+            ) : (
+              <>
             <section>
               <p className="mb-3 pixel-heading text-[10px] text-[#29adff]">
                 AI USAGE
               </p>
-              <div className="mb-4 grid grid-cols-2 gap-3">
+              <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <StatCard
                   label="EST. COST"
                   value={formatUsd(data.aiUsage.totalCostUsd)}
@@ -607,9 +659,10 @@ export function AdminDashboard() {
             </section>
 
             <p className="text-xs text-[#83769a]">
-              AI usage tracking starts from deployment. Likes reflect current counts on
-              posts created within the selected window, not when likes occurred.
+              AI usage tracking starts from deployment.
             </p>
+              </>
+            )}
           </div>
         ) : null}
       </main>

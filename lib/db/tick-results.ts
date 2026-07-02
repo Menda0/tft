@@ -37,6 +37,23 @@ export async function countTickResults(): Promise<number> {
   return collection.countDocuments();
 }
 
+export async function sumTickUnfollowsSince(since: Date): Promise<number> {
+  const collection = await getTickResultsCollection();
+  const rows = await collection
+    .aggregate<{ total: number }>([
+      { $match: { completedAt: { $gte: since } } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$stats.unfollows" },
+        },
+      },
+    ])
+    .toArray();
+
+  return rows[0]?.total ?? 0;
+}
+
 export async function listTickResults(options: {
   offset: number;
   limit: number;

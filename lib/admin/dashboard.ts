@@ -3,9 +3,11 @@ import {
   countAllOriginalPostsSince,
   countAllRepliesSince,
   countAllRepostsSince,
+  countRepliesByToneSince,
   sumLikesOnPostsCreatedSince,
 } from "@/lib/db/posts";
 import { countPostReadsSince } from "@/lib/db/post-reads";
+import { sumTickUnfollowsSince } from "@/lib/db/tick-results";
 import { getUserCount } from "@/lib/db/users";
 import { getWorldState } from "@/lib/db/world";
 import { getActivePersonalityCount } from "@/lib/personalities";
@@ -26,6 +28,10 @@ export type AdminDashboardData = {
     totalReposts: number;
     totalViews: number;
     totalLikes: number;
+    agreeReplies: number;
+    neutralReplies: number;
+    disagreeReplies: number;
+    unfollows: number;
     totalPlayers: number;
     totalPersonalities: number;
     totalTicks: number;
@@ -61,6 +67,8 @@ export async function buildAdminDashboard(
     totalReposts,
     totalViews,
     totalLikes,
+    replyToneCounts,
+    unfollows,
     totalPlayers,
     totalPersonalities,
     worldState,
@@ -71,6 +79,8 @@ export async function buildAdminDashboard(
     countAllRepostsSince(since),
     countPostReadsSince(since),
     sumLikesOnPostsCreatedSince(since),
+    countRepliesByToneSince(since),
+    sumTickUnfollowsSince(since),
     getUserCount(),
     getActivePersonalityCount(),
     getWorldState(),
@@ -89,6 +99,10 @@ export async function buildAdminDashboard(
       totalReposts,
       totalViews,
       totalLikes,
+      agreeReplies: replyToneCounts.agreeReplies,
+      neutralReplies: replyToneCounts.neutralReplies,
+      disagreeReplies: replyToneCounts.disagreeReplies,
+      unfollows,
       totalPlayers,
       totalPersonalities,
       totalTicks: worldState.tickNumber,

@@ -368,6 +368,48 @@ export async function countAllRepliesSince(since: Date): Promise<number> {
   );
 }
 
+export type ReplyToneCounts = {
+  agreeReplies: number;
+  neutralReplies: number;
+  disagreeReplies: number;
+};
+
+export async function countRepliesByToneSince(since: Date): Promise<ReplyToneCounts> {
+  const collection = await getPostsCollection();
+  const rows = await collection
+    .aggregate<{
+      stronglyAgreeReplies: number;
+      agreeReplies: number;
+      neutralReplies: number;
+      disagreeReplies: number;
+      stronglyDisagreeReplies: number;
+    }>([
+      {
+        $match: mergeNotDeletedPost({
+          replyToPostId: { $ne: null },
+          createdAt: { $gte: since },
+        }),
+      },
+      {
+        $group: {
+          _id: null,
+          ...REPLY_TONE_GROUP_FIELDS,
+        },
+      },
+    ])
+    .toArray();
+
+  const row = rows[0];
+
+  return {
+    agreeReplies:
+      (row?.agreeReplies ?? 0) + (row?.stronglyAgreeReplies ?? 0),
+    neutralReplies: row?.neutralReplies ?? 0,
+    disagreeReplies:
+      (row?.disagreeReplies ?? 0) + (row?.stronglyDisagreeReplies ?? 0),
+  };
+}
+
 export async function countAllRepostsSince(since: Date): Promise<number> {
   const collection = await getPostsCollection();
   return collection.countDocuments(
