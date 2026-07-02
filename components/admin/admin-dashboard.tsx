@@ -4,16 +4,19 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { FarmerLink } from "@/components/farmers/farmer-link";
 import {
   DESKTOP_BAR_BUTTON_CLASS,
   DESKTOP_BAR_BUTTON_LABEL_CLASS,
 } from "@/components/layout/app-bar-styles";
 import {
   fetchAdminDashboard,
+  fetchAdminUsers,
   fetchTickResults,
   type AdminDashboardData,
   type DashboardRange,
 } from "@/lib/admin/client";
+import type { AdminUserRow } from "@/lib/admin/users";
 import { PAGE_SIZE } from "@/lib/pagination";
 import type { AiOperation } from "@/lib/types/ai-usage";
 import type { TickResult } from "@/lib/types/tick-result";
@@ -184,6 +187,103 @@ function TickResultsTable({
   );
 }
 
+function UsersTable({
+  items,
+  loading,
+  userPage,
+  total,
+  onPrev,
+  onNext,
+}: {
+  items: AdminUserRow[];
+  loading: boolean;
+  userPage: number;
+  total: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  return (
+    <section className="pixel-border bg-[#1d2b53] p-3">
+      <p className="pixel-heading text-[10px] text-[#29adff]">USERS</p>
+
+      {items.length === 0 && !loading ? (
+        <p className="mt-2 text-sm text-[#83769a]">No users registered yet.</p>
+      ) : (
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full min-w-[56rem] text-left text-xs">
+            <thead>
+              <tr className="border-b-2 border-[#29366f] text-[#83769a]">
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">USERNAME</th>
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">LAST ACCESS</th>
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">JOINED</th>
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">PERSONALITIES</th>
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">MINTS</th>
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">CLOUT</th>
+                <th className="pb-2 pr-3 pixel-heading text-[8px]">HEAT</th>
+                <th className="pb-2 pixel-heading text-[8px]">WALLETS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id} className="border-b border-[#29366f]/60">
+                  <td className="py-2 pr-3 font-bold text-[#fff1e8]">
+                    <FarmerLink username={item.username}>@{item.username}</FarmerLink>
+                  </td>
+                  <td className="py-2 pr-3 text-[#83769a]">
+                    {formatDateTime(item.lastAccessAt ?? item.createdAt)}
+                  </td>
+                  <td className="py-2 pr-3 text-[#83769a]">
+                    {formatDateTime(item.createdAt)}
+                  </td>
+                  <td className="py-2 pr-3 text-[#29adff]">
+                    {formatNumber(item.personalityCount)}
+                  </td>
+                  <td className="py-2 pr-3 text-[#29adff]">{formatNumber(item.mintCount)}</td>
+                  <td className="py-2 pr-3 text-[#29adff]">{formatNumber(item.totalClout)}</td>
+                  <td className="py-2 pr-3 text-[#29adff]">{formatNumber(item.totalHeat)}</td>
+                  <td className="py-2 text-[#29adff]">
+                    {formatNumber(item.linkedWalletCount)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[10px] text-[#83769a]">
+          Page {userPage + 1} of {pageCount} · {formatNumber(total)} user(s) total
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onPrev}
+            disabled={loading || userPage === 0}
+            className={`${DESKTOP_BAR_BUTTON_CLASS} bg-[#1d2b53] disabled:opacity-40`}
+          >
+            <span className={`${DESKTOP_BAR_BUTTON_LABEL_CLASS} text-[#fff1e8]`}>
+              PREV
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={onNext}
+            disabled={loading || (userPage + 1) * PAGE_SIZE >= total}
+            className={`${DESKTOP_BAR_BUTTON_CLASS} bg-[#1d2b53] disabled:opacity-40`}
+          >
+            <span className={`${DESKTOP_BAR_BUTTON_LABEL_CLASS} text-[#fff1e8]`}>
+              NEXT
+            </span>
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function BreakdownTable({
   title,
   rows,
@@ -246,6 +346,10 @@ export function AdminDashboard() {
   const [tickTotal, setTickTotal] = useState(0);
   const [tickPage, setTickPage] = useState(0);
   const [tickLoading, setTickLoading] = useState(true);
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [userTotal, setUserTotal] = useState(0);
+  const [userPage, setUserPage] = useState(0);
+  const [usersLoading, setUsersLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -268,6 +372,26 @@ export function AdminDashboard() {
 
     setTickLoading(false);
   }, [tickPage, token]);
+
+  const loadUsers = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
+    setUsersLoading(true);
+
+    const result = await fetchAdminUsers(token, {
+      offset: userPage * PAGE_SIZE,
+      limit: PAGE_SIZE,
+    });
+
+    if (result.ok) {
+      setUsers(result.data.items);
+      setUserTotal(result.data.total);
+    }
+
+    setUsersLoading(false);
+  }, [token, userPage]);
 
   const loadDashboard = useCallback(async () => {
     if (!token) {
@@ -306,7 +430,8 @@ export function AdminDashboard() {
 
     void loadDashboard();
     void loadTickResults();
-  }, [isReady, loadDashboard, loadTickResults, router, user]);
+    void loadUsers();
+  }, [isReady, loadDashboard, loadTickResults, loadUsers, router, user]);
 
   useEffect(() => {
     if (!isReady || !user || user.role !== "admin" || !token) {
@@ -315,6 +440,14 @@ export function AdminDashboard() {
 
     void loadTickResults();
   }, [isReady, loadTickResults, token, tickPage, user]);
+
+  useEffect(() => {
+    if (!isReady || !user || user.role !== "admin" || !token) {
+      return;
+    }
+
+    void loadUsers();
+  }, [isReady, loadUsers, token, user, userPage]);
 
   if (!isReady || !user || user.role !== "admin") {
     return null;
@@ -335,6 +468,7 @@ export function AdminDashboard() {
             onClick={() => {
               void loadDashboard();
               void loadTickResults();
+              void loadUsers();
             }}
             disabled={loading}
             className={`${DESKTOP_BAR_BUTTON_CLASS} bg-[#1d2b53] disabled:opacity-60`}
@@ -397,10 +531,26 @@ export function AdminDashboard() {
 
             <section>
               <p className="mb-3 pixel-heading text-[10px] text-[#29adff]">
+                USERS
+              </p>
+              <div className="mb-4 grid grid-cols-2 gap-3">
+                <StatCard label="TOTAL USERS" value={formatNumber(userTotal)} />
+              </div>
+              <UsersTable
+                items={users}
+                loading={usersLoading}
+                userPage={userPage}
+                total={userTotal}
+                onPrev={() => setUserPage((page) => Math.max(0, page - 1))}
+                onNext={() => setUserPage((page) => page + 1)}
+              />
+            </section>
+
+            <section>
+              <p className="mb-3 pixel-heading text-[10px] text-[#29adff]">
                 PLATFORM TOTALS (ALL TIME)
               </p>
               <div className="grid grid-cols-2 gap-3">
-                <StatCard label="PLAYERS" value={formatNumber(data.platform.totalPlayers)} />
                 <StatCard
                   label="PERSONALITIES"
                   value={formatNumber(data.platform.totalPersonalities)}

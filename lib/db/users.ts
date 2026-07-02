@@ -1,4 +1,4 @@
-import { Collection, ObjectId } from "mongodb";
+import { Collection, Filter, ObjectId } from "mongodb";
 import { getAddress } from "viem";
 
 import { getDb } from "@/lib/mongodb";
@@ -19,6 +19,7 @@ export type UserDocument = {
   username: string;
   passwordHash: string;
   createdAt: Date;
+  lastAccessAt?: Date;
   isBootstrap?: boolean;
   linkedWallets?: LinkedWallet[];
 };
@@ -36,9 +37,12 @@ export async function getUsersCollection(): Promise<Collection<UserDocument>> {
   return db.collection<UserDocument>(COLLECTION);
 }
 
+const LAST_ACCESS_TOUCH_INTERVAL_MS = 15 * 60 * 1000;
+
 export async function ensureUserIndexes(): Promise<void> {
   const collection = await getUsersCollection();
   await collection.createIndex({ username: 1 }, { unique: true });
+  await collection.createIndex({ lastAccessAt: -1 });
 }
 
 export async function findUserByUsername(
@@ -89,13 +93,15 @@ export async function findUsersByIds(
 export async function createUser(
   username: string,
   passwordHash: string,
-  options?: { isBootstrap?: boolean },
+  options?: { isBootstrap?: boolean; lastAccessAt?: Date },
 ): Promise<UserDocument> {
   const collection = await getUsersCollection();
+  const now = options?.lastAccessAt ?? new Date();
   const user: UserDocument = {
     username,
     passwordHash,
-    createdAt: new Date(),
+    createdAt: now,
+    lastAccessAt: now,
     ...(options?.isBootstrap ? { isBootstrap: true } : {}),
   };
 
@@ -114,6 +120,65 @@ export function toPublicUser(user: UserDocument): PublicUser {
 export async function getUserCount(): Promise<number> {
   const collection = await getUsersCollection();
   return collection.countDocuments();
+}
+
+export async function setUserLastAccessAt(
+  userId: string,
+  lastAccessAt = new Date(),
+): Promise<void> {
+  if (!ObjectId.isValid(userId)) {
+    return;
+  }
+
+  const collection = await getUsersCollection();
+  await collection.updateOne(
+    { _id: new ObjectId(userId) },
+    { $set: { lastAccessAt } },
+  );
+}
+
+export async function touchUserLastAccess(userId: string): Promise<void> {
+  if (!ObjectId.isValid(userId)) {
+    return;
+  }
+
+  const threshold = new Date(Date.now() - LAST_ACCESS_TOUCH_INTERVAL_MS);
+  const collection = await getUsersCollection();
+
+  await collection.updateOne(
+    {
+      _id: new ObjectId(userId),
+      $or: [
+        { lastAccessAt: { $exists: false } },
+        { lastAccessAt: { $lte: threshold } },
+      ],
+    } satisfies Filter<UserDocument>,
+    { $set: { lastAccessAt: new Date() } },
+  );
+}
+
+export async function listUsersByLastAccess({
+  offset,
+  limit,
+}: {
+  offset: number;
+  limit: number;
+}): Promise<UserDocument[]> {
+  const collection = await getUsersCollection();
+
+  return collection
+    .aggregate<UserDocument>([
+      {
+        $addFields: {
+          _sortAccessAt: { $ifNull: ["$lastAccessAt", "$createdAt"] },
+        },
+      },
+      { $sort: { _sortAccessAt: -1, _id: 1 } },
+      { $skip: offset },
+      { $limit: limit },
+      { $project: { _sortAccessAt: 0 } },
+    ])
+    .toArray();
 }
 
 function normalizeLinkedWallet(wallet: LinkedWallet): LinkedWallet {

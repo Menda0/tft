@@ -1,5 +1,5 @@
 import { roleForUsername, type UserRole } from "@/lib/auth/admin";
-import { findUserById } from "@/lib/db/users";
+import { findUserById, touchUserLastAccess } from "@/lib/db/users";
 import { getBearerToken, verifyAuthToken } from "@/lib/auth/jwt";
 
 export type AuthUser = {
@@ -24,6 +24,8 @@ export async function getAuthUser(
     if (!user || user.username !== payload.username) {
       return null;
     }
+
+    void touchUserLastAccess(user._id!.toString());
 
     return {
       id: user._id!.toString(),

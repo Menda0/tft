@@ -1,7 +1,9 @@
 import type { AdminDashboardData, DashboardRange } from "@/lib/admin/dashboard";
+import type { AdminUsersPage } from "@/lib/admin/users";
 import type { TickResultsPage } from "@/lib/types/tick-result";
 
 export type { AdminDashboardData, DashboardRange };
+export type { AdminUsersPage };
 
 export async function fetchAdminDashboard(
   token: string,
@@ -45,6 +47,33 @@ export async function fetchTickResults(
   );
 
   const data = (await response.json()) as TickResultsPage & { error?: string };
+
+  if (!response.ok) {
+    return { ok: false, error: data.error ?? "Request failed." };
+  }
+
+  return { ok: true, data };
+}
+
+export async function fetchAdminUsers(
+  token: string,
+  options: { offset?: number; limit?: number } = {},
+): Promise<
+  | { ok: true; data: AdminUsersPage }
+  | { ok: false; error: string }
+> {
+  const offset = options.offset ?? 0;
+  const limit = options.limit ?? 10;
+  const response = await fetch(
+    `/api/admin/users?offset=${offset}&limit=${limit}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  const data = (await response.json()) as AdminUsersPage & { error?: string };
 
   if (!response.ok) {
     return { ok: false, error: data.error ?? "Request failed." };

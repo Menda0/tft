@@ -1,4 +1,4 @@
-import { findUserByUsername, toPublicUser } from "@/lib/db/users";
+import { findUserByUsername, setUserLastAccessAt, toPublicUser } from "@/lib/db/users";
 import { signAuthToken } from "@/lib/auth/jwt";
 import { verifyPassword } from "@/lib/auth/password";
 import { authError, authSuccess } from "@/lib/auth/responses";
@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     }
 
     const publicUser = toPublicUser(user);
+    await setUserLastAccessAt(publicUser.id);
     const token = signAuthToken({
       sub: publicUser.id,
       username: publicUser.username,
